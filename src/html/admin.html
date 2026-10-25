@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FWC Admin Panel</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #0a0c0f; --surface: #161a20; --surface-2: #1c212a; --surface-3: #232a36;
+    --border: #232a36; --text: #e6e9ee; --text-muted: #7a8599; --text-dim: #4b556a;
+    --accent: #c8ff3c; --accent-2: #7affc6; --danger: #ff4d4d; --warn: #ffb020;
+    --font: 'JetBrains Mono', ui-monospace, monospace;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; font-size: 13px; }
+  .app { display: flex; min-height: 100vh; }
+  .sidebar { width: 260px; background: rgba(17,20,24,0.95); border-right: 1px solid var(--border); padding: 16px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
+  @media (max-width: 768px) { .sidebar { display: none; } }
+  .logo { display: flex; align-items: center; gap: 10px; padding: 8px 12px 20px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+  .logo-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--accent); color: #000; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; }
+  .logo-title { font-weight: 800; font-size: 14px; }
+  .logo-sub { font-size: 10px; color: var(--text-muted); letter-spacing: 0.1em; }
+  .nav-btn { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--text-muted); display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 500; cursor: pointer; margin-bottom: 4px; text-align: left; font-family: inherit; transition: all 0.15s; }
+  .nav-btn.active { background: var(--surface-2); border-color: var(--surface-3); color: #fff; }
+  .nav-btn:hover { background: var(--surface); color: #fff; }
+  .nav-btn .badge { margin-left: auto; background: var(--danger); color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 999px; font-weight: 800; }
+  .main { flex: 1; padding: 16px; max-width: 100%; overflow-x: hidden; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; margin-bottom: 16px; background: var(--surface); border-radius: 12px; border: 1px solid var(--border); }
+  .header h1 { font-size: 16px; font-weight: 800; }
+  .header-info { font-size: 11px; color: var(--text-muted); }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+  .stat-label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .stat-value { font-size: 24px; font-weight: 800; }
+  .stat-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; margin-bottom: 16px; }
+  .section-title { font-size: 14px; font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .btn { padding: 8px 14px; border-radius: 10px; border: none; background: var(--surface-2); color: var(--text); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn:hover { background: var(--surface-3); }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: var(--accent-2); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-sm { padding: 6px 10px; font-size: 11px; }
+  .table-wrap { overflow-x: auto; margin: 0 -16px; padding: 0 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { padding: 10px 8px; text-align: left; font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.08em; border-bottom: 1px solid var(--border); font-weight: 600; }
+  td { padding: 10px 8px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: var(--surface-2); }
+  .badge-status { display: inline-block; padding: 3px 8px; border-radius: 999px; font-size: 10px; font-weight: 700; }
+  .badge-active { background: rgba(122,255,198,0.15); color: var(--accent-2); }
+  .badge-banned { background: rgba(255,77,77,0.15); color: #ff6b6b; }
+  .badge-pending { background: rgba(255,176,32,0.15); color: var(--warn); }
+  .badge-approved { background: rgba(122,255,198,0.15); color: var(--accent-2); }
+  .badge-rejected { background: rgba(255,77,77,0.15); color: #ff6b6b; }
+  .badge-processing { background: rgba(109,124,255,0.15); color: #8B9AFF; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  @media (max-width: 640px) { .form-row { grid-template-columns: 1fr; } }
+  .form-group label { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; }
+  .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 10px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 12px; }
+  .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+  .tabs-mobile { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 12px; margin-bottom: 12px; }
+  .tabs-mobile::-webkit-scrollbar { display: none; }
+  @media (min-width: 769px) { .tabs-mobile { display: none; } }
+  .mob-tab { padding: 8px 14px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); font-size: 11px; white-space: nowrap; cursor: pointer; font-family: inherit; color: var(--text-muted); }
+  .mob-tab.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 700; }
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--border); padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.6); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.success { background: var(--accent-2); color: #000; border-color: var(--accent-2); }
+  .toast.error { background: var(--danger); color: #fff; border-color: var(--danger); }
+  .hidden { display: none !important; }
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 30px; color: var(--text-muted); font-size: 12px; }
+  .search-input { width: 100%; max-width: 300px; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">F</div>
+      <div>
+        <div class="logo-title">FWC ADMIN</div>
+        <div class="logo-sub">CONTROL PANEL</div>
+      </div>
+    </div>
+    <nav id="sidebarNav"></nav>
+  </aside>
+
+  <main class="main">
+    <div class="tabs-mobile" id="mobTabs"></div>
+    <div class="header">
+      <div>
+        <h1 id="pageTitle">Dashboard</h1>
+        <div class="header-info" id="pageSub">System overview</div>
+      </div>
+      <button class="btn btn-sm" onclick="refreshPage()"> Refresh</button>
+    </div>
+    <div id="content"></div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const tg = window.Telegram?.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const STATE = {
+  tab: 'dashboard',
+  stats: { usersCount: 0, wdPending: 0, miningAmount: 0, totalBalance: 0, totalMined: 0, totalFees: 0, openAlerts: 0 },
+  users: [],
+  tasks: [],
+  withdrawals: [],
+  economy: {},
+  feeConfig: { enabled: true, percent: 5 },
+  alerts: [],
+  payoutStats: null,
+  loading: false,
+};
+
+const NAV = [
+  { id: 'dashboard', icon: '', label: 'Dashboard', title: 'Dashboard', sub: 'System overview' },
+  { id: 'users', icon: '', label: 'Users', title: 'Users', sub: 'Manage accounts & bans' },
+  { id: 'mining', icon: '', label: 'Mining', title: 'Mining Settings', sub: 'Rewards & intervals' },
+  { id: 'tasks', icon: '', label: 'Tasks', title: 'Daily Tasks', sub: 'Add/edit/delete' },
+  { id: 'withdrawals', icon: '', label: 'Withdrawals', title: 'Withdrawals', sub: 'Approve or reject' },
+  { id: 'fees', icon: '', label: 'Fees', title: 'Withdrawal Fees', sub: 'Dynamic fee settings' },
+  { id: 'ads', icon: '', label: 'Ads', title: 'Ads Management', sub: 'Adsgram integration' },
+  { id: 'anticheat', icon: '', label: 'Anti-Cheat', title: 'Anti-Cheat Alerts', sub: 'Duplicate detection' },
+  { id: 'payouts', icon: '', label: 'Payouts', title: 'Batch Payouts', sub: 'Highload V2 (255/TX)' },
+];
+
+function getInitData() {
+  return tg?.initData || new URLSearchParams(location.search).get('initData') || '';
+}
+
+async function api(path, method = 'GET', body = null) {
+  const headers = { 'Content-Type': 'application/json' };
+  const initData = getInitData();
+  if (initData) headers['X-Telegram-Init-Data'] = initData;
+  try {
+    const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
+    return await res.json();
+  } catch (e) {
+    return { ok: false, error: 'network' };
+  }
+}
+
+function toast(msg, type = 'info') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.className = 'toast', 2500);
+}
+
+function renderNav() {
+  const sidebar = document.getElementById('sidebarNav');
+  sidebar.innerHTML = NAV.map(n => {
+    let badge = '';
+    if (n.id === 'withdrawals' && STATE.stats.wdPending > 0) {
+      badge = `<span class="badge">${STATE.stats.wdPending}</span>`;
+    } else if (n.id === 'anticheat' && STATE.stats.openAlerts > 0) {
+      badge = `<span class="badge">${STATE.stats.openAlerts}</span>`;
+    }
+    return `<button class="nav-btn ${STATE.tab === n.id ? 'active' : ''}" onclick="switchTab('${n.id}')">
+      <span>${n.icon}</span><span>${n.label}</span>${badge}
+    </button>`;
+  }).join('');
+
+  const mob = document.getElementById('mobTabs');
+  mob.innerHTML = NAV.map(n =>
+    `<button class="mob-tab ${STATE.tab === n.id ? 'active' : ''}" onclick="switchTab('${n.id}')">${n.icon} ${n.label}</button>`
+  ).join('');
+}
+
+function switchTab(tab) {
+  STATE.tab = tab;
+  renderNav();
+  const nav = NAV.find(n => n.id === tab);
+  document.getElementById('pageTitle').textContent = nav.title;
+  document.getElementById('pageSub').textContent = nav.sub;
+  loadTab();
+}
+
+async function loadTab() {
+  STATE.loading = true;
+  renderContent();
+
+  try {
+    switch (STATE.tab) {
+      case 'dashboard': await loadStats(); await loadEconomy(); break;
+      case 'users': await loadUsers(); break;
+      case 'mining': await loadEconomy(); break;
+      case 'tasks': await loadTasksAdmin(); break;
+      case 'withdrawals': await loadWithdrawals(); break;
+      case 'fees': await loadFeeConfig(); break;
+      case 'ads': await loadEconomy(); break;
+      case 'anticheat': await loadAlerts(); break;
+      case 'payouts': await loadPayoutStats(); break;
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  STATE.loading = false;
+  renderContent();
+}
+
+function renderContent() {
+  const el = document.getElementById('content');
+  if (STATE.loading) {
+    el.innerHTML = '<div class="empty"><span class="spin"></span> Loading...</div>';
+    return;
+  }
+  switch (STATE.tab) {
+    case 'dashboard': renderDashboard(el); break;
+    case 'users': renderUsers(el); break;
+    case 'mining': renderMining(el); break;
+    case 'tasks': renderTasks(el); break;
+    case 'withdrawals': renderWithdrawals(el); break;
+    case 'fees': renderFees(el); break;
+    case 'ads': renderAds(el); break;
+    case 'anticheat': renderAlerts(el); break;
+    case 'payouts': renderPayouts(el); break;
+  }
+}
+
+// ========== DASHBOARD ==========
+async function loadStats() {
+  const res = await api('/api/admin/stats');
+  if (res.ok) STATE.stats = { ...STATE.stats, ...res };
+}
+
+function renderDashboard(el) {
+  el.innerHTML = `
+    <div class="cards-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Users</div>
+        <div class="stat-value">${STATE.stats.usersCount}</div>
+        <div class="stat-sub">Registered accounts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending Withdrawals</div>
+        <div class="stat-value" style="color:var(--warn);">${STATE.stats.wdPending}</div>
+        <div class="stat-sub">Need review</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Balance</div>
+        <div class="stat-value">${(STATE.stats.totalBalance || 0).toFixed(0)}</div>
+        <div class="stat-sub">FWC in circulation</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Mined</div>
+        <div class="stat-value">${(STATE.stats.totalMined || 0).toFixed(0)}</div>
+        <div class="stat-sub">FWC all-time</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total Fees</div>
+        <div class="stat-value" style="color:var(--accent-2);">${(STATE.stats.totalFees || 0).toFixed(2)}</div>
+        <div class="stat-sub">FWC collected</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Open Alerts</div>
+        <div class="stat-value" style="color:${STATE.stats.openAlerts > 0 ? 'var(--danger)' : 'var(--accent-2)'};">${STATE.stats.openAlerts || 0}</div>
+        <div class="stat-sub">Anti-cheat warnings</div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title"> Current Settings</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:12px;">
+        <div><span style="color:var(--text-muted);">Mining reward:</span> <b>${STATE.stats.miningAmount} FWC</b></div>
+        <div><span style="color:var(--text-muted);">Min withdraw:</span> <b>${STATE.economy.withdraw_min || 1000} FWC</b></div>
+        <div><span style="color:var(--text-muted);">Withdraw delay:</span> <b>${STATE.economy.withdraw_delay_hours || 24}h</b></div>
+        <div><span style="color:var(--text-muted);">Fee:</span> <b>${STATE.economy.withdraw_fee_percent || 5}%</b></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="section-title"> Quick Actions</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn" onclick="switchTab('withdrawals')"> Withdrawals (${STATE.stats.wdPending})</button>
+        <button class="btn" onclick="switchTab('fees')"> Fees</button>
+        <button class="btn" onclick="switchTab('ads')"> Ads</button>
+        <button class="btn" onclick="switchTab('anticheat')"> Alerts (${STATE.stats.openAlerts})</button>
+        <button class="btn" onclick="switchTab('payouts')"> Payouts</button>
+      </div>
+    </div>
+  `;
+}
+
+// ========== USERS ==========
+async function loadUsers(search = '') {
+  const res = await api('/api/admin/users?limit=200' + (search ? '&q=' + encodeURIComponent(search) : ''));
+  if (res.ok) STATE.users = res.users;
+}
+
+function renderUsers(el) {
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title">
+        <span>Users (${STATE.users.length})</span>
+        <input type="text" class="search-input" placeholder="Search user..." oninput="debounceSearch(this.value)">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Username</th>
+              <th>Balance</th>
+              <th>Wallet</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${STATE.users.length === 0 ? '<tr><td colspan="6" class="empty">No users</td></tr>' :
+              STATE.users.map(u => `
+                <tr>
+                  <td>
+                    <div style="font-weight:700;">${u.first_name || '—'}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">ID: ${u.telegram_id}</div>
+                  </td>
+                  <td>${u.username ? '@' + u.username : '—'}</td>
+                  <td style="font-weight:700;">${(u.balance || 0).toFixed(2)}</td>
+                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? u.wallet.slice(0, 10) + '...' : '—'}</td>
+                  <td>
+                    ${u.is_banned ?
+                      `<span class="badge-status badge-banned">Banned</span>` :
+                      `<span class="badge-status badge-active">Active</span>`}
+                  </td>
+                  <td>
+                    <button class="btn btn-sm ${u.is_banned ? 'btn-primary' : 'btn-danger'}" onclick="toggleBan(${u.telegram_id}, ${u.is_banned})">
+                      ${u.is_banned ? 'Unban' : 'Ban'}
+                    </button>
+                  </td>
+                </tr>
+              `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+let searchTimeout = null;
+function debounceSearch(q) {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(async () => {
+    await loadUsers(q);
+    renderContent();
+  }, 400);
+}
+
+async function toggleBan(id, isBanned) {
+  const action = isBanned ? 'unban' : 'ban';
+  const res = await api(`/api/admin/users/${id}/${action}`, 'POST');
+  if (res.ok) {
+    toast(isBanned ? 'Unbanned ' : 'Banned ', 'success');
+    await loadUsers();
+    renderContent();
+  } else {
+    toast('Error', 'error');
+  }
+}
+
+// ========== MINING ==========
+async function loadEconomy() {
+  const res = await api('/api/admin/economy');
+  if (res.ok) {
+    STATE.economy = {};
+    for (const e of res.economy) STATE.economy[e.key] = e.value;
+  }
+}
+
+function renderMining(el) {
+  const eco = STATE.economy;
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title"> Mining Settings</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Mining Amount (FWC)</label>
+          <input type="number" step="0.1" id="mining_amount" value="${eco.mining_amount || 6}">
+        </div>
+        <div class="form-group">
+          <label>Interval (hours)</label>
+          <input type="number" id="mining_interval_h" value="${Math.floor((eco.mining_interval_ms || 14400000) / 3600000)}">
+        </div>
+        <div class="form-group">
+          <label>Min Withdraw (FWC)</label>
+          <input type="number" id="withdraw_min" value="${eco.withdraw_min || 1000}">
+        </div>
+        <div class="form-group">
+          <label>Withdraw Delay (hours)</label>
+          <input type="number" id="withdraw_delay_hours" value="${eco.withdraw_delay_hours || 24}">
+        </div>
+        <div class="form-group">
+          <label>Withdraw Hold (FWC)</label>
+          <input type="number" id="withdraw_hold_amount" value="${eco.withdraw_hold_amount || 1000}">
+        </div>
+        <div class="form-group">
+          <label>Referral %</label>
+          <input type="number" step="0.1" id="referral_percent" value="${eco.referral_percent || 5}">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="saveMining()"> Save Settings</button>
+    </div>
+  `;
+}
+
+async function saveMining() {
+  const updates = {
+    mining_amount: document.getElementById('mining_amount').value,
+    mining_interval_ms: String(parseInt(document.getElementById('mining_interval_h').value) * 3600000),
+    withdraw_min: document.getElementById('withdraw_min').value,
+    withdraw_delay_hours: document.getElementById('withdraw_delay_hours').value,
+    withdraw_hold_amount: document.getElementById('withdraw_hold_amount').value,
+    referral_percent: document.getElementById('referral_percent').value,
+  };
+  for (const [key, value] of Object.entries(updates)) {
+    await api('/api/admin/economy', 'POST', { key, value });
+  }
+  toast('Settings saved ', 'success');
+  await loadEconomy();
+}
+
+// ========== TASKS ==========
+async function loadTasksAdmin() {
+  const res = await api('/api/admin/tasks');
+  if (res.ok) STATE.tasks = res.tasks;
+}
+
+function renderTasks(el) {
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title">
+        <span>Tasks (${STATE.tasks.length})</span>
+        <button class="btn btn-sm btn-primary" onclick="addNewTask()">+ Add</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Reward</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${STATE.tasks.length === 0 ? '<tr><td colspan="6" class="empty">No tasks</td></tr>' :
+              STATE.tasks.map(t => `
+                <tr>
+                  <td style="font-size:10px;color:var(--text-muted);">${t.id}</td>
+                  <td>
+                    <div style="font-weight:700;">${t.title}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">${t.title_ar || ''}</div>
+                  </td>
+                  <td><span class="badge-status badge-active">${t.type}</span></td>
+                  <td style="font-weight:700;">${t.reward} FWC</td>
+                  <td>
+                    ${t.active ?
+                      '<span class="badge-status badge-active">Active</span>' :
+                      '<span class="badge-status badge-pending">Inactive</span>'}
+                  </td>
+                  <td>
+                    <button class="btn btn-sm" onclick="toggleTaskActive('${t.id}', ${t.active})">${t.active ? '' : ''}</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTaskItem('${t.id}')"></button>
+                  </td>
+                </tr>
+              `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function addNewTask() {
+  const id = prompt('Task ID (unique):');
+  if (!id) return;
+  const title = prompt('Title (English):');
+  if (!title) return;
+  const title_ar = prompt('Arabic title (optional):') || '';
+  const type = prompt('Type (join/youtube/x/ads/checkin/invite/custom):', 'custom');
+  const reward = parseFloat(prompt('Reward (FWC):', '5')) || 0;
+  const url = prompt('URL (optional):') || null;
+
+  const res = await api('/api/admin/tasks', 'POST', {
+    id, title, title_ar, type: type || 'custom', reward,
+    url, max_per_day: 1, once: true, active: true,
+  });
+  if (res.ok) {
+    toast('Task added ', 'success');
+    await loadTasksAdmin();
+    renderContent();
+  } else {
+    toast('Error: ' + (res.error || ''), 'error');
+  }
+}
+
+async function toggleTaskActive(id, current) {
+  const res = await api('/api/admin/tasks/' + id, 'PUT', { active: !current });
+  if (res.ok) {
+    toast('Updated ', 'success');
+    await loadTasksAdmin();
+    renderContent();
+  }
+}
+
+async function deleteTaskItem(id) {
+  if (!confirm('Delete task ' + id + '?')) return;
+  const res = await api('/api/admin/tasks/' + id, 'DELETE');
+  if (res.ok) {
+    toast('Deleted', 'success');
+    await loadTasksAdmin();
+    renderContent();
+  }
+}
+
+// ========== WITHDRAWALS ==========
+async function loadWithdrawals() {
+  const res = await api('/api/admin/withdrawals');
+  if (res.ok) STATE.withdrawals = res.withdrawals;
+}
+
+function renderWithdrawals(el) {
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title">
+        <span>Withdrawals (${STATE.withdrawals.length})</span>
+        <button class="btn btn-sm" onclick="loadTab()"></button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>User</th>
+              <th>Amount</th>
+              <th>Net (Send)</th>
+              <th>Fee</th>
+              <th>Wallet</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${STATE.withdrawals.length === 0 ? '<tr><td colspan="8" class="empty">No withdrawals</td></tr>' :
+              STATE.withdrawals.map(w => {
+                const netAmount = w.net_amount || w.amount;
+                return `
+                <tr>
+                  <td>${w.id}</td>
+                  <td>
+                    <div style="font-weight:700;">${w.first_name || '—'}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">@${w.username || ''}</div>
+                  </td>
+                  <td style="font-weight:700;">${w.amount}</td>
+                  <td style="color:var(--accent-2);font-weight:700;">${netAmount}</td>
+                  <td style="color:var(--warn);">${w.fee || 0}</td>
+                  <td style="font-size:10px;color:var(--text-muted);">${w.wallet ? w.wallet.slice(0, 8) + '...' : '—'}</td>
+                  <td>
+                    <span class="badge-status badge-${w.status === 'approved' ? 'approved' : w.status === 'rejected' ? 'rejected' : w.status === 'processing' ? 'processing' : 'pending'}">${w.status}</span>
+                  </td>
+                  <td>
+                    ${w.status === 'pending' ?
+                      `<div style="display:flex;gap:4px;flex-wrap:wrap;">
+                        <button class="btn btn-sm" onclick="copyWallet('${w.wallet}', ${netAmount})"> Copy</button>
+                        <button class="btn btn-sm btn-primary" onclick="approveWd(${w.id})"></button>
+                        <button class="btn btn-sm btn-danger" onclick="rejectWd(${w.id})"></button>
+                       </div>` :
+                      '—'}
+                  </td>
+                </tr>
+              `}).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+async function copyWallet(wallet, amount) {
+  if (!wallet) return toast('No wallet', 'error');
+  try {
+    await navigator.clipboard.writeText(wallet);
+    toast(`Wallet Copied! Send exactly ${amount} FWC`, 'success');
+  } catch (e) {
+    prompt('Copy the wallet manually:', wallet);
+  }
+}
+
+async function approveWd(id) {
+  const res = await api(`/api/admin/withdrawals/${id}/approve`, 'POST');
+  if (res.ok) {
+    toast('Approved ', 'success');
+    await loadWithdrawals();
+    await loadStats();
+    renderContent();
+  }
+}
+
+async function rejectWd(id) {
+  const reason = prompt('Rejection reason (optional):') || '';
+  if (!confirm('Reject withdrawal and refund?')) return;
+  const res = await api(`/api/admin/withdrawals/${id}/reject`, 'POST', { reason });
+  if (res.ok) {
+    toast('Rejected & refunded', 'success');
+    await loadWithdrawals();
+    await loadStats();
+    renderContent();
+  }
+}
+
+// ========== FEES ==========
+async function loadFeeConfig() {
+  const res = await api('/api/admin/fees');
+  if (res.ok) STATE.feeConfig = res.config;
+  const ecoRes = await api('/api/admin/economy');
+  if (ecoRes.ok) {
+    STATE.economy = {};
+    for (const e of ecoRes.economy) STATE.economy[e.key] = e.value;
+  }
+}
+
+function renderFees(el) {
+  const f = STATE.feeConfig;
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title"> Withdrawal Fee</div>
+      <div style="margin-bottom:16px;padding:16px;border-radius:10px;background:rgba(200,255,60,0.08);border:1px solid rgba(200,255,60,0.2);font-size:13px;">
+        <div style="font-size:32px;font-weight:800;color:var(--accent);margin-bottom:4px;">${f.percent}%</div>
+        <div style="color:var(--text-muted);">Current withdrawal fee (fixed)</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Fee Percent (%)</label>
+          <input type="number" step="0.1" min="0" max="50" id="fee_percent" value="${f.percent}">
+        </div>
+      </div>
+      <div style="margin-bottom:12px;font-size:11px;color:var(--text-muted);line-height:1.6;">
+         Fee is deducted from each withdrawal amount.<br>
+        Example: User requests 1000 FWC with 5% fee  receives 950 FWC.
+      </div>
+      <button class="btn btn-primary" onclick="saveFee()"> Save Fee</button>
+    </div>
+  `;
+}
+
+async function saveFee() {
+  const percent = parseFloat(document.getElementById('fee_percent').value) || 0;
+  if (percent < 0 || percent > 50) return toast('Fee must be 0-50%', 'error');
+  const res = await api('/api/admin/fees', 'POST', { percent });
+  if (res.ok) {
+    toast(`Fee set to ${percent}% `, 'success');
+    STATE.feeConfig = { enabled: percent > 0, percent };
+    renderContent();
+  } else {
+    toast('Error', 'error');
+  }
+}
+
+// ========== ADS ==========
+function renderAds(el) {
+  const eco = STATE.economy;
+  const enabled = eco.ad_enabled === '1';
+  const autoEnabled = eco.ad_auto_enabled === '1';
+  const autoOnMine = eco.ad_auto_on_mine === '1';
+  const autoOnTasks = eco.ad_auto_on_tasks === '1';
+
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title">
+        <span> Adsgram Settings</span>
+        <span class="badge-status ${enabled ? 'badge-active' : 'badge-banned'}">${enabled ? 'ACTIVE' : 'DISABLED'}</span>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ads Master Switch</label>
+          <select id="ad_enabled">
+            <option value="1" ${enabled ? 'selected' : ''}>Enabled</option>
+            <option value="0" ${!enabled ? 'selected' : ''}>Disabled</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Auto Ads</label>
+          <select id="ad_auto_enabled">
+            <option value="1" ${autoEnabled ? 'selected' : ''}>Enabled</option>
+            <option value="0" ${!autoEnabled ? 'selected' : ''}>Disabled</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);">
+        <div style="font-weight:700;font-size:12px;margin-bottom:8px;"> Auto Ads (Triggered on Actions)</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Auto Ads Block ID</label>
+            <input type="text" id="ad_auto_block_id" value="${eco.ad_auto_block_id || ''}" placeholder="int-xxxxx">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Show on Mine </label>
+            <select id="ad_auto_on_mine">
+              <option value="1" ${autoOnMine ? 'selected' : ''}>Yes</option>
+              <option value="0" ${!autoOnMine ? 'selected' : ''}>No</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Show on Task Complete </label>
+            <select id="ad_auto_on_tasks">
+              <option value="1" ${autoOnTasks ? 'selected' : ''}>Yes</option>
+              <option value="0" ${!autoOnTasks ? 'selected' : ''}>No</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;padding:12px;border-radius:10px;background:rgba(122,255,198,0.08);border:1px solid rgba(122,255,198,0.2);">
+        <div style="font-weight:700;font-size:12px;margin-bottom:8px;color:var(--accent-2);"> Reward Ads (Free Boost)</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Reward Ads Block ID</label>
+            <input type="text" id="ad_free_block_id" value="${eco.ad_free_block_id || ''}" placeholder="int-yyyyy">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Multiplier (x)</label>
+            <input type="number" step="0.1" min="1" id="ad_free_mult" value="${eco.ad_free_mult || 2}">
+          </div>
+          <div class="form-group">
+            <label>Duration (seconds)</label>
+            <input type="number" min="0" id="ad_free_duration_sec" value="${eco.ad_free_duration_sec || 7200}">
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
+          Example: x2 for 7200s (2 hours) — user watches ad, gets 2x mining boost for 2 hours.
+        </div>
+      </div>
+
+      <div style="margin-top:16px;display:flex;gap:8px;">
+        <button class="btn btn-primary" style="flex:1;" onclick="saveAdsConfig()"> Save Ads Config</button>
+      </div>
+    </div>
+  `;
+}
+
+async function saveAdsConfig() {
+  const updates = {
+    ad_enabled: document.getElementById('ad_enabled').value,
+    ad_auto_enabled: document.getElementById('ad_auto_enabled').value,
+    ad_auto_block_id: document.getElementById('ad_auto_block_id').value,
+    ad_auto_on_mine: document.getElementById('ad_auto_on_mine').value,
+    ad_auto_on_tasks: document.getElementById('ad_auto_on_tasks').value,
+    ad_free_block_id: document.getElementById('ad_free_block_id').value,
+    ad_free_mult: document.getElementById('ad_free_mult').value,
+    ad_free_duration_sec: document.getElementById('ad_free_duration_sec').value,
+  };
+
+  for (const [key, value] of Object.entries(updates)) {
+    await api('/api/admin/economy', 'POST', { key, value });
+  }
+
+  toast('Ads config saved ', 'success');
+  await loadEconomy();
+  renderContent();
+}
+
+// ========== ANTI-CHEAT ==========
+async function loadAlerts() {
+  const res = await api('/api/admin/anticheat?status=open');
+  if (res.ok) STATE.alerts = res.alerts;
+}
+
+function renderAlerts(el) {
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title">
+        <span> Open Alerts (${STATE.alerts.length})</span>
+        <button class="btn btn-sm" onclick="loadTab()"></button>
+      </div>
+      ${STATE.alerts.length === 0 ? '<div class="empty">No alerts </div>' :
+        STATE.alerts.map(a => `
+          <div style="padding:12px;border-radius:10px;background:rgba(255,77,77,0.08);border:1px solid rgba(255,77,77,0.2);margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <div style="font-weight:700;color:#ff6b6b;font-size:12px;">${a.type.replace('_', ' ').toUpperCase()}</div>
+              <div style="font-size:10px;color:var(--text-muted);">${new Date(a.created_at * 1000).toLocaleString()}</div>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${a.details}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">Users: ${a.telegram_ids}</div>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})"> Resolve</button>
+              <button class="btn btn-sm" onclick="dismissAlert(${a.id})"> Dismiss</button>
+            </div>
+          </div>
+        `).join('')}
+    </div>
+  `;
+}
+
+async function resolveAlert(id) {
+  const res = await api(`/api/admin/anticheat/${id}/resolve`, 'POST');
+  if (res.ok) {
+    toast('Resolved', 'success');
+    await loadAlerts();
+    await loadStats();
+    renderContent();
+  }
+}
+
+async function dismissAlert(id) {
+  const res = await api(`/api/admin/anticheat/${id}/dismiss`, 'POST');
+  if (res.ok) {
+    toast('Dismissed', 'success');
+    await loadAlerts();
+    await loadStats();
+    renderContent();
+  }
+}
+
+// ========== PAYOUTS ==========
+async function loadPayoutStats() {
+  const res = await api('/api/admin/payouts/stats');
+  if (res.ok) STATE.payoutStats = res.stats;
+}
+
+function renderPayouts(el) {
+  const s = STATE.payoutStats || {};
+  el.innerHTML = `
+    <div class="cards-grid">
+      <div class="stat-card">
+        <div class="stat-label">Pending</div>
+        <div class="stat-value">${s.pendingCount || 0}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Total FWC</div>
+        <div class="stat-value">${(s.pendingTotal || 0).toFixed(0)}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Batches Needed</div>
+        <div class="stat-value">${s.batchesNeeded || 0}</div>
+      </div>
+      ${s.gasSaving ? `
+        <div class="stat-card">
+          <div class="stat-label">Gas Saved</div>
+          <div class="stat-value" style="color:var(--accent-2);">${s.gasSaving.saved} TON</div>
+          <div class="stat-sub">${s.gasSaving.savedPercent}% saved</div>
+        </div>
+      ` : ''}
+    </div>
+    <div class="section">
+      <div class="section-title"> Execute Batch (max 255)</div>
+      <button class="btn btn-primary" onclick="executePayout()"> Execute Next Batch</button>
+    </div>
+  `;
+}
+
+async function executePayout() {
+  if (!confirm('Execute batch payout (max 255 withdrawals)?')) return;
+  const res = await api('/api/admin/payouts/execute', 'POST', { limit: 255 });
+  if (res.ok) {
+    toast(` ${res.marked} processed. TX: ${(res.txHash || '').slice(0, 12)}...`, 'success');
+    await loadPayoutStats();
+    await loadStats();
+    renderContent();
+  } else {
+    toast('Error: ' + (res.error || ''), 'error');
+  }
+}
+
+// ========== REFRESH ==========
+async function refreshPage() {
+  await loadTab();
+  toast('Refreshed ', 'success');
+}
+
+// ========== INIT ==========
+async function init() {
+  if (!getInitData()) {
+    document.getElementById('content').innerHTML = '<div class="empty" style="color:var(--danger);"> Open from Telegram</div>';
+    return;
+  }
+  renderNav();
+  switchTab('dashboard');
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
+
+// Exports
+window.switchTab = switchTab;
+window.loadTab = loadTab;
+window.refreshPage = refreshPage;
+window.toggleBan = toggleBan;
+window.debounceSearch = debounceSearch;
+window.saveMining = saveMining;
+window.addNewTask = addNewTask;
+window.toggleTaskActive = toggleTaskActive;
+window.deleteTaskItem = deleteTaskItem;
+window.approveWd = approveWd;
+window.rejectWd = rejectWd;
+window.saveFee = saveFee;
+window.saveAdsConfig = saveAdsConfig;
+window.resolveAlert = resolveAlert;
+window.dismissAlert = dismissAlert;
+window.executePayout = executePayout;
+window.copyWallet = copyWallet;
+</script>
+</body>
+</html>
