@@ -1,15 +1,15 @@
-name = "fwc-bot"
+name = "fwc"
 main = "src/index.js"
 compatibility_date = "2026-10-20"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
-directory = "./"
+directory = "./public"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "fwc-db"
-database_id = "REPLACE_WITH_YOUR_D1_ID"
+database_id = "8a82042b-2f57-43a4-a7d3-590e6bc84800"
 
 [triggers]
 crons = [
@@ -19,7 +19,7 @@ crons = [
 ]
 
 [vars]
-WORKER_URL = "https://fwc-bot.workers.dev"
+WORKER_URL = "https://fwc.workers.dev"
 
 [observability]
 enabled = true
