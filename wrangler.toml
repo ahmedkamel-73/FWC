@@ -1,0 +1,33 @@
+name = "fwc-bot"
+main = "src/index.js"
+compatibility_date = "2026-10-20"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = "./"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "fwc-db"
+database_id = "REPLACE_WITH_YOUR_D1_ID"
+
+[triggers]
+crons = [
+  "*/15 * * * *",
+  "0 */6 * * *",
+  "0 9 * * *"
+]
+
+[vars]
+WORKER_URL = "https://fwc-bot.workers.dev"
+
+[observability]
+enabled = true
+
+# ============ SECRETS (add via: wrangler secret put NAME) ============
+# - BOT_TOKEN
+# - ADMIN_SECRET
+# - TON_MNEMONIC_TREASURY
+# - ADSGRAM_BLOCK_ID
+# - TONCENTER_API_KEY
+# - TONAPI_KEY (optional for webhooks)

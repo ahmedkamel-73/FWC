@@ -1,0 +1,27 @@
+{
+  "name": "fwc-bot",
+  "version": "4.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute fwc-db --file=schema.sql --remote",
+    "db:init:local": "wrangler d1 execute fwc-db --file=schema.sql --local",
+    "tail": "wrangler tail",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "grammy": "^1.30.0",
+    "@ton/ton": "^14.0.0",
+    "@ton/core": "^0.56.3",
+    "@ton/crypto": "^3.2.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.90.0",
+    "vitest": "^2.0.0",
+    "@vitest/coverage-v8": "^2.0.0"
+  }
+}
