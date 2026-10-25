@@ -19,7 +19,7 @@ crons = [
 ]
 
 [vars]
-WORKER_URL = "https://fwc.workers.dev"
+WORKER_URL = "https://fwc.ahmed73.workers.dev"
 
 [observability]
 enabled = true
