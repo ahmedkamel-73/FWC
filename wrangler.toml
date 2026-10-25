@@ -1,6 +1,6 @@
 name = "fwc"
 main = "src/index.js"
-compatibility_date = "2024-09-23"
+compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
@@ -23,11 +23,3 @@ WORKER_URL = "https://fwc.ahmed73.workers.dev"
 
 [observability]
 enabled = true
-
-# ============ SECRETS (add via: wrangler secret put NAME) ============
-# - BOT_TOKEN
-# - ADMIN_SECRET
-# - TON_MNEMONIC_TREASURY
-# - ADSGRAM_BLOCK_ID
-# - TONCENTER_API_KEY
-# - TONAPI_KEY (optional for webhooks)
