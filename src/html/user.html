@@ -78,6 +78,21 @@
   .fee-row:last-child { margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
   #ton-connect-btn { width: 100%; margin-top: 10px; }
+  
+  /* Account Tab Styles */
+  .profile-card { text-align: center; padding: 24px 16px; border-radius: 20px; background: linear-gradient(135deg, rgba(109,124,255,0.15), rgba(0,229,255,0.08)); border: 1px solid rgba(109,124,255,0.25); margin-bottom: 12px; }
+  .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #6D7CFF, #00E5FF); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #fff; margin: 0 auto 12px; box-shadow: 0 8px 24px rgba(109,124,255,0.4); }
+  .profile-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
+  .profile-username { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .stat-box { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-align: center; }
+  .stat-box .label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
+  .stat-box .value { font-size: 18px; font-weight: 800; }
+  .stat-box .value.accent { color: var(--accent-2); }
+  .referral-card { padding: 16px; border-radius: 16px; background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(109,124,255,0.05)); border: 1px solid rgba(0,229,255,0.25); }
+  .referral-link { display: flex; gap: 8px; margin-top: 10px; }
+  .referral-link input { flex: 1; height: 42px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.3); color: var(--text); padding: 0 12px; font-size: 11px; font-family: var(--mono); }
+  .copy-btn { height: 42px; padding: 0 16px; border-radius: 10px; border: none; background: var(--accent-2); color: #000; font-weight: 800; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -143,7 +158,6 @@
       <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">💳 <span data-i18n="wallet">Wallet</span></h2>
       <div class="wallet-card">
         <div class="label-small" data-i18n="tonWallet">TON WALLET</div>
-        <!-- الزرار الفعلي لـ TonConnect -->
         <button id="ton-connect-btn" class="btn-primary">Connect Wallet</button>
         <div id="walletAddress" style="font-size:11px;color:var(--text-muted);margin-top:8px;word-break:break-all;"></div>
 
@@ -181,6 +195,48 @@
         <div style="text-align:center;color:var(--text-muted);padding:20px;"><span class="spinner"></span></div>
       </div>
     </div>
+
+    <!-- TAB: ACCOUNT -->
+    <div id="tab-account" class="hidden">
+      <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">👤 <span data-i18n="account">Account</span></h2>
+      
+      <div class="profile-card">
+        <div class="profile-avatar" id="profileAvatar">?</div>
+        <div class="profile-name" id="profileName">Loading...</div>
+        <div class="profile-username" id="profileUsername">@...</div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="label">Balance</div>
+          <div class="value accent" id="statBalance">0.00</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Referrals</div>
+          <div class="value" id="statReferrals">0</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">Wallet</div>
+          <div class="value" style="font-size:13px;" id="statWallet">Not linked</div>
+        </div>
+        <div class="stat-box">
+          <div class="label">User ID</div>
+          <div class="value" style="font-size:13px;font-family:var(--mono);" id="statUserId">—</div>
+        </div>
+      </div>
+
+      <div class="referral-card">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+          <div style="font-size:18px;">🎁</div>
+          <div style="font-weight:800;font-size:14px;">Invite Friends</div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);">Share your link and earn 5% from every friend you invite.</div>
+        <div class="referral-link">
+          <input type="text" id="referralLink" readonly value="Loading...">
+          <button class="copy-btn" onclick="copyReferralLink()">Copy</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <nav class="tab-bar">
@@ -196,6 +252,9 @@
     <button class="tab-btn" data-tab="market" onclick="switchTab('market')">
       <span class="icon">🏆</span><span class="label" data-i18n="leaderboard">Top</span>
     </button>
+    <button class="tab-btn" data-tab="account" onclick="switchTab('account')">
+      <span class="icon">👤</span><span class="label" data-i18n="account">Account</span>
+    </button>
   </nav>
 </div>
 
@@ -207,17 +266,17 @@ const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 const TRANSLATIONS = {
-  en: { balance:'Balance', speed:'Speed', mine:'Mine', tasks:'Tasks', wallet:'Wallet', leaderboard:'Leaderboard', checkin:'Check-in', streak:'Streak', tonWallet:'TON WALLET', saveWallet:'Save Wallet', withdraw:'WITHDRAW', amount:'Amount', fee:'Fee', youReceive:'You receive', requestWithdraw:'Request Withdrawal', recentWithdrawals:'RECENT WITHDRAWALS', claim:'CLAIM', ready:'Ready to mine', wait:'Please wait', addWallet:'Connect Wallet', banned:'Banned', cooldown:'Cooldown' },
-  ar: { balance:'الرصيد', speed:'السرعة', mine:'تعدين', tasks:'مهام', wallet:'محفظة', leaderboard:'المتصدرين', checkin:'تسجيل يومي', streak:'سلسلة', tonWallet:'محفظة TON', saveWallet:'حفظ', withdraw:'سحب', amount:'المبلغ', fee:'الرسوم', youReceive:'ستستلم', requestWithdraw:'طلب سحب', recentWithdrawals:'آخر السحوبات', claim:'استلام', ready:'جاهز للتعدين', wait:'انتظر', addWallet:'اربط المحفظة', banned:'محظور', cooldown:'قيد الانتظار' },
-  ru: { balance:'Баланс', speed:'Скорость', mine:'Майнинг', tasks:'Задачи', wallet:'Кошелек', leaderboard:'Топ', checkin:'Регистрация', streak:'Серия', tonWallet:'TON КОШЕЛЕК', saveWallet:'Сохранить', withdraw:'Вывод', amount:'Сумма', fee:'Комиссия', youReceive:'Вы получите', requestWithdraw:'Запросить вывод', recentWithdrawals:'ПОСЛЕДНИЕ ВЫВОДЫ', claim:'ЗАБРАТЬ', ready:'Готов к майнингу', wait:'Подождите', addWallet:'Подключить', banned:'Забанен', cooldown:'Ожидание' },
-  tr: { balance:'Bakiye', speed:'Hız', mine:'Madencilik', tasks:'Görevler', wallet:'Cüzdan', leaderboard:'Liderlik', checkin:'Giriş', streak:'Seri', tonWallet:'TON CÜZDAN', saveWallet:'Kaydet', withdraw:'Çek', amount:'Miktar', fee:'Ücret', youReceive:'Alacaksınız', requestWithdraw:'Çekim Talep Et', recentWithdrawals:'SON ÇEKİMLER', claim:'AL', ready:'Kazımaya hazır', wait:'Bekleyin', addWallet:'Cüzdan Bağla', banned:'Yasaklı', cooldown:'Beklemede' },
+  en: { balance:'Balance', speed:'Speed', mine:'Mine', tasks:'Tasks', wallet:'Wallet', leaderboard:'Leaderboard', account:'Account', checkin:'Check-in', streak:'Streak', tonWallet:'TON WALLET', saveWallet:'Save Wallet', withdraw:'WITHDRAW', amount:'Amount', fee:'Fee', youReceive:'You receive', requestWithdraw:'Request Withdrawal', recentWithdrawals:'RECENT WITHDRAWALS', claim:'CLAIM', ready:'Ready to mine', wait:'Please wait', addWallet:'Connect Wallet', banned:'Banned', cooldown:'Cooldown' },
+  ar: { balance:'الرصيد', speed:'السرعة', mine:'تعدين', tasks:'مهام', wallet:'محفظة', leaderboard:'المتصدرين', account:'حسابي', checkin:'تسجيل يومي', streak:'سلسلة', tonWallet:'محفظة TON', saveWallet:'حفظ', withdraw:'سحب', amount:'المبلغ', fee:'الرسوم', youReceive:'ستستلم', requestWithdraw:'طلب سحب', recentWithdrawals:'آخر السحوبات', claim:'استلام', ready:'جاهز للتعدين', wait:'انتظر', addWallet:'اربط المحفظة', banned:'محظور', cooldown:'قيد الانتظار' },
+  ru: { balance:'Баланс', speed:'Скорость', mine:'Майнинг', tasks:'Задачи', wallet:'Кошелек', leaderboard:'Топ', account:'Аккаунт', checkin:'Регистрация', streak:'Серия', tonWallet:'TON КОШЕЛЕК', saveWallet:'Сохранить', withdraw:'Вывод', amount:'Сумма', fee:'Комиссия', youReceive:'Вы получите', requestWithdraw:'Запросить вывод', recentWithdrawals:'ПОСЛЕДНИЕ ВЫВОДЫ', claim:'ЗАБРАТЬ', ready:'Готов к майнингу', wait:'Подождите', addWallet:'Подключить', banned:'Забанен', cooldown:'Ожидание' },
+  tr: { balance:'Bakiye', speed:'Hız', mine:'Madencilik', tasks:'Görevler', wallet:'Cüzdan', leaderboard:'Liderlik', account:'Hesap', checkin:'Giriş', streak:'Seri', tonWallet:'TON CÜZDAN', saveWallet:'Kaydet', withdraw:'Çek', amount:'Miktar', fee:'Ücret', youReceive:'Alacaksınız', requestWithdraw:'Çekim Talep Et', recentWithdrawals:'SON ÇEKİMLER', claim:'AL', ready:'Kazımaya hazır', wait:'Bekleyin', addWallet:'Cüzdan Bağla', banned:'Yasaklı', cooldown:'Beklemede' },
 };
 
 const STATE = {
   telegram_id: null, language: 'en', balance: 0, wallet: null, is_banned: 0,
   miningAmount: 0, canMine: { ok: false, reason: 'loading' }, canWithdraw: { ok: false },
   streak: 0, tasks: [], progress: [], activeTab: 'mine', cooldownTimer: null,
-  refreshTimer: null, lastFeeEstimate: null,
+  refreshTimer: null, lastFeeEstimate: null, referralData: null,
 };
 
 let tonConnectUI = null;
@@ -259,9 +318,7 @@ function initTonConnect() {
       const walletAddress = wallet.account.address;
       document.getElementById('walletAddress').textContent = walletAddress;
 
-      const res = await api('/api/wallet/save', 'POST', {
-        address: walletAddress
-      });
+      const res = await api('/api/wallet/save', 'POST', { address: walletAddress });
 
       if (res.ok) {
         STATE.wallet = res.wallet || walletAddress;
@@ -285,7 +342,7 @@ async function loadUser() {
   STATE.telegram_id = res.telegram_id; STATE.language = res.language || 'en'; STATE.balance = res.balance;
   STATE.wallet = res.wallet; STATE.is_banned = res.is_banned; STATE.miningAmount = res.miningAmount;
   STATE.canMine = res.canMine; STATE.canWithdraw = res.canWithdraw; STATE.streak = res.streak || 0;
-  applyTranslations(); renderMine(); renderWallet();
+  applyTranslations(); renderMine(); renderWallet(); renderAccount();
 }
 
 function renderMine() {
@@ -330,6 +387,46 @@ function renderWallet() {
   else if (STATE.canWithdraw?.reason === '24h') { info.textContent = `⏳ Wait ${STATE.canWithdraw.remaining.toFixed(1)}h`; info.style.color = 'var(--text-muted)'; }
   else if (STATE.canWithdraw?.reason === 'hold_required') { info.textContent = `⚠️ Hold ${STATE.canWithdraw.need} FWC in wallet (you have ${STATE.canWithdraw.current.toFixed(2)})`; info.style.color = 'var(--warn)'; }
   else if (!STATE.wallet) { info.textContent = t('addWallet'); }
+}
+
+async function renderAccount() {
+  const nameEl = document.getElementById('profileName');
+  const userEl = document.getElementById('profileUsername');
+  const avatarEl = document.getElementById('profileAvatar');
+  const balEl = document.getElementById('statBalance');
+  const refEl = document.getElementById('statReferrals');
+  const walletEl = document.getElementById('statWallet');
+  const idEl = document.getElementById('statUserId');
+
+  const firstName = STATE.userInfo?.first_name || tg?.initDataUnsafe?.user?.first_name || 'User';
+  const username = STATE.userInfo?.username || tg?.initDataUnsafe?.user?.username || '';
+  
+  avatarEl.textContent = firstName.charAt(0).toUpperCase();
+  nameEl.textContent = firstName;
+  userEl.textContent = username ? '@' + username : '—';
+  balEl.textContent = STATE.balance.toFixed(2);
+  walletEl.textContent = STATE.wallet ? 'Linked ✅' : 'Not linked';
+  walletEl.style.color = STATE.wallet ? 'var(--accent-2)' : 'var(--text-muted)';
+  idEl.textContent = STATE.telegram_id || '—';
+
+  // جلب بيانات الإحالة
+  const refRes = await api('/api/referral');
+  if (refRes.ok) {
+    STATE.referralData = refRes;
+    refEl.textContent = refRes.referral_count;
+    document.getElementById('referralLink').value = refRes.referral_link;
+  }
+}
+
+function copyReferralLink() {
+  const input = document.getElementById('referralLink');
+  input.select();
+  input.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(input.value).then(() => {
+    toast('Referral link copied ✅', 'success');
+  }).catch(() => {
+    toast('Copy manually: ' + input.value, 'info');
+  });
 }
 
 let estimateTimeout = null;
@@ -383,12 +480,14 @@ function switchTab(tab) {
   if (tab === 'tasks') loadTasks();
   if (tab === 'wallet') { renderWallet(); loadWithdrawalHistory(); }
   if (tab === 'market') loadLeaderboard();
+  if (tab === 'account') renderAccount();
 }
 
 async function init() {
   if (!getInitData()) { toast('Open from Telegram', 'error'); document.getElementById('miningStatus').textContent = '⚠️ Open from Telegram'; return; }
+  STATE.userInfo = tg?.initDataUnsafe?.user || null;
   await loadUser();
-  initTonConnect(); // 👈 تشغيل TonConnect
+  initTonConnect();
   STATE.refreshTimer = setInterval(loadUser, 30000);
 }
 
@@ -401,6 +500,7 @@ window.requestWithdraw = requestWithdraw;
 window.estimateWithdraw = estimateWithdraw;
 window.completeTask = completeTask;
 window.cycleLanguage = cycleLanguage;
+window.copyReferralLink = copyReferralLink;
 </script>
 </body>
 </html>
