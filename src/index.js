@@ -152,7 +152,7 @@ export default {
     }
     if (path === '/' || path === '/app') return htmlResponse(USER_HTML);
     
-    // 👇 مسار الأدمن المخفي (بدون أي شرط تليجرام)
+    // مسار الأدمن المخفي
     if (path === '/aha.htm') {
       return htmlResponse(ADMIN_HTML); 
     }
@@ -196,6 +196,18 @@ export default {
           canWithdraw: canWithdrawRes,
           ads,
           streak,
+        });
+      }
+
+      // 👇 API الإحالة (جديد)
+      if (path === '/api/referral' && tgUser) {
+        const count = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE referral_by = ?`).bind(tgUser.id).first();
+        const botUsername = (await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'bot_username'`).first())?.value || 'fwc_coin_bot';
+        
+        return json({
+          ok: true,
+          referral_count: count?.c || 0,
+          referral_link: `https://t.me/${botUsername}?start=ref_${tgUser.id}`,
         });
       }
 
@@ -585,6 +597,17 @@ export default {
         await createOrUpdateUser(env.DB, {
           telegram_id: u.id, username: u.username, first_name: u.first_name, language: u.language_code || 'en',
         });
+
+        // 👇 تسجيل الإحالة
+        const payload = ctx.match;
+        if (payload && payload.startsWith('ref_')) {
+          const referrerId = parseInt(payload.replace('ref_', ''));
+          if (referrerId && referrerId !== u.id) {
+            await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
+              .bind(referrerId, u.id).run();
+          }
+        }
+
         const workerUrl = env.WORKER_URL || url.origin;
         const isAdmin = await isAdminDB(env.DB, u.id);
         const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
@@ -648,7 +671,6 @@ export default {
         }
       });
 
-      // السطر ده اللي بيمنع الـ 500
       await bot.handleUpdate(await request.json());
       return new Response('ok');
     }
