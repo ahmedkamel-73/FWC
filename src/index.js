@@ -587,7 +587,6 @@ export default {
 
       const bot = new Bot(botToken);
 
-      // دالة مساعدة لإنشاء الأزرار
       const getKeyboard = async (u) => {
         const workerUrl = env.WORKER_URL || url.origin;
         const isAdmin = await isAdminDB(env.DB, u.id);
@@ -666,7 +665,13 @@ export default {
       });
 
       const body = await request.text();
-      if (body) { try { await bot.handleUpdate(JSON.parse(body)); } catch (e) { console.error(e); } }
+      if (body) { 
+        try { 
+          await bot.handleUpdate(JSON.parse(body)); 
+        } catch (e) { 
+          console.error(e); 
+        } 
+      }
       return new Response('ok');
     }
 
