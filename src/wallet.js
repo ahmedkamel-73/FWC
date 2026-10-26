@@ -1,27 +1,36 @@
 // src/wallet.js - FWC 4.0.0 PRODUCTION
-// TON wallet validation
+import { Address } from '@ton/ton';
 
-export function validateTonAddress(addr) {
-  if (!addr) return false;
-  addr = addr.trim();
-
-  // Friendly format (EQ... / UQ... / kQ... / 0Q...)
-  if (/^(EQ|UQ|kQ|0Q|Ef|Uf)[A-Za-z0-9_-]{46}$/.test(addr)) return true;
-
-  // Raw address (workchain:hex)
-  if (/^-?\d+:[a-fA-F0-9]{64}$/.test(addr)) return true;
-
-  // Base64 URL-safe 48 chars
-  if (/^[A-Za-z0-9_-]{48}$/.test(addr)) return true;
-
-  return false;
+export function normalizeTonAddress(addr) {
+  if (!addr || typeof addr !== 'string') return null;
+  const trimmed = addr.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = Address.parse(trimmed);
+    return parsed.toString({ bounceable: false, urlSafe: true });
+  } catch {
+    return null;
+  }
 }
 
-export async function saveWallet(db, telegram_id, wallet) {
-  if (!validateTonAddress(wallet)) {
-    return { ok: false, reason: 'invalid' };
+export function validateTonAddress(addr) {
+  return normalizeTonAddress(addr) !== null;
+}
+
+export async function saveWallet(db, telegram_id, wallet, opts = {}) {
+  const normalized = normalizeTonAddress(wallet);
+  if (!normalized) return { ok: false, reason: 'invalid' };
+
+  const { verified = false } = opts;
+
+  try {
+    await db.prepare(
+      `UPDATE users SET wallet = ?, wallet_verified = ?, wallet_saved_at = CURRENT_TIMESTAMP WHERE telegram_id = ?`
+    ).bind(normalized, verified ? 1 : 0, telegram_id).run();
+  } catch {
+    await db.prepare(`UPDATE users SET wallet = ? WHERE telegram_id = ?`)
+      .bind(normalized, telegram_id).run();
   }
-  await db.prepare(`UPDATE users SET wallet = ? WHERE telegram_id = ?`)
-    .bind(wallet.trim(), telegram_id).run();
-  return { ok: true, wallet: wallet.trim() };
+
+  return { ok: true, wallet: normalized, verified };
 }

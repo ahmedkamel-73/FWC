@@ -15,7 +15,7 @@ import {
 } from './db.js';
 import { getCurrentMiningAmount, canMine, doMine, canWithdraw } from './mining.js';
 import { getDailyTasks, doTask, doCheckin, getCheckinStreak, getUserDailyProgress, hasCheckedInToday } from './tasks.js';
-import { saveWallet, validateTonAddress } from './wallet.js';
+import { saveWallet, validateTonAddress, normalizeTonAddress } from './wallet.js';
 import { calculateWithdrawalFee, getFeeConfig, updateFeePercent } from './fees.js';
 import {
   getPendingWithdrawalsBatch, createBatchPayoutTransaction,
@@ -178,6 +178,7 @@ export default {
           language: user?.language || 'en',
           balance: user?.balance || 0,
           wallet: user?.wallet || null,
+          wallet_verified: user?.wallet_verified || 0,
           is_banned: user?.is_banned || 0,
           miningAmount,
           canMine: canMineRes,
@@ -207,20 +208,43 @@ export default {
           const isValid = await verifyTonProof(body, body.account);
           if (!isValid) return json({ ok: false, error: 'Invalid proof' }, 400);
 
-          const walletAddress = Address.parse(body.account.address).toString({ bounceable: false });
-          
+          const walletAddress = normalizeTonAddress(body.account.address);
+          if (!walletAddress) return json({ ok: false, error: 'invalid_address' }, 400);
+
           const dupeCheck = await checkWalletDuplicate(env.DB, tgUser.id, walletAddress);
           if (dupeCheck.duplicate) {
-            await createAntiCheatAlert(env.DB, 'wallet_duplicate', [tgUser.id, ...dupeCheck.users.map(u => u.telegram_id)], `Wallet ${walletAddress.slice(0, 10)}... used by multiple accounts`);
+            await createAntiCheatAlert(env.DB, 'wallet_duplicate',
+              [tgUser.id, ...dupeCheck.users.map(u => u.telegram_id)],
+              `Wallet ${walletAddress.slice(0, 10)}... used by multiple accounts`);
           }
 
-          const result = await saveWallet(env.DB, tgUser.id, walletAddress);
+          const result = await saveWallet(env.DB, tgUser.id, walletAddress, { verified: true });
           if (!result.ok) return json({ ok: false, error: result.reason }, 400);
 
-          return json({ ok: true, wallet: walletAddress, warning: dupeCheck.duplicate ? 'duplicate_wallet_detected' : null });
+          return json({ ok: true, wallet: result.wallet, verified: true, warning: dupeCheck.duplicate ? 'duplicate_wallet_detected' : null });
         } catch (e) {
           return json({ ok: false, error: 'verification_error', detail: e.message }, 500);
         }
+      }
+
+      if (path === '/api/wallet/save' && request.method === 'POST' && tgUser) {
+        const body = await request.json();
+        if (!body.address) return json({ ok: false, error: 'no_address' }, 400);
+
+        const walletAddress = normalizeTonAddress(body.address);
+        if (!walletAddress) return json({ ok: false, error: 'invalid_address' }, 400);
+
+        const dupeCheck = await checkWalletDuplicate(env.DB, tgUser.id, walletAddress);
+        if (dupeCheck.duplicate) {
+          await createAntiCheatAlert(env.DB, 'wallet_duplicate',
+            [tgUser.id, ...dupeCheck.users.map(u => u.telegram_id)],
+            `Wallet ${walletAddress.slice(0, 10)}... used by multiple accounts`);
+        }
+
+        const result = await saveWallet(env.DB, tgUser.id, walletAddress, { verified: false });
+        if (!result.ok) return json({ ok: false, error: result.reason }, 400);
+
+        return json({ ok: true, wallet: result.wallet, verified: false, warning: dupeCheck.duplicate ? 'duplicate_wallet_detected' : null });
       }
 
       if (path === '/api/tasks' && tgUser) {
@@ -381,7 +405,7 @@ export default {
           const limit = Math.min(parseInt(url.searchParams.get('limit') || '200'), 500);
           const search = url.searchParams.get('q') || '';
 
-          let query = `SELECT telegram_id, username, first_name, balance, wallet, referral_by, is_banned, ban_reason, created_at, last_mine FROM users`;
+          let query = `SELECT telegram_id, username, first_name, balance, wallet, wallet_verified, referral_by, is_banned, ban_reason, created_at, last_mine FROM users`;
           let params = [];
 
           if (search) {
