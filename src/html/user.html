@@ -252,7 +252,6 @@ function initTonConnect() {
   tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
     manifestUrl: window.location.origin + '/tonconnect-manifest.json',
     buttonRootId: 'ton-connect-btn'
-    // شيلنا tonProof بالكامل
   });
 
   tonConnectUI.onStatusChange(async (wallet) => {
@@ -266,7 +265,7 @@ function initTonConnect() {
       });
 
       if (res.ok) {
-        STATE.wallet = res.wallet;
+        STATE.wallet = res.wallet || walletAddress;
         toast('Wallet connected ✅', 'success');
         await loadUser();
       } else {
@@ -274,6 +273,8 @@ function initTonConnect() {
       }
     } else {
       document.getElementById('walletAddress').textContent = '';
+      STATE.wallet = null;
+      renderMine();
     }
   });
 }
