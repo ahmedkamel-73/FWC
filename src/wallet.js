@@ -1,3 +1,4 @@
+
 // src/wallet.js - FWC 4.0.0 PRODUCTION
 import { Address } from '@ton/ton';
 
