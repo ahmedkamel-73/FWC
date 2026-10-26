@@ -28,7 +28,7 @@ import { handleCron } from './cron.js';
 // TonConnect Verification Imports
 import { Address, Cell, contractAddress, loadStateInit } from '@ton/ton';
 import { sha256 } from '@ton/crypto';
-import { Buffer } from 'buffer';
+import { Buffer } from 'node:buffer';
 
 import USER_HTML from './html/user.html';
 import ADMIN_HTML from './html/admin.html';
