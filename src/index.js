@@ -152,7 +152,7 @@ export default {
     }
     if (path === '/' || path === '/app') return htmlResponse(USER_HTML);
     
-    // 👇 المسار المخفي الجديد لصفحة الأدمن فقط
+    // 👇 ربط صفحة الأدمن بالمسار الجديد /aha.htm
     if (path === '/aha.htm') {
       return htmlResponse(ADMIN_HTML); 
     }
