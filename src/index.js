@@ -638,10 +638,26 @@ export default {
       });
 
       bot.command('help', async (ctx) => {
-        await ctx.reply(`🆘 *FWC Mining Help*\n\n/start - Open the app\n/mine - Mine FWC\n/balance - Check your balance\n/wallet - Connect your TON wallet\n/tasks - View daily tasks\n/withdraw - Request a withdrawal\n\nFor support, contact @fwc_coin`, { parse_mode: 'Markdown' });
+        await ctx.reply(`🆘 *FWC Mining Help*\n\n/start - Open the app\n/mine - Mine FWC\n/balance - Check your balance\n/wallet - Connect your TON wallet\n/tasks - View daily tasks\n/withdraw - Request a withdrawal\n/admin - Open Admin Panel\n\nFor support, contact @fwc_coin`, { parse_mode: 'Markdown' });
       });
 
-      // السطر ده اللي بيمنع الـ 500 (الطريقة الصح في Cloudflare)
+      // 👇 أمر الأدمن الجديد
+      bot.command('admin', async (ctx) => {
+        const u = ctx.from;
+        const workerUrl = env.WORKER_URL || url.origin;
+        const isAdmin = await isAdminDB(env.DB, u.id);
+        
+        if (isAdmin) {
+          const keyboard = [[{ text: '👑 Open Admin Panel', web_app: { url: workerUrl + '/admin' } }]];
+          await ctx.reply('Welcome Admin! Click below to open the control panel:', {
+            reply_markup: { inline_keyboard: keyboard }
+          });
+        } else {
+          await ctx.reply('⛔ You are not authorized to use this command.');
+        }
+      });
+
+      // السطر ده اللي بيمنع الـ 500
       await bot.handleUpdate(await request.json());
       return new Response('ok');
     }
