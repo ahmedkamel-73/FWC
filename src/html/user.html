@@ -259,7 +259,6 @@ function initTonConnect() {
       const walletAddress = wallet.account.address;
       document.getElementById('walletAddress').textContent = walletAddress;
 
-      // حفظ المحفظة مباشرة عن طريق السيرفر
       const res = await api('/api/wallet/save', 'POST', {
         address: walletAddress
       });
