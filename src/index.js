@@ -585,100 +585,65 @@ export default {
     if (path === '/webhook' && request.method === 'POST') {
       if (!botToken) return new Response('BOT_TOKEN missing', { status: 500 });
 
-      try {
-        const bot = new Bot(botToken, { botInfo: await bot.api.getMe() });
-
-        bot.command('start', async (ctx) => {
-          const u = ctx.from;
-          await createOrUpdateUser(env.DB, {
-            telegram_id: u.id,
-            username: u.username,
-            first_name: u.first_name,
-            language: u.language_code || 'en',
-          });
-
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, u.id);
-
-          const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-          if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
-
-          await ctx.reply(
-            `⛏️ *FWC Mining*\n\nWelcome ${u.first_name}! Start mining FWC now.`,
-            { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } }
-          );
+      const bot = new Bot(botToken);
+      
+      // الأوامر
+      bot.command('start', async (ctx) => {
+        const u = ctx.from;
+        await createOrUpdateUser(env.DB, {
+          telegram_id: u.id, username: u.username, first_name: u.first_name, language: u.language_code || 'en',
         });
+        const workerUrl = env.WORKER_URL || url.origin;
+        const isAdmin = await isAdminDB(env.DB, u.id);
+        const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
+        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
+        await ctx.reply(`⛏️ *FWC Mining*\n\nWelcome ${u.first_name}! Start mining FWC now.`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
+      });
 
-        bot.command('mine', async (ctx) => {
-          const u = ctx.from;
-          const check = await canMine(env.DB, u.id);
-          if (!check.ok) return ctx.reply(`⏳ Please wait: ${check.reason}`);
-          const res = await doMine(env.DB, u.id);
-          await ctx.reply(`✅ Mined +${res.amount} FWC! New balance: ${res.newBalance.toFixed(2)}`);
-        });
+      bot.command('mine', async (ctx) => {
+        const u = ctx.from;
+        const check = await canMine(env.DB, u.id);
+        if (!check.ok) return ctx.reply(`⏳ Please wait: ${check.reason}`);
+        const res = await doMine(env.DB, u.id);
+        await ctx.reply(`✅ Mined +${res.amount} FWC! New balance: ${res.newBalance.toFixed(2)}`);
+      });
 
-        bot.command('balance', async (ctx) => {
-          const u = ctx.from;
-          const user = await getUser(env.DB, u.id);
-          await ctx.reply(`💰 Your balance: ${(user?.balance || 0).toFixed(2)} FWC`);
-        });
+      bot.command('balance', async (ctx) => {
+        const user = await getUser(env.DB, ctx.from.id);
+        await ctx.reply(`💰 Your balance: ${(user?.balance || 0).toFixed(2)} FWC`);
+      });
 
-        bot.command('wallet', async (ctx) => {
-          const u = ctx.from;
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, u.id);
-          const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-          if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
-          await ctx.reply('💳 Connect or update your wallet from the app:', {
-            reply_markup: { inline_keyboard: keyboard }
-          });
-        });
+      bot.command('wallet', async (ctx) => {
+        const workerUrl = env.WORKER_URL || url.origin;
+        const isAdmin = await isAdminDB(env.DB, ctx.from.id);
+        const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
+        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
+        await ctx.reply('💳 Connect or update your wallet from the app:', { reply_markup: { inline_keyboard: keyboard } });
+      });
 
-        bot.command('tasks', async (ctx) => {
-          const u = ctx.from;
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, u.id);
-          const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-          if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
-          await ctx.reply('📋 View your daily tasks in the app:', {
-            reply_markup: { inline_keyboard: keyboard }
-          });
-        });
+      bot.command('tasks', async (ctx) => {
+        const workerUrl = env.WORKER_URL || url.origin;
+        const isAdmin = await isAdminDB(env.DB, ctx.from.id);
+        const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
+        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
+        await ctx.reply('📋 View your daily tasks in the app:', { reply_markup: { inline_keyboard: keyboard } });
+      });
 
-        bot.command('withdraw', async (ctx) => {
-          const u = ctx.from;
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, u.id);
-          const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-          if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
-          await ctx.reply('💸 Request a withdrawal from the app:', {
-            reply_markup: { inline_keyboard: keyboard }
-          });
-        });
+      bot.command('withdraw', async (ctx) => {
+        const workerUrl = env.WORKER_URL || url.origin;
+        const isAdmin = await isAdminDB(env.DB, ctx.from.id);
+        const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
+        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
+        await ctx.reply('💸 Request a withdrawal from the app:', { reply_markup: { inline_keyboard: keyboard } });
+      });
 
-        bot.command('help', async (ctx) => {
-          await ctx.reply(
-            `🆘 *FWC Mining Help*\n\n` +
-            `/start - Open the app\n` +
-            `/mine - Mine FWC\n` +
-            `/balance - Check your balance\n` +
-            `/wallet - Connect your TON wallet\n` +
-            `/tasks - View daily tasks\n` +
-            `/withdraw - Request a withdrawal\n\n` +
-            `For support, contact @fwc_coin`,
-            { parse_mode: 'Markdown' }
-          );
-        });
+      bot.command('help', async (ctx) => {
+        await ctx.reply(`🆘 *FWC Mining Help*\n\n/start - Open the app\n/mine - Mine FWC\n/balance - Check your balance\n/wallet - Connect your TON wallet\n/tasks - View daily tasks\n/withdraw - Request a withdrawal\n\nFor support, contact @fwc_coin`, { parse_mode: 'Markdown' });
+      });
 
-        const body = await request.text();
-        if (body) {
-          await bot.handleUpdate(JSON.parse(body));
-        }
-        return new Response('ok');
-      } catch (e) {
-        console.error(e);
-        return new Response('Error', { status: 500 });
-      }
+      // السطر ده اللي بيمنع الـ 500 (الطريقة الصح في Cloudflare)
+      await bot.handleUpdate(await request.json());
+      return new Response('ok');
     }
 
     return htmlResponse(USER_HTML);
