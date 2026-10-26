@@ -1,7 +1,6 @@
 // src/index.js - FWC 4.0.0 PRODUCTION
 // Main router: webhooks, APIs, HTML pages
 
-import { Bot } from 'grammy';
 import { CONFIG, getSecrets } from './config.js';
 import {
   initDB, isAdminDB, getUser, createOrUpdateUser, setUserLanguage,
@@ -72,6 +71,28 @@ function getClientIP(request) {
     || null;
 }
 
+// ========== TELEGRAM BOT API (بدون grammy) ==========
+async function sendTelegramMessage(botToken, chatId, text, replyMarkup = null) {
+  const body = {
+    chat_id: chatId,
+    text: text,
+    parse_mode: 'Markdown',
+  };
+  if (replyMarkup) body.reply_markup = replyMarkup;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return await res.json();
+  } catch (e) {
+    console.error('Telegram sendMessage error:', e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
 // ========== TON PROOF VERIFICATION ==========
 const tonProofPrefix = 'ton-proof-item-v2/';
 const tonConnectPrefix = 'ton-connect';
@@ -134,8 +155,6 @@ async function verifyTonProof(payload, account) {
 // ========== MAIN HANDLER ==========
 export default {
   async fetch(request, env, ctx) {
-    console.log('Worker request:', request.method, request.url);
-    
     await initDB(env.DB);
 
     const url = new URL(request.url);
@@ -174,6 +193,16 @@ export default {
           language: tgUser.language_code || 'en',
         });
 
+        // 👇 تسجيل الإحالة من start_param (اللي جاي من رابط الإحالة)
+        const refParam = url.searchParams.get('ref');
+        if (refParam) {
+          const refId = parseInt(refParam);
+          if (refId && refId !== tgUser.id) {
+            await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
+              .bind(refId, tgUser.id).run();
+          }
+        }
+
         const user = await getUser(env.DB, tgUser.id);
         const miningAmount = await getCurrentMiningAmount(env.DB);
         const canMineRes = await canMine(env.DB, tgUser.id);
@@ -201,7 +230,7 @@ export default {
         });
       }
 
-      // 👇 API الإحالة (جديد)
+      // 👇 API الإحالة
       if (path === '/api/referral' && tgUser) {
         const count = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE referral_by = ?`).bind(tgUser.id).first();
         const botUsername = (await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'bot_username'`).first())?.value || 'fwcoinbot';
@@ -209,7 +238,7 @@ export default {
         return json({
           ok: true,
           referral_count: count?.c || 0,
-          referral_link: `https://t.me/${botUsername}?start=ref_${tgUser.id}`,
+          referral_link: `https://t.me/${botUsername}?start=${tgUser.id}`,
         });
       }
 
@@ -587,97 +616,64 @@ export default {
       return json({ ok: false, error: 'not_found' }, 404);
     }
 
-    // ========== TELEGRAM WEBHOOK ==========
+    // ========== TELEGRAM WEBHOOK (بدون grammy) ==========
     if (path === '/webhook' && request.method === 'POST') {
       if (!botToken) return new Response('BOT_TOKEN missing', { status: 500 });
 
       try {
-        const bot = new Bot(botToken);
-        
-        bot.command('start', async (ctx) => {
-          const u = ctx.from;
-          await createOrUpdateUser(env.DB, {
-            telegram_id: u.id, username: u.username, first_name: u.first_name, language: u.language_code || 'en',
-          });
-
-          const payload = ctx.match;
-          if (payload && payload.startsWith('ref_')) {
-            const referrerId = parseInt(payload.replace('ref_', ''));
-            if (referrerId && referrerId !== u.id) {
-              await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
-                .bind(referrerId, u.id).run();
-            }
-          }
-
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, u.id);
-          const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-          if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
-          await ctx.reply(`⛏️ *FWC Mining*\n\nWelcome ${u.first_name}! Start mining FWC now.`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
-        });
-
-        bot.command('mine', async (ctx) => {
-          const u = ctx.from;
-          const check = await canMine(env.DB, u.id);
-          if (!check.ok) return ctx.reply(`⏳ Please wait: ${check.reason}`);
-          const res = await doMine(env.DB, u.id);
-          await ctx.reply(`✅ Mined +${res.amount} FWC! New balance: ${res.newBalance.toFixed(2)}`);
-        });
-
-        bot.command('balance', async (ctx) => {
-          const user = await getUser(env.DB, ctx.from.id);
-          await ctx.reply(`💰 Your balance: ${(user?.balance || 0).toFixed(2)} FWC`);
-        });
-
-        bot.command('wallet', async (ctx) => {
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, ctx.from.id);
-          const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-          if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
-          await ctx.reply('💳 Connect or update your wallet from the app:', { reply_markup: { inline_keyboard: keyboard } });
-        });
-
-        bot.command('tasks', async (ctx) => {
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, ctx.from.id);
-          const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-          if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
-          await ctx.reply('📋 View your daily tasks in the app:', { reply_markup: { inline_keyboard: keyboard } });
-        });
-
-        bot.command('withdraw', async (ctx) => {
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, ctx.from.id);
-          const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-          if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
-          await ctx.reply('💸 Request a withdrawal from the app:', { reply_markup: { inline_keyboard: keyboard } });
-        });
-
-        bot.command('help', async (ctx) => {
-          await ctx.reply(`🆘 *FWC Mining Help*\n\n/start - Open the app\n/mine - Mine FWC\n/balance - Check your balance\n/wallet - Connect your TON wallet\n/tasks - View daily tasks\n/withdraw - Request a withdrawal\n/admin - Open Admin Panel\n\nFor support, contact @fwc_coin`, { parse_mode: 'Markdown' });
-        });
-
-        bot.command('admin', async (ctx) => {
-          const u = ctx.from;
-          const workerUrl = env.WORKER_URL || url.origin;
-          const isAdmin = await isAdminDB(env.DB, u.id);
-          
-          if (isAdmin) {
-            const keyboard = [[{ text: '👑 Open Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]];
-            await ctx.reply('Welcome Admin! Click below to open the control panel:', {
-              reply_markup: { inline_keyboard: keyboard }
-            });
-          } else {
-            await ctx.reply('⛔ You are not authorized to use this command.');
-          }
-        });
-
         const update = await request.json();
-        await bot.handleUpdate(update);
+        const message = update.message;
+
+        if (message && message.text) {
+          const text = message.text;
+          const fromId = message.from.id;
+          const fromUsername = message.from.username || null;
+          const fromFirstName = message.from.first_name || null;
+          const fromLang = message.from.language_code || 'en';
+
+          // 👇 أمر /start
+          if (text.startsWith('/start')) {
+            // 1. تسجيل المستخدم في الداتابيز
+            await createOrUpdateUser(env.DB, {
+              telegram_id: fromId,
+              username: fromUsername,
+              first_name: fromFirstName,
+              language: fromLang,
+            });
+
+            // 2. معالجة الإحالة (لو فيه start_param)
+            const parts = text.split(' ');
+            const payload = parts[1];
+            if (payload) {
+              let refId = null;
+              if (payload.startsWith('ref_')) {
+                refId = parseInt(payload.replace('ref_', ''));
+              } else if (!isNaN(parseInt(payload))) {
+                refId = parseInt(payload);
+              }
+              if (refId && refId !== fromId) {
+                await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
+                  .bind(refId, fromId).run();
+              }
+            }
+
+            // 3. إرسال رسالة واحدة بزرار Open App
+            const workerUrl = env.WORKER_URL || url.origin;
+            const isAdmin = await isAdminDB(env.DB, fromId);
+
+            const buttons = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
+            if (isAdmin) buttons.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
+
+            await sendTelegramMessage(botToken, fromId,
+              `⛏️ *FWC Mining*\n\nWelcome ${fromFirstName}! Start mining FWC now.`,
+              { inline_keyboard: buttons }
+            );
+          }
+        }
       } catch (e) {
-        console.error('Bot update error:', e.message, e.stack);
-        return new Response('ok', { status: 200 });
+        console.error('Webhook error:', e.message, e.stack);
       }
+
       return new Response('ok');
     }
 
