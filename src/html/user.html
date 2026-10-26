@@ -251,42 +251,26 @@ function toast(msg, type = 'info') {
 function initTonConnect() {
   tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
     manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-    buttonRootId: 'ton-connect-btn',
-    tonProof: {
-      payload: 'FWC-VERIFY-' + Math.random().toString(36).substring(2, 15) + Date.now()
-    }
+    buttonRootId: 'ton-connect-btn'
+    // شيلنا tonProof بالكامل
   });
 
   tonConnectUI.onStatusChange(async (wallet) => {
     if (wallet) {
-      document.getElementById('walletAddress').textContent = wallet.account.address;
-      if (wallet.connectItems?.tonProof && 'proof' in wallet.connectItems.tonProof) {
-        const proof = wallet.connectItems.tonProof.proof;
-        const res = await api('/api/wallet/verify', 'POST', {
-          address: wallet.account.address,
-          publicKey: wallet.account.publicKey,
-          proof: {
-            timestamp: proof.timestamp,
-            domain: proof.domain,
-            signature: proof.signature,
-            payload: proof.payload,
-            state_init: proof.stateInit
-          },
-          account: {
-            address: wallet.account.address,
-            publicKey: wallet.account.publicKey,
-            chain: wallet.account.chain
-          }
-        });
-        if (res.ok) {
-          STATE.wallet = res.wallet;
-          toast('Wallet verified ✅', 'success');
-          await loadUser();
-        } else {
-          toast('Verification failed: ' + (res.error || ''), 'error');
-        }
+      const walletAddress = wallet.account.address;
+      document.getElementById('walletAddress').textContent = walletAddress;
+
+      // حفظ المحفظة مباشرة عن طريق السيرفر
+      const res = await api('/api/wallet/save', 'POST', {
+        address: walletAddress
+      });
+
+      if (res.ok) {
+        STATE.wallet = res.wallet;
+        toast('Wallet connected ✅', 'success');
+        await loadUser();
       } else {
-        toast('Please sign the message to verify wallet ownership', 'error');
+        toast('Failed to save wallet: ' + (res.error || ''), 'error');
       }
     } else {
       document.getElementById('walletAddress').textContent = '';
