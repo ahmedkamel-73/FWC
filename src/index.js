@@ -1,4 +1,3 @@
-
 // src/index.js - FWC 4.0.0 PRODUCTION
 // Main router: webhooks, APIs, HTML pages
 
@@ -162,6 +161,14 @@ export default {
       // ============ PUBLIC USER APIs ============
 
       if (path === '/api/me' && tgUser) {
+        // 👇 التعديل الأهم: إجبار السيرفر على تسجيل المستخدم فوراً
+        await createOrUpdateUser(env.DB, {
+          telegram_id: tgUser.id,
+          username: tgUser.username,
+          first_name: tgUser.first_name,
+          language: tgUser.language_code || 'en',
+        });
+
         const user = await getUser(env.DB, tgUser.id);
         const miningAmount = await getCurrentMiningAmount(env.DB);
         const canMineRes = await canMine(env.DB, tgUser.id);

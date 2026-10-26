@@ -16,7 +16,9 @@ export async function initDB(db) {
     last_mine INTEGER,
     is_banned INTEGER DEFAULT 0,
     ban_reason TEXT,
-    created_at INTEGER
+    created_at INTEGER,
+    wallet_verified INTEGER DEFAULT 0,
+    wallet_saved_at TEXT
   );`).run();
 
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC);`).run();
@@ -242,11 +244,13 @@ export async function getUser(db, telegram_id) {
 export async function createOrUpdateUser(db, user) {
   const existing = await getUser(db, user.telegram_id);
   if (existing) {
-    return await db.prepare(`UPDATE users SET username = ?, first_name = ?, language = COALESCE(?, language) WHERE telegram_id = ?`)
-      .bind(user.username, user.first_name, user.language || null, user.telegram_id).run();
+    // 👇 تم تصحيح هذه الدالة لتعمل مع Cloudflare D1 بدون أخطاء
+    await db.prepare(`UPDATE users SET username = ?, first_name = ?, language = ? WHERE telegram_id = ?`)
+      .bind(user.username || null, user.first_name || null, user.language || 'en', user.telegram_id).run();
+  } else {
+    await db.prepare(`INSERT INTO users(telegram_id, username, first_name, language, created_at) VALUES (?, ?, ?, ?, ?)`)
+      .bind(user.telegram_id, user.username || null, user.first_name || null, user.language || 'en', Math.floor(Date.now() / 1000)).run();
   }
-  return await db.prepare(`INSERT INTO users(telegram_id, username, first_name, language, created_at) VALUES (?, ?, ?, ?, unixepoch())`)
-    .bind(user.telegram_id, user.username, user.first_name, user.language || 'en').run();
 }
 
 export async function setUserLanguage(db, telegram_id, lang) {
