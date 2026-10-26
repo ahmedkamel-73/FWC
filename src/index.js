@@ -151,7 +151,17 @@ export default {
       });
     }
     if (path === '/' || path === '/app') return htmlResponse(USER_HTML);
-    if (path === '/admin' || path === '/admin/') return htmlResponse(ADMIN_HTML);
+    
+    // 👇 حماية صفحة الأدمن بكلمة المرور
+    if (path === '/admin' || path === '/admin/') {
+      const authHeader = request.headers.get('X-Admin-Secret');
+      // لو الـ Secret موجود في env والمستخدم باعت نفس الكلمة، نفتح الصفحة
+      if (env.ADMIN_SECRET && authHeader === env.ADMIN_SECRET) {
+        return htmlResponse(ADMIN_HTML);
+      }
+      // لو مبعوتش كلمة مرور، بنرجع صفحة الـ HTML وبتظهر فيها شاشة كلمة المرور
+      return htmlResponse(ADMIN_HTML); 
+    }
 
     // ========== API ROUTES ==========
     if (path.startsWith('/api/')) {
@@ -161,7 +171,6 @@ export default {
       // ============ PUBLIC USER APIs ============
 
       if (path === '/api/me' && tgUser) {
-        // 👇 التعديل الأهم: إجبار السيرفر على تسجيل المستخدم فوراً
         await createOrUpdateUser(env.DB, {
           telegram_id: tgUser.id,
           username: tgUser.username,
@@ -382,8 +391,15 @@ export default {
         return json(health, health.status === 'critical' ? 503 : 200);
       }
 
-      // ============ ADMIN APIs ============
+      // ============ ADMIN APIs (محمية بكلمة المرور) ============
       if (path.startsWith('/api/admin/')) {
+        // 👇 التحقق من كلمة المرور السيرفرية
+        const adminSecret = request.headers.get('X-Admin-Secret');
+        if (!env.ADMIN_SECRET || adminSecret !== env.ADMIN_SECRET) {
+          return json({ ok: false, error: 'unauthorized' }, 401);
+        }
+        
+        // 👇 التحقق من أن المستخدم أدمن
         if (!tgUser || !await isAdminDB(env.DB, tgUser.id)) {
           return json({ ok: false, error: 'forbidden' }, 403);
         }
