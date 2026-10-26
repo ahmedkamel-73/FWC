@@ -152,7 +152,7 @@ export default {
     }
     if (path === '/' || path === '/app') return htmlResponse(USER_HTML);
     
-    // 👇 ربط صفحة الأدمن بالمسار الجديد /aha.htm
+    // 👇 مسار الأدمن المخفي (بدون أي شرط تليجرام)
     if (path === '/aha.htm') {
       return htmlResponse(ADMIN_HTML); 
     }
@@ -385,9 +385,8 @@ export default {
         return json(health, health.status === 'critical' ? 503 : 200);
       }
 
-      // ============ ADMIN APIs ============
+      // ============ ADMIN APIs (محمية بالباسورد فقط) ============
       if (path.startsWith('/api/admin/')) {
-        // 👇 التحقق من كلمة المرور فقط (من غير تليجرام) عشان تشتغل من المتصفح
         const adminSecret = request.headers.get('X-Admin-Secret');
         if (!env.ADMIN_SECRET || adminSecret !== env.ADMIN_SECRET) {
           return json({ ok: false, error: 'unauthorized' }, 401);
