@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS users (
   last_mine INTEGER,
   is_banned INTEGER DEFAULT 0,
   ban_reason TEXT,
-  created_at INTEGER
+  created_at INTEGER,
+  wallet_verified INTEGER NOT NULL DEFAULT 0,
+  wallet_saved_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC);
 CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet);
