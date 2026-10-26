@@ -152,12 +152,8 @@ export default {
     }
     if (path === '/' || path === '/app') return htmlResponse(USER_HTML);
     
-    // حماية صفحة الأدمن
-    if (path === '/admin' || path === '/admin/') {
-      const authHeader = request.headers.get('X-Admin-Secret');
-      if (env.ADMIN_SECRET && authHeader === env.ADMIN_SECRET) {
-        return htmlResponse(ADMIN_HTML);
-      }
+    // 👇 المسار المخفي الجديد لصفحة الأدمن فقط
+    if (path === '/aha.htm') {
       return htmlResponse(ADMIN_HTML); 
     }
 
@@ -389,15 +385,12 @@ export default {
         return json(health, health.status === 'critical' ? 503 : 200);
       }
 
-      // ============ ADMIN APIs (محمية) ============
+      // ============ ADMIN APIs ============
       if (path.startsWith('/api/admin/')) {
+        // 👇 التحقق من كلمة المرور فقط (من غير تليجرام) عشان تشتغل من المتصفح
         const adminSecret = request.headers.get('X-Admin-Secret');
         if (!env.ADMIN_SECRET || adminSecret !== env.ADMIN_SECRET) {
           return json({ ok: false, error: 'unauthorized' }, 401);
-        }
-        
-        if (!tgUser || !await isAdminDB(env.DB, tgUser.id)) {
-          return json({ ok: false, error: 'forbidden' }, 403);
         }
 
         if (path === '/api/admin/stats') {
@@ -567,8 +560,8 @@ export default {
         const alertMatch = path.match(/^\/api\/admin\/anticheat\/(\d+)\/(resolve|dismiss)$/);
         if (alertMatch && request.method === 'POST') {
           const alertId = parseInt(alertMatch[1]);
-          if (alertMatch[2] === 'resolve') await resolveAlert(env.DB, alertId, tgUser.id);
-          else await dismissAlert(env.DB, alertId, tgUser.id);
+          if (alertMatch[2] === 'resolve') await resolveAlert(env.DB, alertId, 0);
+          else await dismissAlert(env.DB, alertId, 0);
           return json({ ok: true });
         }
 
@@ -596,7 +589,7 @@ export default {
         const workerUrl = env.WORKER_URL || url.origin;
         const isAdmin = await isAdminDB(env.DB, u.id);
         const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
+        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
         await ctx.reply(`⛏️ *FWC Mining*\n\nWelcome ${u.first_name}! Start mining FWC now.`, { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } });
       });
 
@@ -617,7 +610,7 @@ export default {
         const workerUrl = env.WORKER_URL || url.origin;
         const isAdmin = await isAdminDB(env.DB, ctx.from.id);
         const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
+        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
         await ctx.reply('💳 Connect or update your wallet from the app:', { reply_markup: { inline_keyboard: keyboard } });
       });
 
@@ -625,7 +618,7 @@ export default {
         const workerUrl = env.WORKER_URL || url.origin;
         const isAdmin = await isAdminDB(env.DB, ctx.from.id);
         const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
+        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
         await ctx.reply('📋 View your daily tasks in the app:', { reply_markup: { inline_keyboard: keyboard } });
       });
 
@@ -633,7 +626,7 @@ export default {
         const workerUrl = env.WORKER_URL || url.origin;
         const isAdmin = await isAdminDB(env.DB, ctx.from.id);
         const keyboard = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/admin' } }]);
+        if (isAdmin) keyboard.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
         await ctx.reply('💸 Request a withdrawal from the app:', { reply_markup: { inline_keyboard: keyboard } });
       });
 
@@ -641,14 +634,13 @@ export default {
         await ctx.reply(`🆘 *FWC Mining Help*\n\n/start - Open the app\n/mine - Mine FWC\n/balance - Check your balance\n/wallet - Connect your TON wallet\n/tasks - View daily tasks\n/withdraw - Request a withdrawal\n/admin - Open Admin Panel\n\nFor support, contact @fwc_coin`, { parse_mode: 'Markdown' });
       });
 
-      // 👇 أمر الأدمن الجديد
       bot.command('admin', async (ctx) => {
         const u = ctx.from;
         const workerUrl = env.WORKER_URL || url.origin;
         const isAdmin = await isAdminDB(env.DB, u.id);
         
         if (isAdmin) {
-          const keyboard = [[{ text: '👑 Open Admin Panel', web_app: { url: workerUrl + '/admin' } }]];
+          const keyboard = [[{ text: '👑 Open Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]];
           await ctx.reply('Welcome Admin! Click below to open the control panel:', {
             reply_markup: { inline_keyboard: keyboard }
           });
