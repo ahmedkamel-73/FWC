@@ -14,6 +14,15 @@
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; font-size: 13px; }
+  
+  /* Login Screen */
+  #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: var(--bg); padding: 20px; }
+  .login-box { background: var(--surface); border: 1px solid var(--border); padding: 30px 20px; border-radius: 16px; width: 100%; max-width: 360px; text-align: center; }
+  .login-box h2 { font-size: 18px; margin-bottom: 20px; }
+  .login-box input { width: 100%; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 14px; margin-bottom: 12px; }
+  .login-box button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--accent); color: #000; font-weight: 800; cursor: pointer; font-family: inherit; }
+  
+  /* Admin Panel */
   .app { display: flex; min-height: 100vh; }
   .sidebar { width: 260px; background: rgba(17,20,24,0.95); border-right: 1px solid var(--border); padding: 16px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
   @media (max-width: 768px) { .sidebar { display: none; } }
@@ -76,7 +85,19 @@
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- Login Screen -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>🔐 Admin Login</h2>
+    <input type="password" id="admin-pass" placeholder="Enter Password" onkeypress="if(event.key==='Enter') checkPassword()">
+    <button onclick="checkPassword()">Login</button>
+    <div id="login-error" style="color:var(--danger); font-size:12px; margin-top:10px;"></div>
+  </div>
+</div>
+
+<!-- Admin Panel -->
+<div class="app hidden" id="admin-app">
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-icon">F</div>
@@ -95,7 +116,7 @@
         <h1 id="pageTitle">Dashboard</h1>
         <div class="header-info" id="pageSub">System overview</div>
       </div>
-      <button class="btn btn-sm" onclick="refreshPage()"> Refresh</button>
+      <button class="btn btn-sm" onclick="refreshPage()">🔄 Refresh</button>
     </div>
     <div id="content"></div>
   </main>
@@ -106,6 +127,8 @@
 <script>
 const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
+
+let ADMIN_SECRET = '';
 
 const STATE = {
   tab: 'dashboard',
@@ -121,15 +144,15 @@ const STATE = {
 };
 
 const NAV = [
-  { id: 'dashboard', icon: '', label: 'Dashboard', title: 'Dashboard', sub: 'System overview' },
-  { id: 'users', icon: '', label: 'Users', title: 'Users', sub: 'Manage accounts & bans' },
-  { id: 'mining', icon: '', label: 'Mining', title: 'Mining Settings', sub: 'Rewards & intervals' },
-  { id: 'tasks', icon: '', label: 'Tasks', title: 'Daily Tasks', sub: 'Add/edit/delete' },
-  { id: 'withdrawals', icon: '', label: 'Withdrawals', title: 'Withdrawals', sub: 'Approve or reject' },
-  { id: 'fees', icon: '', label: 'Fees', title: 'Withdrawal Fees', sub: 'Dynamic fee settings' },
-  { id: 'ads', icon: '', label: 'Ads', title: 'Ads Management', sub: 'Adsgram integration' },
-  { id: 'anticheat', icon: '', label: 'Anti-Cheat', title: 'Anti-Cheat Alerts', sub: 'Duplicate detection' },
-  { id: 'payouts', icon: '', label: 'Payouts', title: 'Batch Payouts', sub: 'Highload V2 (255/TX)' },
+  { id: 'dashboard', icon: '📊', label: 'Dashboard', title: 'Dashboard', sub: 'System overview' },
+  { id: 'users', icon: '👥', label: 'Users', title: 'Users', sub: 'Manage accounts & bans' },
+  { id: 'mining', icon: '⛏️', label: 'Mining', title: 'Mining Settings', sub: 'Rewards & intervals' },
+  { id: 'tasks', icon: '📋', label: 'Tasks', title: 'Daily Tasks', sub: 'Add/edit/delete' },
+  { id: 'withdrawals', icon: '💸', label: 'Withdrawals', title: 'Withdrawals', sub: 'Approve or reject' },
+  { id: 'fees', icon: '💰', label: 'Fees', title: 'Withdrawal Fees', sub: 'Dynamic fee settings' },
+  { id: 'ads', icon: '📺', label: 'Ads', title: 'Ads Management', sub: 'Adsgram integration' },
+  { id: 'anticheat', icon: '🛡️', label: 'Anti-Cheat', title: 'Anti-Cheat Alerts', sub: 'Duplicate detection' },
+  { id: 'payouts', icon: '🚀', label: 'Payouts', title: 'Batch Payouts', sub: 'Highload V2 (255/TX)' },
 ];
 
 function getInitData() {
@@ -140,11 +163,50 @@ async function api(path, method = 'GET', body = null) {
   const headers = { 'Content-Type': 'application/json' };
   const initData = getInitData();
   if (initData) headers['X-Telegram-Init-Data'] = initData;
+  if (ADMIN_SECRET) headers['X-Admin-Secret'] = ADMIN_SECRET;
+  
   try {
     const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
+    if (res.status === 401) {
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('admin-app').classList.add('hidden');
+      ADMIN_SECRET = '';
+    }
     return await res.json();
   } catch (e) {
     return { ok: false, error: 'network' };
+  }
+}
+
+async function checkPassword() {
+  const pass = document.getElementById('admin-pass').value.trim();
+  const errEl = document.getElementById('login-error');
+  
+  if (!pass) return;
+  errEl.textContent = 'Checking...';
+  
+  try {
+    const res = await fetch('/api/admin/stats', {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Init-Data': getInitData(),
+        'X-Admin-Secret': pass
+      }
+    });
+    
+    if (res.ok) {
+      ADMIN_SECRET = pass;
+      document.getElementById('login-screen').classList.add('hidden');
+      document.getElementById('admin-app').classList.remove('hidden');
+      errEl.textContent = '';
+      initAdmin();
+    } else if (res.status === 403) {
+      errEl.textContent = '❌ You are not an admin';
+    } else {
+      errEl.textContent = '❌ Wrong password';
+    }
+  } catch (e) {
+    errEl.textContent = '❌ Connection error';
   }
 }
 
@@ -212,7 +274,7 @@ async function loadTab() {
 function renderContent() {
   const el = document.getElementById('content');
   if (STATE.loading) {
-    el.innerHTML = '<div class="empty"><span class="spin"></span> Loading...</div>';
+    el.innerHTML = '<div class="empty"><span class="spin">⏳</span> Loading...</div>';
     return;
   }
   switch (STATE.tab) {
@@ -269,7 +331,7 @@ function renderDashboard(el) {
       </div>
     </div>
     <div class="section">
-      <div class="section-title"> Current Settings</div>
+      <div class="section-title">⚙️ Current Settings</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;font-size:12px;">
         <div><span style="color:var(--text-muted);">Mining reward:</span> <b>${STATE.stats.miningAmount} FWC</b></div>
         <div><span style="color:var(--text-muted);">Min withdraw:</span> <b>${STATE.economy.withdraw_min || 1000} FWC</b></div>
@@ -278,13 +340,13 @@ function renderDashboard(el) {
       </div>
     </div>
     <div class="section">
-      <div class="section-title"> Quick Actions</div>
+      <div class="section-title">⚡ Quick Actions</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn" onclick="switchTab('withdrawals')"> Withdrawals (${STATE.stats.wdPending})</button>
-        <button class="btn" onclick="switchTab('fees')"> Fees</button>
-        <button class="btn" onclick="switchTab('ads')"> Ads</button>
-        <button class="btn" onclick="switchTab('anticheat')"> Alerts (${STATE.stats.openAlerts})</button>
-        <button class="btn" onclick="switchTab('payouts')"> Payouts</button>
+        <button class="btn" onclick="switchTab('withdrawals')">💸 Withdrawals (${STATE.stats.wdPending})</button>
+        <button class="btn" onclick="switchTab('fees')">💰 Fees</button>
+        <button class="btn" onclick="switchTab('ads')">📺 Ads</button>
+        <button class="btn" onclick="switchTab('anticheat')">🛡️ Alerts (${STATE.stats.openAlerts})</button>
+        <button class="btn" onclick="switchTab('payouts')">🚀 Payouts</button>
       </div>
     </div>
   `;
@@ -320,12 +382,12 @@ function renderUsers(el) {
               STATE.users.map(u => `
                 <tr>
                   <td>
-                    <div style="font-weight:700;">${u.first_name || '�'}</div>
+                    <div style="font-weight:700;">${u.first_name || '—'}</div>
                     <div style="font-size:10px;color:var(--text-muted);">ID: ${u.telegram_id}</div>
                   </td>
-                  <td>${u.username ? '@' + u.username : '�'}</td>
+                  <td>${u.username ? '@' + u.username : '—'}</td>
                   <td style="font-weight:700;">${(u.balance || 0).toFixed(2)}</td>
-                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? u.wallet.slice(0, 10) + '...' : '�'}</td>
+                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? u.wallet.slice(0, 10) + '...' : '—'}</td>
                   <td>
                     ${u.is_banned ?
                       `<span class="badge-status badge-banned">Banned</span>` :
@@ -358,7 +420,7 @@ async function toggleBan(id, isBanned) {
   const action = isBanned ? 'unban' : 'ban';
   const res = await api(`/api/admin/users/${id}/${action}`, 'POST');
   if (res.ok) {
-    toast(isBanned ? 'Unbanned ' : 'Banned ', 'success');
+    toast(isBanned ? 'Unbanned ✅' : 'Banned 🚫', 'success');
     await loadUsers();
     renderContent();
   } else {
@@ -379,7 +441,7 @@ function renderMining(el) {
   const eco = STATE.economy;
   el.innerHTML = `
     <div class="section">
-      <div class="section-title"> Mining Settings</div>
+      <div class="section-title">⛏️ Mining Settings</div>
       <div class="form-row">
         <div class="form-group">
           <label>Mining Amount (FWC)</label>
@@ -406,7 +468,7 @@ function renderMining(el) {
           <input type="number" step="0.1" id="referral_percent" value="${eco.referral_percent || 5}">
         </div>
       </div>
-      <button class="btn btn-primary" onclick="saveMining()"> Save Settings</button>
+      <button class="btn btn-primary" onclick="saveMining()">💾 Save Settings</button>
     </div>
   `;
 }
@@ -423,7 +485,7 @@ async function saveMining() {
   for (const [key, value] of Object.entries(updates)) {
     await api('/api/admin/economy', 'POST', { key, value });
   }
-  toast('Settings saved ', 'success');
+  toast('Settings saved ✅', 'success');
   await loadEconomy();
 }
 
@@ -469,8 +531,8 @@ function renderTasks(el) {
                       '<span class="badge-status badge-pending">Inactive</span>'}
                   </td>
                   <td>
-                    <button class="btn btn-sm" onclick="toggleTaskActive('${t.id}', ${t.active})">${t.active ? '' : ''}</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteTaskItem('${t.id}')"></button>
+                    <button class="btn btn-sm" onclick="toggleTaskActive('${t.id}', ${t.active})">${t.active ? '👁️' : '🔄'}</button>
+                    <button class="btn btn-sm btn-danger" onclick="deleteTaskItem('${t.id}')">🗑️</button>
                   </td>
                 </tr>
               `).join('')}
@@ -496,7 +558,7 @@ async function addNewTask() {
     url, max_per_day: 1, once: true, active: true,
   });
   if (res.ok) {
-    toast('Task added ', 'success');
+    toast('Task added ✅', 'success');
     await loadTasksAdmin();
     renderContent();
   } else {
@@ -507,7 +569,7 @@ async function addNewTask() {
 async function toggleTaskActive(id, current) {
   const res = await api('/api/admin/tasks/' + id, 'PUT', { active: !current });
   if (res.ok) {
-    toast('Updated ', 'success');
+    toast('Updated ✅', 'success');
     await loadTasksAdmin();
     renderContent();
   }
@@ -534,7 +596,7 @@ function renderWithdrawals(el) {
     <div class="section">
       <div class="section-title">
         <span>Withdrawals (${STATE.withdrawals.length})</span>
-        <button class="btn btn-sm" onclick="loadTab()"></button>
+        <button class="btn btn-sm" onclick="loadTab()">🔄</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -558,24 +620,24 @@ function renderWithdrawals(el) {
                 <tr>
                   <td>${w.id}</td>
                   <td>
-                    <div style="font-weight:700;">${w.first_name || '�'}</div>
+                    <div style="font-weight:700;">${w.first_name || '—'}</div>
                     <div style="font-size:10px;color:var(--text-muted);">@${w.username || ''}</div>
                   </td>
                   <td style="font-weight:700;">${w.amount}</td>
                   <td style="color:var(--accent-2);font-weight:700;">${netAmount}</td>
                   <td style="color:var(--warn);">${w.fee || 0}</td>
-                  <td style="font-size:10px;color:var(--text-muted);">${w.wallet ? w.wallet.slice(0, 8) + '...' : '�'}</td>
+                  <td style="font-size:10px;color:var(--text-muted);">${w.wallet ? w.wallet.slice(0, 8) + '...' : '—'}</td>
                   <td>
                     <span class="badge-status badge-${w.status === 'approved' ? 'approved' : w.status === 'rejected' ? 'rejected' : w.status === 'processing' ? 'processing' : 'pending'}">${w.status}</span>
                   </td>
                   <td>
                     ${w.status === 'pending' ?
                       `<div style="display:flex;gap:4px;flex-wrap:wrap;">
-                        <button class="btn btn-sm" onclick="copyWallet('${w.wallet}', ${netAmount})"> Copy</button>
-                        <button class="btn btn-sm btn-primary" onclick="approveWd(${w.id})"></button>
-                        <button class="btn btn-sm btn-danger" onclick="rejectWd(${w.id})"></button>
+                        <button class="btn btn-sm" onclick="copyWallet('${w.wallet}', ${netAmount})">📋 Copy</button>
+                        <button class="btn btn-sm btn-primary" onclick="approveWd(${w.id})">✅</button>
+                        <button class="btn btn-sm btn-danger" onclick="rejectWd(${w.id})">❌</button>
                        </div>` :
-                      '�'}
+                      '—'}
                   </td>
                 </tr>
               `}).join('')}
@@ -599,7 +661,7 @@ async function copyWallet(wallet, amount) {
 async function approveWd(id) {
   const res = await api(`/api/admin/withdrawals/${id}/approve`, 'POST');
   if (res.ok) {
-    toast('Approved ', 'success');
+    toast('Approved ✅', 'success');
     await loadWithdrawals();
     await loadStats();
     renderContent();
@@ -633,7 +695,7 @@ function renderFees(el) {
   const f = STATE.feeConfig;
   el.innerHTML = `
     <div class="section">
-      <div class="section-title"> Withdrawal Fee</div>
+      <div class="section-title">💰 Withdrawal Fee</div>
       <div style="margin-bottom:16px;padding:16px;border-radius:10px;background:rgba(200,255,60,0.08);border:1px solid rgba(200,255,60,0.2);font-size:13px;">
         <div style="font-size:32px;font-weight:800;color:var(--accent);margin-bottom:4px;">${f.percent}%</div>
         <div style="color:var(--text-muted);">Current withdrawal fee (fixed)</div>
@@ -645,10 +707,10 @@ function renderFees(el) {
         </div>
       </div>
       <div style="margin-bottom:12px;font-size:11px;color:var(--text-muted);line-height:1.6;">
-         Fee is deducted from each withdrawal amount.<br>
-        Example: User requests 1000 FWC with 5% fee  receives 950 FWC.
+        💡 Fee is deducted from each withdrawal amount.<br>
+        Example: User requests 1000 FWC with 5% fee → receives 950 FWC.
       </div>
-      <button class="btn btn-primary" onclick="saveFee()"> Save Fee</button>
+      <button class="btn btn-primary" onclick="saveFee()">💾 Save Fee</button>
     </div>
   `;
 }
@@ -658,7 +720,7 @@ async function saveFee() {
   if (percent < 0 || percent > 50) return toast('Fee must be 0-50%', 'error');
   const res = await api('/api/admin/fees', 'POST', { percent });
   if (res.ok) {
-    toast(`Fee set to ${percent}% `, 'success');
+    toast(`Fee set to ${percent}% ✅`, 'success');
     STATE.feeConfig = { enabled: percent > 0, percent };
     renderContent();
   } else {
@@ -677,7 +739,7 @@ function renderAds(el) {
   el.innerHTML = `
     <div class="section">
       <div class="section-title">
-        <span> Adsgram Settings</span>
+        <span>📺 Adsgram Settings</span>
         <span class="badge-status ${enabled ? 'badge-active' : 'badge-banned'}">${enabled ? 'ACTIVE' : 'DISABLED'}</span>
       </div>
 
@@ -699,7 +761,7 @@ function renderAds(el) {
       </div>
 
       <div style="margin-top:16px;padding:12px;border-radius:10px;background:var(--surface-2);border:1px solid var(--border);">
-        <div style="font-weight:700;font-size:12px;margin-bottom:8px;"> Auto Ads (Triggered on Actions)</div>
+        <div style="font-weight:700;font-size:12px;margin-bottom:8px;">⚡ Auto Ads (Triggered on Actions)</div>
         <div class="form-row">
           <div class="form-group">
             <label>Auto Ads Block ID</label>
@@ -708,14 +770,14 @@ function renderAds(el) {
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>Show on Mine </label>
+            <label>Show on Mine ⛏️</label>
             <select id="ad_auto_on_mine">
               <option value="1" ${autoOnMine ? 'selected' : ''}>Yes</option>
               <option value="0" ${!autoOnMine ? 'selected' : ''}>No</option>
             </select>
           </div>
           <div class="form-group">
-            <label>Show on Task Complete </label>
+            <label>Show on Task Complete 📋</label>
             <select id="ad_auto_on_tasks">
               <option value="1" ${autoOnTasks ? 'selected' : ''}>Yes</option>
               <option value="0" ${!autoOnTasks ? 'selected' : ''}>No</option>
@@ -725,7 +787,7 @@ function renderAds(el) {
       </div>
 
       <div style="margin-top:16px;padding:12px;border-radius:10px;background:rgba(122,255,198,0.08);border:1px solid rgba(122,255,198,0.2);">
-        <div style="font-weight:700;font-size:12px;margin-bottom:8px;color:var(--accent-2);"> Reward Ads (Free Boost)</div>
+        <div style="font-weight:700;font-size:12px;margin-bottom:8px;color:var(--accent-2);">🎁 Reward Ads (Free Boost)</div>
         <div class="form-row">
           <div class="form-group">
             <label>Reward Ads Block ID</label>
@@ -743,12 +805,12 @@ function renderAds(el) {
           </div>
         </div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:8px;">
-          Example: x2 for 7200s (2 hours) � user watches ad, gets 2x mining boost for 2 hours.
+          Example: x2 for 7200s (2 hours) — user watches ad, gets 2x mining boost for 2 hours.
         </div>
       </div>
 
       <div style="margin-top:16px;display:flex;gap:8px;">
-        <button class="btn btn-primary" style="flex:1;" onclick="saveAdsConfig()"> Save Ads Config</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="saveAdsConfig()">💾 Save Ads Config</button>
       </div>
     </div>
   `;
@@ -770,7 +832,7 @@ async function saveAdsConfig() {
     await api('/api/admin/economy', 'POST', { key, value });
   }
 
-  toast('Ads config saved ', 'success');
+  toast('Ads config saved ✅', 'success');
   await loadEconomy();
   renderContent();
 }
@@ -785,10 +847,10 @@ function renderAlerts(el) {
   el.innerHTML = `
     <div class="section">
       <div class="section-title">
-        <span> Open Alerts (${STATE.alerts.length})</span>
-        <button class="btn btn-sm" onclick="loadTab()"></button>
+        <span>🛡️ Open Alerts (${STATE.alerts.length})</span>
+        <button class="btn btn-sm" onclick="loadTab()">🔄</button>
       </div>
-      ${STATE.alerts.length === 0 ? '<div class="empty">No alerts </div>' :
+      ${STATE.alerts.length === 0 ? '<div class="empty">No alerts ✅</div>' :
         STATE.alerts.map(a => `
           <div style="padding:12px;border-radius:10px;background:rgba(255,77,77,0.08);border:1px solid rgba(255,77,77,0.2);margin-bottom:10px;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
@@ -798,8 +860,8 @@ function renderAlerts(el) {
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${a.details}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">Users: ${a.telegram_ids}</div>
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})"> Resolve</button>
-              <button class="btn btn-sm" onclick="dismissAlert(${a.id})"> Dismiss</button>
+              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})">✅ Resolve</button>
+              <button class="btn btn-sm" onclick="dismissAlert(${a.id})">🚫 Dismiss</button>
             </div>
           </div>
         `).join('')}
@@ -858,8 +920,8 @@ function renderPayouts(el) {
       ` : ''}
     </div>
     <div class="section">
-      <div class="section-title"> Execute Batch (max 255)</div>
-      <button class="btn btn-primary" onclick="executePayout()"> Execute Next Batch</button>
+      <div class="section-title">🚀 Execute Batch (max 255)</div>
+      <button class="btn btn-primary" onclick="executePayout()">⚡ Execute Next Batch</button>
     </div>
   `;
 }
@@ -868,7 +930,7 @@ async function executePayout() {
   if (!confirm('Execute batch payout (max 255 withdrawals)?')) return;
   const res = await api('/api/admin/payouts/execute', 'POST', { limit: 255 });
   if (res.ok) {
-    toast(` ${res.marked} processed. TX: ${(res.txHash || '').slice(0, 12)}...`, 'success');
+    toast(`✅ ${res.marked} processed. TX: ${(res.txHash || '').slice(0, 12)}...`, 'success');
     await loadPayoutStats();
     await loadStats();
     renderContent();
@@ -880,23 +942,22 @@ async function executePayout() {
 // ========== REFRESH ==========
 async function refreshPage() {
   await loadTab();
-  toast('Refreshed ', 'success');
+  toast('Refreshed 🔄', 'success');
 }
 
 // ========== INIT ==========
-async function init() {
-  if (!getInitData()) {
-    document.getElementById('content').innerHTML = '<div class="empty" style="color:var(--danger);"> Open from Telegram</div>';
-    return;
-  }
+async function initAdmin() {
   renderNav();
   switchTab('dashboard');
 }
 
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-else init();
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => {
+  // شاشة الباسورد ظاهرة افتراضياً، مفيش حاجة تتعمل
+});
+else {
+  // شاشة الباسورد ظاهرة افتراضياً
+}
 
-// Exports
 window.switchTab = switchTab;
 window.loadTab = loadTab;
 window.refreshPage = refreshPage;
@@ -914,6 +975,7 @@ window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
 window.copyWallet = copyWallet;
+window.checkPassword = checkPassword;
 </script>
 </body>
 </html>
