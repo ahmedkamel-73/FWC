@@ -48,6 +48,9 @@
   .claim-btn { margin-top: 20px; width: 100%; height: 58px; border-radius: 16px; border: none; background: linear-gradient(180deg, #7D8CFF 0%, #5A6AE8 100%); color: #fff; font-weight: 800; font-size: 15px; letter-spacing: 0.04em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 8px 0 #2A3560, 0 12px 24px rgba(0,0,0,0.4); transition: transform 0.12s; font-family: inherit; }
   .claim-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 4px 0 #2A3560; }
   .claim-btn:disabled { opacity: 0.5; background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)); box-shadow: 0 8px 0 #1A233F; cursor: not-allowed; }
+  .bonus-btn { margin-top: 10px; width: 100%; height: 44px; border-radius: 14px; border: 1px solid rgba(0,229,255,0.3); background: rgba(0,229,255,0.1); color: var(--accent-2); font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; transition: all 0.15s; }
+  .bonus-btn:hover:not(:disabled) { background: rgba(0,229,255,0.2); }
+  .bonus-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; max-width: 500px; margin: 0 auto; padding: 8px 10px; background: linear-gradient(180deg, rgba(18,24,42,0.95), rgba(10,14,28,0.98)); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; z-index: 30; }
   .tab-btn { flex: 1; height: 56px; border-radius: 14px; border: none; background: transparent; color: rgba(255,255,255,0.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
   .tab-btn.active { background: linear-gradient(180deg, #7D8CFF, #5A6AE8); color: #fff; box-shadow: 0 8px 20px rgba(109,124,255,0.35); }
@@ -129,6 +132,9 @@
         <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:10px;" id="miningStatus">Loading...</div>
         <button class="claim-btn" id="claimBtn" disabled>
           <span>⚡</span> <span id="claimText">Loading</span>
+        </button>
+        <button class="bonus-btn" id="bonusBtn" onclick="watchAdForBonus()">
+          <span>🎁</span> <span>Watch Ad for Bonus</span>
         </button>
       </div>
       <div class="card" style="margin-top:12px;">
@@ -378,18 +384,12 @@ function startCooldown(remainingMs) {
   tick(); STATE.cooldownTimer = setInterval(tick, 1000);
 }
 
+// 👇 زر CLAIM بقى شغال عادي من غير إعلان
 async function doMine() {
   const btn = document.getElementById('claimBtn');
   btn.disabled = true;
 
-  const watched = await showAd(STATE.adBlockId);
-  if (!watched) {
-    toast('You must watch the full ad to claim', 'error');
-    btn.disabled = false;
-    return;
-  }
-
-  const res = await api('/api/mine', 'POST', { ad_watched: true });
+  const res = await api('/api/mine', 'POST', {});
   if (res.ok) {
     STATE.balance = res.newBalance;
     toast(`+${res.amount} FWC ✅`, 'success');
@@ -399,6 +399,30 @@ async function doMine() {
     toast('Error: ' + (res.error || ''), 'error');
     await loadUser();
   }
+}
+
+// 👇 زر البونص (اختياري) - بيشوف إعلان وياخد مكافأة إضافية
+async function watchAdForBonus() {
+  const btn = document.getElementById('bonusBtn');
+  btn.disabled = true;
+
+  const watched = await showAd(STATE.adBlockId);
+  if (!watched) {
+    toast('You must watch the full ad to get bonus', 'error');
+    btn.disabled = false;
+    return;
+  }
+
+  const res = await api('/api/bonus', 'POST');
+  if (res.ok) {
+    STATE.balance = res.newBalance;
+    toast(`+${res.amount} FWC Bonus 🎁`, 'success');
+    if (tg) tg.HapticFeedback?.notificationOccurred('success');
+    await loadUser();
+  } else {
+    toast('Error: ' + (res.error || ''), 'error');
+  }
+  btn.disabled = false;
 }
 
 async function doCheckin() { const res = await api('/api/checkin', 'POST'); if (res.ok) { toast(`+${res.reward} FWC • Streak ${res.streak} 🔥`, 'success'); await loadUser(); } else if (res.error === 'already_checked_in') { toast('Already checked in today ✅'); } else { toast('Error: ' + res.error, 'error'); } }
@@ -417,7 +441,6 @@ async function completeTask(id) {
   const task = STATE.tasks.find(t => t.id === id);
   if (!task) return toast('Task not found', 'error');
 
-  // لو التاسك إعلان، نعرضه الأول
   if (task.type === 'ads') {
     const watched = await showAd(STATE.adBlockId);
     if (!watched) {
@@ -426,7 +449,6 @@ async function completeTask(id) {
     }
   }
 
-  // لو التاسك من نوع join أو youtube أو x أو custom، نفتح الرابط
   if (['join', 'youtube', 'x', 'custom'].includes(task.type) && task.url) {
     window.open(task.url, '_blank');
   }
@@ -563,6 +585,7 @@ window.estimateWithdraw = estimateWithdraw;
 window.completeTask = completeTask;
 window.cycleLanguage = cycleLanguage;
 window.copyReferralLink = copyReferralLink;
+window.watchAdForBonus = watchAdForBonus;
 </script>
 </body>
 </html>
