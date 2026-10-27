@@ -8,21 +8,7 @@
 <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <style>
-  :root {
-    --bg: #080C18;
-    --surface: #0F1522;
-    --surface-2: #161d2e;
-    --border: rgba(255,255,255,0.08);
-    --text: #EAF0FF;
-    --text-muted: #7a8599;
-    --accent: #6D7CFF;
-    --accent-2: #00E5FF;
-    --success: #00E5FF;
-    --danger: #ff4d4d;
-    --warn: #ffb020;
-    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-    --mono: 'JetBrains Mono', ui-monospace, monospace;
-  }
+  :root { --bg: #080C18; --surface: #0F1522; --surface-2: #161d2e; --border: rgba(255,255,255,0.08); --text: #EAF0FF; --text-muted: #7a8599; --accent: #6D7CFF; --accent-2: #00E5FF; --success: #00E5FF; --danger: #ff4d4d; --warn: #ffb020; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; --mono: 'JetBrains Mono', ui-monospace, monospace; }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; overflow-x: hidden; padding-bottom: 90px; }
   .container { max-width: 500px; margin: 0 auto; }
@@ -82,7 +68,6 @@
   .fee-row:last-child { margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); }
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
   #ton-connect-btn { width: 100%; margin-top: 10px; }
-  
   .profile-card { text-align: center; padding: 24px 16px; border-radius: 20px; background: linear-gradient(135deg, rgba(109,124,255,0.15), rgba(0,229,255,0.08)); border: 1px solid rgba(109,124,255,0.25); margin-bottom: 12px; }
   .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #6D7CFF, #00E5FF); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #fff; margin: 0 auto 12px; box-shadow: 0 8px 24px rgba(109,124,255,0.4); }
   .profile-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
@@ -384,7 +369,6 @@ function startCooldown(remainingMs) {
   tick(); STATE.cooldownTimer = setInterval(tick, 1000);
 }
 
-// 👇 زر CLAIM بقى شغال عادي من غير إعلان
 async function doMine() {
   const btn = document.getElementById('claimBtn');
   btn.disabled = true;
@@ -401,7 +385,6 @@ async function doMine() {
   }
 }
 
-// 👇 زر البونص (اختياري) - بيشوف إعلان وياخد مكافأة إضافية
 async function watchAdForBonus() {
   const btn = document.getElementById('bonusBtn');
   btn.disabled = true;
@@ -441,6 +424,15 @@ async function completeTask(id) {
   const task = STATE.tasks.find(t => t.id === id);
   if (!task) return toast('Task not found', 'error');
 
+  // 👇 تاسك الإحالة: نوجهه لتبويب الحساب
+  if (task.type === 'invite') {
+    await renderAccount();
+    switchTab('account');
+    toast('Share your referral link with friends!', 'success');
+    return;
+  }
+
+  // لو التاسك إعلان، نعرضه الأول
   if (task.type === 'ads') {
     const watched = await showAd(STATE.adBlockId);
     if (!watched) {
@@ -449,6 +441,7 @@ async function completeTask(id) {
     }
   }
 
+  // لو التاسك من نوع join أو youtube أو x أو custom، نفتح الرابط
   if (['join', 'youtube', 'x', 'custom'].includes(task.type) && task.url) {
     window.open(task.url, '_blank');
   }
