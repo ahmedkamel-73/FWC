@@ -316,14 +316,15 @@ function toast(msg, type = 'info') {
 
 // ========== ADSGRAM ==========
 async function showAd(blockId) {
-  if (!blockId) { toast('No ad configured', 'error'); return false; }
+  if (!blockId) { toast('Ad not configured yet - add 56360 in admin', 'error'); return false; }
   try {
-    const controller = window.Adsgram.init({ blockId: blockId, debug: false });
+    if (!window.Adsgram) { toast('Adsgram SDK not loaded', 'error'); return false; }
+    const controller = window.Adsgram.init({ blockId: String(blockId), debug: true });
     const result = await controller.show();
-    return result.done === true;
+    return result && (result.done === true || result.done === undefined);
   } catch (e) {
     console.error('Ad error:', e);
-    toast('Ad failed to load', 'error');
+    toast('Ad: ' + (e.message || 'Block pending review - ID 56360'), 'error');
     return false;
   }
 }
