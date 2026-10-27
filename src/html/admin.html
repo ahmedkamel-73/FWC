@@ -15,14 +15,12 @@
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; font-size: 13px; }
   
-  /* Login Screen */
   #login-screen { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: var(--bg); padding: 20px; }
   .login-box { background: var(--surface); border: 1px solid var(--border); padding: 30px 20px; border-radius: 16px; width: 100%; max-width: 360px; text-align: center; }
   .login-box h2 { font-size: 18px; margin-bottom: 20px; }
   .login-box input { width: 100%; padding: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 14px; margin-bottom: 12px; }
   .login-box button { width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--accent); color: #000; font-weight: 800; cursor: pointer; font-family: inherit; }
   
-  /* Admin Panel */
   .app { display: flex; min-height: 100vh; }
   .sidebar { width: 260px; background: rgba(17,20,24,0.95); border-right: 1px solid var(--border); padding: 16px 12px; position: sticky; top: 0; height: 100vh; overflow-y: auto; flex-shrink: 0; }
   @media (max-width: 768px) { .sidebar { display: none; } }
@@ -82,6 +80,14 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .empty { text-align: center; padding: 30px; color: var(--text-muted); font-size: 12px; }
   .search-input { width: 100%; max-width: 300px; padding: 8px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: inherit; font-size: 12px; }
+
+  /* Modal Styles */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-content { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; padding: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .modal-header h3 { font-size: 16px; font-weight: 800; }
+  .modal-close { background: transparent; border: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+  .modal-footer { margin-top: 16px; display: flex; justify-content: flex-end; gap: 8px; }
 </style>
 </head>
 <body>
@@ -122,6 +128,66 @@
   </main>
 </div>
 
+<!-- Task Modal -->
+<div id="task-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="task-modal-title">Add New Task</h3>
+      <button class="modal-close" onclick="closeTaskModal()">&times;</button>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Task ID (Unique)</label>
+      <input type="text" id="task-id" placeholder="e.g. join_channel, watch_ad">
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Title (English)</label>
+      <input type="text" id="task-title" placeholder="Task title">
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>Title (Arabic) - Optional</label>
+      <input type="text" id="task-title-ar" placeholder="عنوان المهمة">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Type</label>
+        <select id="task-type">
+          <option value="join">Join Channel</option>
+          <option value="youtube">YouTube</option>
+          <option value="x">X (Twitter)</option>
+          <option value="ads">Watch Ad</option>
+          <option value="invite">Invite Friend</option>
+          <option value="custom">Custom Link</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Reward (FWC)</label>
+        <input type="number" id="task-reward" placeholder="5">
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>URL (Link)</label>
+      <input type="text" id="task-url" placeholder="https://t.me/...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Max per Day</label>
+        <input type="number" id="task-max" value="1">
+      </div>
+      <div class="form-group">
+        <label>Once (Only once?)</label>
+        <select id="task-once">
+          <option value="1">Yes</option>
+          <option value="0">No</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeTaskModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTaskData()">💾 Save Task</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -129,6 +195,7 @@ const tg = window.Telegram?.WebApp;
 if (tg) { tg.ready(); tg.expand(); }
 
 let ADMIN_SECRET = '';
+let EDITING_TASK_ID = null;
 
 const STATE = {
   tab: 'dashboard',
@@ -489,7 +556,7 @@ async function saveMining() {
   await loadEconomy();
 }
 
-// ========== TASKS ==========
+// ========== TASKS (UPDATED WITH MODAL) ==========
 async function loadTasksAdmin() {
   const res = await api('/api/admin/tasks');
   if (res.ok) STATE.tasks = res.tasks;
@@ -500,7 +567,7 @@ function renderTasks(el) {
     <div class="section">
       <div class="section-title">
         <span>Tasks (${STATE.tasks.length})</span>
-        <button class="btn btn-sm btn-primary" onclick="addNewTask()">+ Add</button>
+        <button class="btn btn-sm btn-primary" onclick="openTaskModal()">+ Add Task</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -510,12 +577,13 @@ function renderTasks(el) {
               <th>Title</th>
               <th>Type</th>
               <th>Reward</th>
+              <th>Link</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            ${STATE.tasks.length === 0 ? '<tr><td colspan="6" class="empty">No tasks</td></tr>' :
+            ${STATE.tasks.length === 0 ? '<tr><td colspan="7" class="empty">No tasks</td></tr>' :
               STATE.tasks.map(t => `
                 <tr>
                   <td style="font-size:10px;color:var(--text-muted);">${t.id}</td>
@@ -525,12 +593,14 @@ function renderTasks(el) {
                   </td>
                   <td><span class="badge-status badge-active">${t.type}</span></td>
                   <td style="font-weight:700;">${t.reward} FWC</td>
+                  <td style="font-size:10px;color:var(--text-muted);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${t.url || ''}">${t.url ? '<a href="'+t.url+'" target="_blank" style="color:var(--accent-2);text-decoration:none;">Link 🔗</a>' : '—'}</td>
                   <td>
                     ${t.active ?
                       '<span class="badge-status badge-active">Active</span>' :
                       '<span class="badge-status badge-pending">Inactive</span>'}
                   </td>
                   <td>
+                    <button class="btn btn-sm" onclick="editTask('${t.id}')">✏️</button>
                     <button class="btn btn-sm" onclick="toggleTaskActive('${t.id}', ${t.active})">${t.active ? '👁️' : '🔄'}</button>
                     <button class="btn btn-sm btn-danger" onclick="deleteTaskItem('${t.id}')">🗑️</button>
                   </td>
@@ -543,27 +613,63 @@ function renderTasks(el) {
   `;
 }
 
-async function addNewTask() {
-  const id = prompt('Task ID (unique):');
-  if (!id) return;
-  const title = prompt('Title (English):');
-  if (!title) return;
-  const title_ar = prompt('Arabic title (optional):') || '';
-  const type = prompt('Type (join/youtube/x/ads/checkin/invite/custom):', 'custom');
-  const reward = parseFloat(prompt('Reward (FWC):', '5')) || 0;
-  const url = prompt('URL (optional):') || null;
+function openTaskModal(task = null) {
+  EDITING_TASK_ID = task ? task.id : null;
+  document.getElementById('task-modal-title').textContent = task ? 'Edit Task' : 'Add New Task';
+  
+  document.getElementById('task-id').value = task ? task.id : '';
+  document.getElementById('task-id').disabled = !!task; // منع تعديل الـ ID لو بنعدل
+  
+  document.getElementById('task-title').value = task ? task.title : '';
+  document.getElementById('task-title-ar').value = task ? (task.title_ar || '') : '';
+  document.getElementById('task-type').value = task ? task.type : 'join';
+  document.getElementById('task-reward').value = task ? task.reward : 5;
+  document.getElementById('task-url').value = task ? (task.url || '') : '';
+  document.getElementById('task-max').value = task ? (task.max_per_day || 1) : 1;
+  document.getElementById('task-once').value = task ? (task.once ? '1' : '0') : '0';
 
-  const res = await api('/api/admin/tasks', 'POST', {
-    id, title, title_ar, type: type || 'custom', reward,
-    url, max_per_day: 1, once: true, active: true,
-  });
+  document.getElementById('task-modal').classList.remove('hidden');
+}
+
+function closeTaskModal() {
+  document.getElementById('task-modal').classList.add('hidden');
+  EDITING_TASK_ID = null;
+}
+
+async function saveTaskData() {
+  const id = document.getElementById('task-id').value.trim();
+  const title = document.getElementById('task-title').value.trim();
+  const title_ar = document.getElementById('task-title-ar').value.trim();
+  const type = document.getElementById('task-type').value;
+  const reward = parseFloat(document.getElementById('task-reward').value) || 0;
+  const url = document.getElementById('task-url').value.trim() || null;
+  const max_per_day = parseInt(document.getElementById('task-max').value) || 1;
+  const once = document.getElementById('task-once').value === '1';
+
+  if (!id || !title) return toast('ID and Title are required', 'error');
+
+  const payload = { id, title, title_ar, type, reward, url, max_per_day, once, active: true };
+
+  let res;
+  if (EDITING_TASK_ID) {
+    res = await api('/api/admin/tasks/' + EDITING_TASK_ID, 'PUT', payload);
+  } else {
+    res = await api('/api/admin/tasks', 'POST', payload);
+  }
+
   if (res.ok) {
-    toast('Task added ✅', 'success');
+    toast(EDITING_TASK_ID ? 'Task updated ✅' : 'Task added ✅', 'success');
+    closeTaskModal();
     await loadTasksAdmin();
     renderContent();
   } else {
     toast('Error: ' + (res.error || ''), 'error');
   }
+}
+
+function editTask(id) {
+  const task = STATE.tasks.find(t => t.id === id);
+  if (task) openTaskModal(task);
 }
 
 async function toggleTaskActive(id, current) {
@@ -964,7 +1070,10 @@ window.refreshPage = refreshPage;
 window.toggleBan = toggleBan;
 window.debounceSearch = debounceSearch;
 window.saveMining = saveMining;
-window.addNewTask = addNewTask;
+window.openTaskModal = openTaskModal;
+window.closeTaskModal = closeTaskModal;
+window.saveTaskData = saveTaskData;
+window.editTask = editTask;
 window.toggleTaskActive = toggleTaskActive;
 window.deleteTaskItem = deleteTaskItem;
 window.approveWd = approveWd;
