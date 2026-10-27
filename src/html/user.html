@@ -6,6 +6,7 @@
 <title>FWC Mining</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js"></script>
 <style>
   :root {
     --bg: #080C18;
@@ -79,7 +80,6 @@
   .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
   #ton-connect-btn { width: 100%; margin-top: 10px; }
   
-  /* Account Tab Styles */
   .profile-card { text-align: center; padding: 24px 16px; border-radius: 20px; background: linear-gradient(135deg, rgba(109,124,255,0.15), rgba(0,229,255,0.08)); border: 1px solid rgba(109,124,255,0.25); margin-bottom: 12px; }
   .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #6D7CFF, #00E5FF); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #fff; margin: 0 auto 12px; box-shadow: 0 8px 24px rgba(109,124,255,0.4); }
   .profile-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
@@ -123,7 +123,6 @@
   </div>
 
   <div class="content">
-    <!-- TAB: MINE -->
     <div id="tab-mine">
       <div class="mining-card">
         <div class="mining-circle">FWC</div>
@@ -145,7 +144,6 @@
       </div>
     </div>
 
-    <!-- TAB: TASKS -->
     <div id="tab-tasks" class="hidden">
       <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">📋 <span data-i18n="tasks">Tasks</span></h2>
       <div class="tasks-list" id="tasksList">
@@ -153,7 +151,6 @@
       </div>
     </div>
 
-    <!-- TAB: WALLET -->
     <div id="tab-wallet" class="hidden">
       <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">💳 <span data-i18n="wallet">Wallet</span></h2>
       <div class="wallet-card">
@@ -188,7 +185,6 @@
       </div>
     </div>
 
-    <!-- TAB: MARKET -->
     <div id="tab-market" class="hidden">
       <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">🏆 <span data-i18n="leaderboard">Leaderboard</span></h2>
       <div id="leaderboard">
@@ -196,7 +192,6 @@
       </div>
     </div>
 
-    <!-- TAB: ACCOUNT -->
     <div id="tab-account" class="hidden">
       <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">👤 <span data-i18n="account">Account</span></h2>
       
@@ -277,6 +272,7 @@ const STATE = {
   miningAmount: 0, canMine: { ok: false, reason: 'loading' }, canWithdraw: { ok: false },
   streak: 0, tasks: [], progress: [], activeTab: 'mine', cooldownTimer: null,
   refreshTimer: null, lastFeeEstimate: null, referralData: null, userInfo: null,
+  adBlockId: null, adAutoBlockId: null,
 };
 
 let tonConnectUI = null;
@@ -306,7 +302,21 @@ function toast(msg, type = 'info') {
   el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2500);
 }
 
-// ========== TON CONNECT INIT ==========
+// ========== ADSGRAM ==========
+async function showAd(blockId) {
+  if (!blockId) { toast('No ad configured', 'error'); return false; }
+  try {
+    const controller = AdController.init({ blockId: blockId, debug: false });
+    const result = await controller.show();
+    return result.done === true;
+  } catch (e) {
+    console.error('Ad error:', e);
+    toast('Ad failed to load', 'error');
+    return false;
+  }
+}
+
+// ========== TON CONNECT ==========
 function initTonConnect() {
   tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
     manifestUrl: window.location.origin + '/tonconnect-manifest.json',
@@ -342,6 +352,8 @@ async function loadUser() {
   STATE.telegram_id = res.telegram_id; STATE.language = res.language || 'en'; STATE.balance = res.balance;
   STATE.wallet = res.wallet; STATE.is_banned = res.is_banned; STATE.miningAmount = res.miningAmount;
   STATE.canMine = res.canMine; STATE.canWithdraw = res.canWithdraw; STATE.streak = res.streak || 0;
+  STATE.adBlockId = res.adBlockId || null;
+  STATE.adAutoBlockId = res.adAutoBlockId || null;
   applyTranslations(); renderMine(); renderWallet(); renderAccount();
 }
 
@@ -377,7 +389,31 @@ function renderTasks() {
   const icons = { checkin: '📅', ads: '📺', join: '🔗', youtube: '▶️', x: '𝕏', invite: '👥' };
   el.innerHTML = STATE.tasks.map(task => { const done = STATE.progress.includes(task.id); const icon = icons[task.type] || '📌'; const title = STATE.language === 'ar' && task.title_ar ? task.title_ar : task.title; return `<div class="task-item ${done ? 'done' : ''}"><div class="task-info"><div class="task-icon">${icon}</div><div><div class="task-name">${title}</div><div class="task-reward">+${task.reward} FWC</div></div></div>${done ? '<span style="color:var(--accent-2);font-size:11px;font-weight:700;">✓ Done</span>' : `<button class="task-btn" onclick="completeTask('${task.id}')">${task.type === 'checkin' ? t('checkin') : 'Start'}</button>`}</div>`; }).join('');
 }
-async function completeTask(id) { if (id === 'checkin') return doCheckin(); const res = await api('/api/tasks/' + id, 'POST'); if (res.ok) { toast(`+${res.reward} FWC ✅`, 'success'); await loadUser(); await loadTasks(); } else { toast('Error: ' + res.error, 'error'); } }
+
+async function completeTask(id) {
+  if (id === 'checkin') return doCheckin();
+  
+  const task = STATE.tasks.find(t => t.id === id);
+  if (!task) return toast('Task not found', 'error');
+
+  // لو التاسك إعلان، نعرضه الأول
+  if (task.type === 'ads') {
+    const watched = await showAd(STATE.adBlockId);
+    if (!watched) {
+      toast('You must watch the full ad', 'error');
+      return;
+    }
+  }
+  
+  const res = await api('/api/tasks/' + id, 'POST');
+  if (res.ok) {
+    toast(`+${res.reward} FWC ✅`, 'success');
+    await loadUser();
+    await loadTasks();
+  } else {
+    toast('Error: ' + res.error, 'error');
+  }
+}
 
 function renderWallet() {
   document.getElementById('walletAddress').textContent = STATE.wallet || '';
@@ -409,7 +445,6 @@ async function renderAccount() {
   walletEl.style.color = STATE.wallet ? 'var(--accent-2)' : 'var(--text-muted)';
   idEl.textContent = STATE.telegram_id || '—';
 
-  // جلب بيانات الإحالة
   const refRes = await api('/api/referral');
   if (refRes.ok) {
     STATE.referralData = refRes;
