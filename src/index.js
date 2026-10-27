@@ -168,7 +168,6 @@ export default {
     }
     if (path === '/' || path === '/app') return htmlResponse(USER_HTML);
     
-    // مسار الأدمن المخفي
     if (path === '/aha.htm') {
       return htmlResponse(ADMIN_HTML); 
     }
@@ -188,17 +187,27 @@ export default {
           language: tgUser.language_code || 'en',
         });
 
-        // 👇 تسجيل الإحالة من start_param
+        const user = await getUser(env.DB, tgUser.id);
+
+        // 👇 تسجيل الإحالة + مكافأة المُحيل (2 FWC)
         const refParam = url.searchParams.get('ref');
-        if (refParam) {
+        if (refParam && !user.referral_by && !user.referred_bonus_paid) {
           const refId = parseInt(refParam);
           if (refId && refId !== tgUser.id) {
-            await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
+            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ?`)
               .bind(refId, tgUser.id).run();
+            
+            const refUser = await getUser(env.DB, refId);
+            if (refUser) {
+              const bonus = 2;
+              await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+                .bind(bonus, refId).run();
+              await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, unixepoch())`)
+                .bind(refId, bonus).run();
+            }
           }
         }
 
-        const user = await getUser(env.DB, tgUser.id);
         const miningAmount = await getCurrentMiningAmount(env.DB);
         const canMineRes = await canMine(env.DB, tgUser.id);
         const canWithdrawRes = await canWithdraw(env.DB, env, tgUser.id);
@@ -227,11 +236,9 @@ export default {
         });
       }
 
-      // 👇 API الإحالة
       if (path === '/api/referral' && tgUser) {
         const count = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE referral_by = ?`).bind(tgUser.id).first();
         const botUsername = (await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'bot_username'`).first())?.value || 'fwcoinbot';
-        
         return json({
           ok: true,
           referral_count: count?.c || 0,
@@ -246,7 +253,6 @@ export default {
         return json({ ok: true, language: lang });
       }
 
-      // 👇 /api/mine شغال عادي من غير إعلان
       if (path === '/api/mine' && request.method === 'POST' && tgUser) {
         const check = await canMine(env.DB, tgUser.id);
         if (!check.ok) return json({ ok: false, error: check.reason, detail: check }, 400);
@@ -254,22 +260,14 @@ export default {
         return json({ ok: true, ...res });
       }
 
-      // 👇 /api/bonus — مكافأة إضافية بعد مشاهدة إعلان
       if (path === '/api/bonus' && request.method === 'POST' && tgUser) {
         const bonusMult = await getEconomyConfig(env.DB, 'ad_free_mult') || 2;
         const baseAmount = await getCurrentMiningAmount(env.DB);
         const totalBonus = baseAmount * bonusMult;
-
         await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
           .bind(totalBonus, tgUser.id).run();
-
         const user = await getUser(env.DB, tgUser.id);
-
-        return json({
-          ok: true,
-          amount: totalBonus,
-          newBalance: user?.balance || 0,
-        });
+        return json({ ok: true, amount: totalBonus, newBalance: user?.balance || 0 });
       }
 
       if (path === '/api/wallet/verify' && request.method === 'POST' && tgUser) {
@@ -346,7 +344,6 @@ export default {
           return json({ ok: true, reward: r.reward, streak: r.streak });
         }
 
-        // 👇 تمرير env لدالة doTask
         const result = await doTask(env.DB, tgUser.id, taskId, date, env);
         if (!result.ok) return json({ ok: false, error: result.reason }, 400);
         return json({ ok: true, reward: result.reward, newBalance: result.newBalance });
@@ -383,12 +380,7 @@ export default {
         const feeInfo = await calculateWithdrawalFee(env.DB, amount);
 
         if (user.balance < amount) {
-          return json({
-            ok: false,
-            error: 'insufficient_balance',
-            required: amount,
-            available: user.balance,
-          }, 400);
+          return json({ ok: false, error: 'insufficient_balance', required: amount, available: user.balance }, 400);
         }
 
         const pending = await getUserPendingWithdrawal(env.DB, tgUser.id);
@@ -397,10 +389,7 @@ export default {
         await env.DB.prepare(`UPDATE users SET balance = balance - ? WHERE telegram_id = ?`)
           .bind(amount, tgUser.id).run();
 
-        const wdResult = await createWithdrawal(
-          env.DB, tgUser.id, amount, user.wallet,
-          feeInfo.fee, feeInfo.netAmount
-        );
+        const wdResult = await createWithdrawal(env.DB, tgUser.id, amount, user.wallet, feeInfo.fee, feeInfo.netAmount);
 
         try {
           const wdId = wdResult?.meta?.last_row_id;
@@ -409,13 +398,7 @@ export default {
           }
         } catch {}
 
-        return json({
-          ok: true,
-          amount: feeInfo.netAmount,
-          fee: feeInfo.fee,
-          totalDeducted: amount,
-          newBalance: user.balance - amount,
-        });
+        return json({ ok: true, amount: feeInfo.netAmount, fee: feeInfo.fee, totalDeducted: amount, newBalance: user.balance - amount });
       }
 
       if (path === '/api/withdrawals' && tgUser) {
@@ -461,34 +444,21 @@ export default {
           const totalFees = await getTotalFees(env.DB, 0);
           const openAlerts = await env.DB.prepare(`SELECT COUNT(*) as c FROM anticheat_alerts WHERE status='open'`).first();
 
-          return json({
-            ok: true,
-            miningAmount,
-            usersCount: usersCount?.c || 0,
-            wdPending: wdPending?.c || 0,
-            totalBalance: totalBalance?.s || 0,
-            totalMined: totalMined?.s || 0,
-            totalFees,
-            openAlerts: openAlerts?.c || 0,
-          });
+          return json({ ok: true, miningAmount, usersCount: usersCount?.c || 0, wdPending: wdPending?.c || 0, totalBalance: totalBalance?.s || 0, totalMined: totalMined?.s || 0, totalFees, openAlerts: openAlerts?.c || 0 });
         }
 
         if (path === '/api/admin/users') {
           const limit = Math.min(parseInt(url.searchParams.get('limit') || '200'), 500);
           const search = url.searchParams.get('q') || '';
-
           let query = `SELECT telegram_id, username, first_name, balance, wallet, wallet_verified, referral_by, is_banned, ban_reason, created_at, last_mine FROM users`;
           let params = [];
-
           if (search) {
             query += ` WHERE username LIKE ? OR first_name LIKE ? OR CAST(telegram_id AS TEXT) LIKE ?`;
             const like = `%${search}%`;
             params = [like, like, like];
           }
-
           query += ` ORDER BY created_at DESC LIMIT ?`;
           params.push(limit);
-
           const users = await env.DB.prepare(query).bind(...params).all();
           return json({ ok: true, users: users.results || [] });
         }
@@ -650,21 +620,15 @@ export default {
 
           if (text.startsWith('/start')) {
             await createOrUpdateUser(env.DB, {
-              telegram_id: fromId,
-              username: fromUsername,
-              first_name: fromFirstName,
-              language: fromLang,
+              telegram_id: fromId, username: fromUsername, first_name: fromFirstName, language: fromLang,
             });
 
             const parts = text.split(' ');
             const payload = parts[1];
             if (payload) {
               let refId = null;
-              if (payload.startsWith('ref_')) {
-                refId = parseInt(payload.replace('ref_', ''));
-              } else if (!isNaN(parseInt(payload))) {
-                refId = parseInt(payload);
-              }
+              if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
+              else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
               if (refId && refId !== fromId) {
                 await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
                   .bind(refId, fromId).run();
@@ -673,7 +637,6 @@ export default {
 
             const workerUrl = env.WORKER_URL || url.origin;
             const isAdmin = await isAdminDB(env.DB, fromId);
-
             const buttons = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
             if (isAdmin) buttons.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
 

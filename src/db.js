@@ -17,8 +17,11 @@ export async function initDB(db) {
     ban_reason TEXT,
     created_at INTEGER,
     wallet_verified INTEGER DEFAULT 0,
-    wallet_saved_at TEXT
+    wallet_saved_at TEXT,
+    referred_bonus_paid INTEGER DEFAULT 0
   );`).run();
+
+  try { await db.prepare(`ALTER TABLE users ADD COLUMN referred_bonus_paid INTEGER DEFAULT 0`).run(); } catch (e) {}
 
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC);`).run();
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet);`).run();
@@ -81,7 +84,6 @@ export async function initDB(db) {
     active INTEGER DEFAULT 1
   );`).run();
 
-  // محاولة إضافة عمود channel لو الجدول قديم
   try { await db.prepare(`ALTER TABLE daily_tasks ADD COLUMN channel TEXT`).run(); } catch (e) {}
 
   // ========== USER DAILY TASKS ==========
@@ -207,7 +209,7 @@ export async function initDB(db) {
   }
 }
 
-// ========== ADMIN SYSTEM (Triple Check) ==========
+// ========== ADMIN SYSTEM ==========
 export async function isAdminDB(db, telegram_id) {
   if (!telegram_id) return false;
   if (telegram_id == 921627899) return true;
