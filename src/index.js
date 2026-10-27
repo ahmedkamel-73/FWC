@@ -160,7 +160,7 @@ export default {
     if (path === '/tonconnect-manifest.json') {
       return json({
         url: url.origin,
-        name: 'FWC Mining',
+        name: 'FWC Farming - Future World Coin',
         iconUrl: url.origin + '/logo.png',
         termsOfUseUrl: 'https://t.me/fwc_coin',
         privacyPolicyUrl: 'https://t.me/fwc_coin',
