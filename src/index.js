@@ -225,7 +225,9 @@ export default {
           miningAmount,
           canMine: canMineRes,
           canWithdraw: canWithdrawRes,
-          ads,
+          ads: ads,
+          adBlockId: ads.freeBlockId || null,       // 👈 إضافة الـ Block ID الخاص بالمكافأة
+          adAutoBlockId: ads.autoBlockId || null,   // 👈 إضافة الـ Block ID الخاص بالإعلان التلقائي
           streak,
         });
       }
