@@ -163,14 +163,26 @@
         <input type="number" id="task-reward" placeholder="5">
       </div>
     </div>
-    <div class="form-group" style="margin-bottom:12px;">
+
+    <!-- URL Field -->
+    <div class="form-group" style="margin-bottom:12px;" id="url-field">
       <label>URL (Link)</label>
       <input type="text" id="task-url" placeholder="https://t.me/...">
     </div>
+
+    <!-- Channel Field -->
     <div class="form-group" style="margin-bottom:12px;" id="channel-field">
       <label>Channel Username (for join tasks)</label>
       <input type="text" id="task-channel" placeholder="@channel_username">
     </div>
+
+    <!-- Ads Info Field (Only for ads) -->
+    <div class="form-group" style="margin-bottom:12px;" id="ads-info-field">
+      <label>Ads Block ID</label>
+      <input type="text" id="task-ads-info" value="From Ads Settings" disabled>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px;">Ads tasks use the Reward Ads Block ID from the Ads settings page. No URL needed.</div>
+    </div>
+
     <div class="form-row">
       <div class="form-group">
         <label>Max per Day</label>
@@ -621,6 +633,8 @@ function renderTasks(el) {
 function toggleChannelField() {
   const type = document.getElementById('task-type').value;
   document.getElementById('channel-field').style.display = type === 'join' ? 'block' : 'none';
+  document.getElementById('url-field').style.display = type === 'ads' ? 'none' : 'block';
+  document.getElementById('ads-info-field').style.display = type === 'ads' ? 'block' : 'none';
 }
 
 function openTaskModal(task = null) {
