@@ -1,5 +1,5 @@
 // src/tasks.js - FWC 4.0.0 PRODUCTION
-// Daily tasks + streak system
+// Daily tasks + streak system + subscription verification
 
 export const STREAK_REWARDS = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 10, 7: 15 };
 export const BONUS_WEEK = 5;
@@ -45,7 +45,7 @@ export async function doCheckin(db, telegram_id, date) {
   return { streak: newStreak, reward };
 }
 
-export async function doTask(db, telegram_id, task_id, date) {
+export async function doTask(db, telegram_id, task_id, date, env) {
   const task = await db.prepare(`SELECT * FROM daily_tasks WHERE id = ? AND active = 1`).bind(task_id).first();
   if (!task) return { ok: false, reason: 'no_task' };
 
@@ -60,6 +60,20 @@ export async function doTask(db, telegram_id, task_id, date) {
   const todayCount = await db.prepare(`SELECT COUNT(*) as c FROM user_daily_tasks WHERE telegram_id = ? AND task_id = ? AND date = ?`)
     .bind(telegram_id, task_id, date).first();
   if (todayCount.c >= task.max_per_day) return { ok: false, reason: 'limit' };
+
+  // 👇 التحقق من الاشتراك في القناة/الجروب
+  if (task.type === 'join' && task.channel) {
+    try {
+      const botToken = env.BOT_TOKEN;
+      const res = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${task.channel}&user_id=${telegram_id}`);
+      const data = await res.json();
+      if (!data.ok || !['member', 'administrator', 'creator'].includes(data.result?.status)) {
+        return { ok: false, reason: 'not_subscribed' };
+      }
+    } catch (e) {
+      return { ok: false, reason: 'verification_error' };
+    }
+  }
 
   await db.prepare(`INSERT INTO user_daily_tasks(telegram_id, task_id, date, created_at) VALUES (?, ?, ?, unixepoch())`)
     .bind(telegram_id, task_id, date).run();

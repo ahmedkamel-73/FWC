@@ -246,7 +246,7 @@ export default {
         return json({ ok: true, language: lang });
       }
 
-      // 👇 تعديل: /api/mine بقى بيشترط ad_watched
+      // 👇 /api/mine بقى بيشترط ad_watched
       if (path === '/api/mine' && request.method === 'POST' && tgUser) {
         const body = await request.json().catch(() => ({}));
         if (body.ad_watched !== true) {
@@ -333,7 +333,8 @@ export default {
           return json({ ok: true, reward: r.reward, streak: r.streak });
         }
 
-        const result = await doTask(env.DB, tgUser.id, taskId, date);
+        // 👇 تمرير env لدالة doTask
+        const result = await doTask(env.DB, tgUser.id, taskId, date, env);
         if (!result.ok) return json({ ok: false, error: result.reason }, 400);
         return json({ ok: true, reward: result.reward, newBalance: result.newBalance });
       }

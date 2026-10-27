@@ -1,6 +1,5 @@
 // src/db.js - FWC 4.0.0 PRODUCTION
 // Database schema + all CRUD operations
-// Includes: users, admins, mining, withdrawals, tasks, fees, referrals, anti-cheat
 
 export async function initDB(db) {
   // ========== USERS ==========
@@ -81,6 +80,9 @@ export async function initDB(db) {
     once INTEGER DEFAULT 0,
     active INTEGER DEFAULT 1
   );`).run();
+
+  // محاولة إضافة عمود channel لو الجدول قديم
+  try { await db.prepare(`ALTER TABLE daily_tasks ADD COLUMN channel TEXT`).run(); } catch (e) {}
 
   // ========== USER DAILY TASKS ==========
   await db.prepare(`CREATE TABLE IF NOT EXISTS user_daily_tasks (
@@ -167,7 +169,7 @@ export async function initDB(db) {
   if (count.c === 0) {
     const defaults = [
       ['checkin', 'Daily Check-in', 'تسجيل دخول يومي', 'checkin', 0, null, null, 1, 0, 1],
-      ['ads', 'Watch Ads', 'مشاهدة إعلانات', 'ads', 0.5, null, null, 10, 0, 1],
+      ['ads', 'Watch Ads', 'مشاهدة إعلانات', 'ads', 0.5, null, null, 7, 0, 1],
       ['join_main', 'Join Main Channel', 'انضم للقناة الرئيسية', 'join', 5, '@fwc_coin', 'https://t.me/fwc_coin', 1, 1, 1],
       ['join_group', 'Join Group', 'انضم للجروب', 'join', 5, '@fwc_coin1', 'https://t.me/fwc_coin1', 1, 1, 1],
       ['youtube', 'Subscribe YouTube', 'اشترك يوتيوب', 'youtube', 5, null, 'https://youtube.com/@fwc_coin', 1, 1, 1],
@@ -244,7 +246,6 @@ export async function getUser(db, telegram_id) {
 export async function createOrUpdateUser(db, user) {
   const existing = await getUser(db, user.telegram_id);
   if (existing) {
-    // 👇 تم تصحيح هذه الدالة لتعمل مع Cloudflare D1 بدون أخطاء
     await db.prepare(`UPDATE users SET username = ?, first_name = ?, language = ? WHERE telegram_id = ?`)
       .bind(user.username || null, user.first_name || null, user.language || 'en', user.telegram_id).run();
   } else {
