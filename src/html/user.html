@@ -417,6 +417,7 @@ async function completeTask(id) {
   const task = STATE.tasks.find(t => t.id === id);
   if (!task) return toast('Task not found', 'error');
 
+  // لو التاسك إعلان، نعرضه الأول
   if (task.type === 'ads') {
     const watched = await showAd(STATE.adBlockId);
     if (!watched) {
@@ -424,14 +425,20 @@ async function completeTask(id) {
       return;
     }
   }
-  
+
+  // لو التاسك من نوع join أو youtube أو x أو custom، نفتح الرابط
+  if (['join', 'youtube', 'x', 'custom'].includes(task.type) && task.url) {
+    window.open(task.url, '_blank');
+  }
+
   const res = await api('/api/tasks/' + id, 'POST');
   if (res.ok) {
     toast(`+${res.reward} FWC ✅`, 'success');
     await loadUser();
     await loadTasks();
   } else {
-    toast('Error: ' + res.error, 'error');
+    const msgs = { not_subscribed: 'You must join the channel first', limit: 'Daily limit reached', already_done: 'Already done', verification_error: 'Verification error' };
+    toast(msgs[res.error] || ('Error: ' + res.error), 'error');
   }
 }
 
