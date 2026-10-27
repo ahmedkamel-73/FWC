@@ -71,15 +71,10 @@ function getClientIP(request) {
     || null;
 }
 
-// ========== TELEGRAM BOT API (بدون grammy) ==========
+// ========== TELEGRAM BOT API ==========
 async function sendTelegramMessage(botToken, chatId, text, replyMarkup = null) {
-  const body = {
-    chat_id: chatId,
-    text: text,
-    parse_mode: 'Markdown',
-  };
+  const body = { chat_id: chatId, text, parse_mode: 'Markdown' };
   if (replyMarkup) body.reply_markup = replyMarkup;
-
   try {
     const res = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
       method: 'POST',
@@ -193,7 +188,7 @@ export default {
           language: tgUser.language_code || 'en',
         });
 
-        // 👇 تسجيل الإحالة من start_param (اللي جاي من رابط الإحالة)
+        // 👇 تسجيل الإحالة من start_param
         const refParam = url.searchParams.get('ref');
         if (refParam) {
           const refId = parseInt(refParam);
@@ -226,8 +221,8 @@ export default {
           canMine: canMineRes,
           canWithdraw: canWithdrawRes,
           ads: ads,
-          adBlockId: ads.freeBlockId || null,       // 👈 إضافة الـ Block ID الخاص بالمكافأة
-          adAutoBlockId: ads.autoBlockId || null,   // 👈 إضافة الـ Block ID الخاص بالإعلان التلقائي
+          adBlockId: ads.freeBlockId || null,
+          adAutoBlockId: ads.autoBlockId || null,
           streak,
         });
       }
@@ -251,7 +246,13 @@ export default {
         return json({ ok: true, language: lang });
       }
 
+      // 👇 تعديل: /api/mine بقى بيشترط ad_watched
       if (path === '/api/mine' && request.method === 'POST' && tgUser) {
+        const body = await request.json().catch(() => ({}));
+        if (body.ad_watched !== true) {
+          return json({ ok: false, error: 'ad_required' }, 400);
+        }
+
         const check = await canMine(env.DB, tgUser.id);
         if (!check.ok) return json({ ok: false, error: check.reason, detail: check }, 400);
         const res = await doMine(env.DB, tgUser.id);
@@ -430,7 +431,7 @@ export default {
         return json(health, health.status === 'critical' ? 503 : 200);
       }
 
-      // ============ ADMIN APIs (محمية بالباسورد فقط) ============
+      // ============ ADMIN APIs ============
       if (path.startsWith('/api/admin/')) {
         const adminSecret = request.headers.get('X-Admin-Secret');
         if (!env.ADMIN_SECRET || adminSecret !== env.ADMIN_SECRET) {
@@ -618,7 +619,7 @@ export default {
       return json({ ok: false, error: 'not_found' }, 404);
     }
 
-    // ========== TELEGRAM WEBHOOK (بدون grammy) ==========
+    // ========== TELEGRAM WEBHOOK ==========
     if (path === '/webhook' && request.method === 'POST') {
       if (!botToken) return new Response('BOT_TOKEN missing', { status: 500 });
 
@@ -633,9 +634,7 @@ export default {
           const fromFirstName = message.from.first_name || null;
           const fromLang = message.from.language_code || 'en';
 
-          // 👇 أمر /start
           if (text.startsWith('/start')) {
-            // 1. تسجيل المستخدم في الداتابيز
             await createOrUpdateUser(env.DB, {
               telegram_id: fromId,
               username: fromUsername,
@@ -643,7 +642,6 @@ export default {
               language: fromLang,
             });
 
-            // 2. معالجة الإحالة (لو فيه start_param)
             const parts = text.split(' ');
             const payload = parts[1];
             if (payload) {
@@ -659,7 +657,6 @@ export default {
               }
             }
 
-            // 3. إرسال رسالة واحدة بزرار Open App
             const workerUrl = env.WORKER_URL || url.origin;
             const isAdmin = await isAdminDB(env.DB, fromId);
 
