@@ -306,7 +306,7 @@ function toast(msg, type = 'info') {
 async function showAd(blockId) {
   if (!blockId) { toast('No ad configured', 'error'); return false; }
   try {
-    const controller = AdController.init({ blockId: blockId, debug: false });
+    const controller = window.Adsgram.init({ blockId: blockId, debug: false });
     const result = await controller.show();
     return result.done === true;
   } catch (e) {
@@ -378,12 +378,10 @@ function startCooldown(remainingMs) {
   tick(); STATE.cooldownTimer = setInterval(tick, 1000);
 }
 
-// 👇 تعديل: doMine بقى يشغل إعلان الأول
 async function doMine() {
   const btn = document.getElementById('claimBtn');
   btn.disabled = true;
 
-  // 1. نشغل الإعلان الأول
   const watched = await showAd(STATE.adBlockId);
   if (!watched) {
     toast('You must watch the full ad to claim', 'error');
@@ -391,7 +389,6 @@ async function doMine() {
     return;
   }
 
-  // 2. لو الإعلان اتشاف، نبعت طلب التعدين للسيرفر
   const res = await api('/api/mine', 'POST', { ad_watched: true });
   if (res.ok) {
     STATE.balance = res.newBalance;
@@ -420,7 +417,6 @@ async function completeTask(id) {
   const task = STATE.tasks.find(t => t.id === id);
   if (!task) return toast('Task not found', 'error');
 
-  // لو التاسك إعلان، نعرضه الأول
   if (task.type === 'ads') {
     const watched = await showAd(STATE.adBlockId);
     if (!watched) {
