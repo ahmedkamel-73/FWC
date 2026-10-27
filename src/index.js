@@ -246,17 +246,30 @@ export default {
         return json({ ok: true, language: lang });
       }
 
-      // 👇 /api/mine بقى بيشترط ad_watched
+      // 👇 /api/mine شغال عادي من غير إعلان
       if (path === '/api/mine' && request.method === 'POST' && tgUser) {
-        const body = await request.json().catch(() => ({}));
-        if (body.ad_watched !== true) {
-          return json({ ok: false, error: 'ad_required' }, 400);
-        }
-
         const check = await canMine(env.DB, tgUser.id);
         if (!check.ok) return json({ ok: false, error: check.reason, detail: check }, 400);
         const res = await doMine(env.DB, tgUser.id);
         return json({ ok: true, ...res });
+      }
+
+      // 👇 /api/bonus — مكافأة إضافية بعد مشاهدة إعلان
+      if (path === '/api/bonus' && request.method === 'POST' && tgUser) {
+        const bonusMult = await getEconomyConfig(env.DB, 'ad_free_mult') || 2;
+        const baseAmount = await getCurrentMiningAmount(env.DB);
+        const totalBonus = baseAmount * bonusMult;
+
+        await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+          .bind(totalBonus, tgUser.id).run();
+
+        const user = await getUser(env.DB, tgUser.id);
+
+        return json({
+          ok: true,
+          amount: totalBonus,
+          newBalance: user?.balance || 0,
+        });
       }
 
       if (path === '/api/wallet/verify' && request.method === 'POST' && tgUser) {
