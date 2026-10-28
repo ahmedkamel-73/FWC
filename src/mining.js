@@ -116,12 +116,16 @@ export async function canWithdraw(db, env, telegram_id) {
     return { ok: false, reason: '24h', remaining: delayHours - hoursPassed };
   }
 
-  // شرط الـ Hold
+  // شرط الـ Hold - بداية من السحب الثاني فقط
   const holdAmount = await getEconomyConfig(db, 'withdraw_hold_amount') || 0;
   if (holdAmount > 0) {
-    const onChainBalance = await getJettonBalanceFromChain(env, user.wallet);
-    if (onChainBalance < holdAmount) {
-      return { ok: false, reason: 'hold_required', need: holdAmount, current: onChainBalance };
+    const wdCount = await db.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE telegram_id = ? AND status != 'rejected'`).bind(telegram_id).first();
+    const isFirstWithdraw = (wdCount?.c || 0) === 0;
+    if (!isFirstWithdraw) {
+      const onChainBalance = await getJettonBalanceFromChain(env, user.wallet);
+      if (onChainBalance < holdAmount) {
+        return { ok: false, reason: 'hold_required', need: holdAmount, current: onChainBalance };
+      }
     }
   }
 
