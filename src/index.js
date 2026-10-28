@@ -261,13 +261,30 @@ export default {
       }
 
       if (path === '/api/bonus' && request.method === 'POST' && tgUser) {
+        // === FIXED: Either-Or 4h - Bonus cancels normal claim ===
+        const check = await canMine(env.DB, tgUser.id);
+        if (!check.ok) return json({ ok: false, error: check.reason, remaining: check.remaining, detail: check }, 400);
+        
         const bonusMult = await getEconomyConfig(env.DB, 'ad_free_mult') || 2;
         const baseAmount = await getCurrentMiningAmount(env.DB);
         const totalBonus = baseAmount * bonusMult;
-        await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
-          .bind(totalBonus, tgUser.id).run();
-        const user = await getUser(env.DB, tgUser.id);
-        return json({ ok: true, amount: totalBonus, newBalance: user?.balance || 0 });
+        const now = Date.now();
+        
+        await env.DB.prepare(`UPDATE users SET balance = balance + ?, last_mine = ?, first_mine_at = COALESCE(first_mine_at, ?), created_at = COALESCE(created_at, ?) WHERE telegram_id = ?`)
+          .bind(totalBonus, now, now, now, tgUser.id).run();
+        
+        await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, ?)`).bind(tgUser.id, totalBonus, now).run();
+        
+        const user = await env.DB.prepare(`SELECT * FROM users WHERE telegram_id = ?`).bind(tgUser.id).first();
+        if (user?.referral_by) {
+          const refPercent = await getEconomyConfig(env.DB, 'referral_percent') || 5;
+          const refBonus = totalBonus * (refPercent / 100);
+          await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`).bind(refBonus, user.referral_by).run();
+          await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, ?, ?)`).bind(user.referral_by, tgUser.id, refBonus, now).run();
+        }
+        
+        const newUser = await env.DB.prepare(`SELECT balance FROM users WHERE telegram_id = ?`).bind(tgUser.id).first();
+        return json({ ok: true, amount: totalBonus, newBalance: newUser?.balance || 0 });
       }
 
       if (path === '/api/wallet/verify' && request.method === 'POST' && tgUser) {
@@ -318,26 +335,9 @@ export default {
       if (path === '/api/tasks' && tgUser) {
         const tasks = await getDailyTasks(env.DB);
         const date = new Date().toISOString().split('T')[0];
-        let progress = {};
-        let progressList = [];
-        try {
-          progress = await getUserDailyProgress(env.DB, tgUser.id, date);
-          // If progress is map (new), also create list for old frontend
-          if (progress && typeof progress === 'object' && !Array.isArray(progress)) {
-            progressList = Object.keys(progress);
-          } else {
-            progressList = progress;
-            // Convert list to map for new frontend
-            const map = {};
-            for (const tid of progressList) map[tid] = (map[tid] || 0) + 1;
-            progress = map;
-          }
-        } catch(e) {
-          progress = {};
-          progressList = [];
-        }
+        const progress = await getUserDailyProgress(env.DB, tgUser.id, date);
         const streak = await getCheckinStreak(env.DB, tgUser.id);
-        return json({ ok: true, tasks, progress, progressList, date, streak });
+        return json({ ok: true, tasks, progress, date, streak });
       }
 
       if (path === '/api/checkin' && request.method === 'POST' && tgUser) {
@@ -349,29 +349,21 @@ export default {
       }
 
       if (path.startsWith('/api/tasks/') && request.method === 'POST' && tgUser) {
-        try {
-          const taskId = path.split('/')[3];
-          if (!taskId) return json({ ok: false, error: 'invalid_task' }, 400);
+        const taskId = path.split('/')[3];
+        if (!taskId) return json({ ok: false, error: 'invalid_task' }, 400);
 
-          const date = new Date().toISOString().split('T')[0];
+        const date = new Date().toISOString().split('T')[0];
 
-          if (taskId === 'checkin') {
-            const already = await hasCheckedInToday(env.DB, tgUser.id, date);
-            if (already) return json({ ok: false, error: 'already_checked_in' }, 400);
-            const r = await doCheckin(env.DB, tgUser.id, date);
-            return json({ ok: true, reward: r.reward, streak: r.streak });
-          }
-
-          const result = await doTask(env.DB, tgUser.id, taskId, date, env);
-          if (!result.ok) {
-            // Return detailed error for debugging
-            return json({ ok: false, error: result.reason, detail: result.detail || null, count: result.count || 0, max: result.max || 0 }, 400);
-          }
-          return json({ ok: true, reward: result.reward, newBalance: result.newBalance, count: result.count || 1 });
-        } catch(e) {
-          console.error('Tasks API error:', e.message, e.stack);
-          return json({ ok: false, error: 'server_error', detail: e.message }, 500);
+        if (taskId === 'checkin') {
+          const already = await hasCheckedInToday(env.DB, tgUser.id, date);
+          if (already) return json({ ok: false, error: 'already_checked_in' }, 400);
+          const r = await doCheckin(env.DB, tgUser.id, date);
+          return json({ ok: true, reward: r.reward, streak: r.streak });
         }
+
+        const result = await doTask(env.DB, tgUser.id, taskId, date, env);
+        if (!result.ok) return json({ ok: false, error: result.reason }, 400);
+        return json({ ok: true, reward: result.reward, newBalance: result.newBalance });
       }
 
       if (path === '/api/withdraw/estimate' && tgUser) {
