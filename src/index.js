@@ -493,9 +493,59 @@ export default {
         if (balanceMatch && request.method === 'POST') {
           const targetId = parseInt(balanceMatch[1]);
           const body = await request.json();
-          if (typeof body.balance !== 'number') return json({ ok: false, error: 'invalid' }, 400);
-          await env.DB.prepare(`UPDATE users SET balance = ? WHERE telegram_id = ?`).bind(body.balance, targetId).run();
-          return json({ ok: true });
+          const amount = typeof body.amount === 'number' ? body.amount : body.balance;
+          if (typeof amount !== 'number') return json({ ok: false, error: 'invalid' }, 400);
+          const mode = body.mode || (typeof body.balance === 'number' ? 'set' : 'add');
+          if (mode === 'set') {
+            await env.DB.prepare(`UPDATE users SET balance = ? WHERE telegram_id = ?`).bind(amount, targetId).run();
+          } else {
+            await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`).bind(amount, targetId).run();
+          }
+          const newU = await env.DB.prepare(`SELECT balance FROM users WHERE telegram_id = ?`).bind(targetId).first();
+          return json({ ok: true, newBalance: newU?.balance || 0 });
+        }
+
+        const resetWdMatch = path.match(/^\/api\/admin\/users\/(\d+)\/withdrawals\/reset$/);
+        if (resetWdMatch && request.method === 'POST') {
+          const targetId = parseInt(resetWdMatch[1]);
+          const del = await env.DB.prepare(`DELETE FROM withdrawals WHERE telegram_id = ?`).bind(targetId).run();
+          return json({ ok: true, deleted: del.meta?.changes || 0 });
+        }
+
+        const holdCheckMatch = path.match(/^\/api\/admin\/users\/(\d+)\/hold-check$/);
+        if (holdCheckMatch) {
+          const targetId = parseInt(holdCheckMatch[1]);
+          const user = await env.DB.prepare(`SELECT * FROM users WHERE telegram_id = ?`).bind(targetId).first();
+          if (!user) return json({ ok: false, error: 'not_found' }, 404);
+          if (!user.wallet) return json({ ok: true, wallet: null, jettonBalance: 0 });
+          const apiKey = env.TONCENTER_API_KEY || '';
+          let jettonBal = 0;
+          try {
+            if (apiKey && CONFIG.jetton) {
+              const res = await fetch(`https://toncenter.com/api/v3/jetton/wallets?owner_address=${user.wallet}&jetton_address=${CONFIG.jetton}&limit=1`, {
+                headers: { 'X-API-Key': apiKey }
+              });
+              const data = await res.json();
+              if (data.jetton_wallets && data.jetton_wallets.length > 0) {
+                jettonBal = parseFloat(data.jetton_wallets[0].balance) / 1e9;
+              }
+            }
+          } catch {}
+          const wdCount = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE telegram_id = ? AND status != 'rejected'`).bind(targetId).first();
+          return json({ ok: true, wallet: user.wallet, jettonBalance: jettonBal, withdrawCount: wdCount?.c || 0 });
+        }
+
+        if (path === '/api/admin/hold' && request.method === 'GET') {
+          const val = await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'withdraw_hold_amount'`).first();
+          const cfg = val?.value ? parseFloat(val.value) : (CONFIG.withdraw_hold_amount || 0);
+          return json({ ok: true, holdAmount: cfg });
+        }
+        if (path === '/api/admin/hold' && request.method === 'POST') {
+          const body = await request.json();
+          const amount = parseFloat(body.amount);
+          if (isNaN(amount) || amount < 0) return json({ ok: false, error: 'invalid' }, 400);
+          await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('withdraw_hold_amount', ?)`).bind(String(amount)).run();
+          return json({ ok: true, holdAmount: amount });
         }
 
         if (path === '/api/admin/tasks' && request.method === 'GET') {
