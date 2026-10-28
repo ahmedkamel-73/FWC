@@ -517,7 +517,9 @@ export default {
           const targetId = parseInt(holdCheckMatch[1]);
           const user = await env.DB.prepare(`SELECT * FROM users WHERE telegram_id = ?`).bind(targetId).first();
           if (!user) return json({ ok: false, error: 'not_found' }, 404);
-          if (!user.wallet) return json({ ok: true, wallet: null, jettonBalance: 0 });
+          const cfgHold = await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'withdraw_hold_amount'`).first();
+          const holdAmount = cfgHold?.value ? parseFloat(cfgHold.value) : (CONFIG.withdraw_hold_amount || 1000);
+          if (!user.wallet) return json({ ok: true, wallet: null, jettonBalance: 0, withdrawCount: 0, holdAmount });
           const apiKey = env.TONCENTER_API_KEY || '';
           let jettonBal = 0;
           try {
@@ -530,9 +532,11 @@ export default {
                 jettonBal = parseFloat(data.jetton_wallets[0].balance) / 1e9;
               }
             }
-          } catch {}
+          } catch (e) {
+            // API error, return 0
+          }
           const wdCount = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE telegram_id = ? AND status != 'rejected'`).bind(targetId).first();
-          return json({ ok: true, wallet: user.wallet, jettonBalance: jettonBal, withdrawCount: wdCount?.c || 0 });
+          return json({ ok: true, wallet: user.wallet, jettonBalance: jettonBal, withdrawCount: wdCount?.c || 0, holdAmount });
         }
 
         if (path === '/api/admin/hold' && request.method === 'GET') {
