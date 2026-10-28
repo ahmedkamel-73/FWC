@@ -246,8 +246,8 @@ function updateUI(res){
   document.getElementById('rateVal').textContent='+'+STATE.miningAmount.toFixed(2)+' per claim';
   document.getElementById('farmingInfo').textContent=STATE.miningAmount+' FWC / 4h';
   document.getElementById('bonusInfo').textContent='+'+STATE.bonus+'%';
-  const holdingPct=Math.min(100,STATE.holding/25000*100); document.getElementById('holdingBar').style.width=holdingPct+'%';
-  document.getElementById('nextTier').textContent=(25000-STATE.holding>0?(25000-STATE.holding).toLocaleString()+' to next':'MAX');
+  // holding غير موجود في DB - نستخدم balance كمؤشر مؤقت
+  const holdingPct=Math.min(100,(STATE.balance||0)/25000*100); const bar=document.getElementById('holdingBar'); if(bar) bar.style.width=holdingPct+'%'; const nt=document.getElementById('nextTier'); if(nt) nt.textContent='';
   document.getElementById('minedToday').textContent=res.mined_today||0; document.getElementById('totalClaimed').textContent=res.total_claimed||0;
   document.getElementById('withdrawBalance').textContent=STATE.balance;
   // تحديث معلومات السحب من الأدمن
@@ -305,14 +305,12 @@ async function loadFriends(){ const res=await api('/api/referral'); if(res.ok){ 
 async function loadLeaderboard(){ const res=await api('/api/leaderboard'); if(!res.ok) return; const list=document.getElementById('leaderboardList'); list.innerHTML=''; (res.users||[]).forEach((u,i)=>{ const div=document.createElement('div'); div.className='glass'; div.style.cssText='border-radius:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between'; div.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:50%;background:${i<3?'linear-gradient(100deg,#FFF2A8,#FFD700)':'#1E1E1E'};color:${i<3?'#3D2E00':'#8B7F6B'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i+1}</div><div><div style="font-size:12px;font-weight:700">${u.username||'User '+u.telegram_id}</div><div style="font-size:10px;color:#8B7F6B">${u.balance?.toFixed?.(1)||0} FWC</div></div></div><div style="font-size:12px;font-weight:700" class="gold-text">${u.balance?.toFixed?.(0)||0}</div>`; list.appendChild(div); }); document.getElementById('topMinersStats').innerHTML=`<div class="glass" style="border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:#8B7F6B">TOTAL MINED</div><div style="font-size:14px;font-weight:700;margin-top:2px">${(res.total_mined||0).toFixed(0)}</div></div><div class="glass" style="border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:#8B7F6B">USERS</div><div style="font-size:14px;font-weight:700;margin-top:2px">${res.total_users||0}</div></div>`; }
 
 function loadTiers(){
-  const tiers=[{hold:2500,bonus:10,label:'Bronze'},{hold:5000,bonus:25,label:'Silver'},{hold:10000,bonus:50,label:'Gold'},{hold:15000,bonus:75,label:'Platinum'},{hold:25000,bonus:100,label:'Diamond'}];
-  const list=document.getElementById('tiersList'); list.innerHTML='';
-  tiers.forEach(t=>{
-    const achieved=STATE.holding>=t.hold;
-    const div=document.createElement('div'); div.style.cssText='position:relative;display:flex;align-items:center;gap:16px;padding:12px 12px 12px 32px;border-radius:12px;border:1px solid;'+(achieved?'background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.25)':'background:rgba(26,26,26,0.6);border-color:#2A2A2A');
-    div.innerHTML=`<div style="position:absolute;left:0;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid;transform:translateX(-50%);${achieved?'background:#FFD700;border-color:#FFD700;color:#3D2E00':'background:#1E1E1E;border-color:#2A2A2A;color:#555'}"><span style="font-size:10px;font-weight:700">${t.label[0]}</span></div><div style="flex:1;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:700">${t.label} <span style="font-size:10px;color:#8B7F6B">${t.hold.toLocaleString()}</span></div></div><div style="font-size:13px;font-weight:900;padding:4px 10px;border-radius:20px;${achieved?'background:#FFD700;color:#3D2E00':'background:#1E1E1E;color:#666'}">+${t.bonus}%</div></div>`;
-    list.appendChild(div);
-  });
+  // holding tiers غير موجودة في قاعدة البيانات الحالية - نخفي القسم حتى لا يسبب مشاكل
+  const el = document.getElementById('tiersList');
+  if(el){
+    const container = el.closest('.glass');
+    if(container) container.style.display='none';
+  }
 }
 
 document.getElementById('maxBtn').onclick=()=>{ document.getElementById('withdrawAmount').value=Math.floor(STATE.balance); updateWithdraw(); };
