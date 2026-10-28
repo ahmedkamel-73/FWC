@@ -22,6 +22,8 @@ export async function initDB(db) {
   );`).run();
 
   try { await db.prepare(`ALTER TABLE users ADD COLUMN referred_bonus_paid INTEGER DEFAULT 0`).run(); } catch (e) {}
+  try { await db.prepare(`ALTER TABLE users ADD COLUMN last_bonus_at INTEGER`).run(); } catch (e) {}
+  try { await db.prepare(`ALTER TABLE users ADD COLUMN last_mine INTEGER`).run(); } catch (e) {}
 
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC);`).run();
   await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet);`).run();
