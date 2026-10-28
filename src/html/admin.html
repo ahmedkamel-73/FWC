@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
-<head>
+<head><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>FWC Admin Panel</title>
@@ -336,7 +357,7 @@ async function loadTab() {
   try {
     switch (STATE.tab) {
       case 'dashboard': await loadStats(); await loadEconomy(); break;
-      case 'users': await loadUsers(); break;
+      case 'users': await loadHold(); await loadUsers(); break;
       case 'mining': await loadEconomy(); break;
       case 'tasks': await loadTasksAdmin(); break;
       case 'withdrawals': await loadWithdrawals(); break;
@@ -445,40 +466,55 @@ function renderUsers(el) {
     <div class="section">
       <div class="section-title">
         <span>Users (${STATE.users.length})</span>
-        <input type="text" class="search-input" placeholder="Search user..." oninput="debounceSearch(this.value)">
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" class="search-input" placeholder="Search user..." oninput="debounceSearch(this.value)" style="padding:6px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:12px;">
+          <button class="btn btn-sm btn-primary" onclick="openBalanceModal()">💰 Add Balance</button>
+        </div>
+      </div>
+      <div style="background:rgba(200,255,60,0.08);border:1px solid rgba(200,255,60,0.2);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:11px;">
+        <b style="color:var(--accent);">💡 Hold Test:</b> <span style="color:var(--text-muted);">First withdraw free, second requires 1000 FWC Hold in TON wallet. Use Add Balance to test.</span>
       </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th>Name</th>
-              <th>Username</th>
               <th>Balance</th>
               <th>Wallet</th>
               <th>Status</th>
-              <th>Action</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            ${STATE.users.length === 0 ? '<tr><td colspan="6" class="empty">No users</td></tr>' :
+            ${STATE.users.length === 0 ? '<tr><td colspan="5" class="empty">No users</td></tr>' :
               STATE.users.map(u => `
                 <tr>
                   <td>
                     <div style="font-weight:700;">${u.first_name || '—'}</div>
-                    <div style="font-size:10px;color:var(--text-muted);">ID: ${u.telegram_id}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">ID: ${u.telegram_id} ${u.username ? '@'+u.username : ''}</div>
                   </td>
-                  <td>${u.username ? '@' + u.username : '—'}</td>
-                  <td style="font-weight:700;">${(u.balance || 0).toFixed(2)}</td>
-                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? u.wallet.slice(0, 10) + '...' : '—'}</td>
+                  <td>
+                    <div style="font-weight:700;font-size:13px;">${(u.balance || 0).toFixed(2)} FWC</div>
+                    <div style="display:flex;gap:4px;margin-top:4px;">
+                      <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;background:rgba(200,255,60,0.15);" onclick="quickAddBalance(${u.telegram_id}, 1000)">+1k</button>
+                      <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;background:rgba(200,255,60,0.15);" onclick="quickAddBalance(${u.telegram_id}, 5000)">+5k</button>
+                      <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;" onclick="openBalanceModal(${u.telegram_id})">Edit</button>
+                    </div>
+                  </td>
+                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? `<span title="${u.wallet}">${u.wallet.slice(0, 6)}...${u.wallet.slice(-4)} <button class="btn btn-sm" style="padding:1px 4px;" onclick="copyWallet('${u.wallet}')">📋</button></span>` : '—'}</td>
                   <td>
                     ${u.is_banned ?
                       `<span class="badge-status badge-banned">Banned</span>` :
                       `<span class="badge-status badge-active">Active</span>`}
+                    <div style="font-size:10px;color:var(--text-muted);margin-top:2px;">${u.last_mine ? 'Mined' : 'No mine'}</div>
                   </td>
                   <td>
-                    <button class="btn btn-sm ${u.is_banned ? 'btn-primary' : 'btn-danger'}" onclick="toggleBan(${u.telegram_id}, ${u.is_banned})">
-                      ${u.is_banned ? 'Unban' : 'Ban'}
-                    </button>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                      <button class="btn btn-sm ${u.is_banned ? 'btn-primary' : 'btn-danger'}" onclick="toggleBan(${u.telegram_id}, ${u.is_banned})">
+                        ${u.is_banned ? 'Unban' : 'Ban'}
+                      </button>
+                      <button class="btn btn-sm" onclick="resetWithdrawals(${u.telegram_id})" title="Delete withdrawals for Hold test">🔄 Reset WDs</button>
+                    </div>
                   </td>
                 </tr>
               `).join('')}
@@ -486,8 +522,73 @@ function renderUsers(el) {
         </table>
       </div>
     </div>
+    <div id="balanceModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:90%;max-width:380px;">
+        <h3 style="font-size:14px;margin-bottom:12px;">💰 Manage Balance</h3>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label>Telegram ID</label>
+          <input type="number" id="bal_tg_id" placeholder="921627899">
+        </div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label>Amount (negative to subtract)</label>
+          <input type="number" id="bal_amount" placeholder="5000">
+        </div>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label>Mode</label>
+          <select id="bal_mode">
+            <option value="add">Add (+)</option>
+            <option value="set">Set (=)</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="submitBalance()">Save</button>
+          <button class="btn" style="flex:1;" onclick="closeBalanceModal()">Cancel</button>
+        </div>
+        <div id="bal_result" style="margin-top:10px;font-size:11px;color:var(--text-muted);"></div>
+      </div>
+    </div>
   `;
 }
+
+function openBalanceModal(tgId = null) {
+  document.getElementById('balanceModal').style.display = 'flex';
+  if(tgId) document.getElementById('bal_tg_id').value = tgId;
+}
+function closeBalanceModal() {
+  document.getElementById('balanceModal').style.display = 'none';
+}
+async function quickAddBalance(tgId, amount) {
+  if(!confirm(`Add ${amount} FWC to ${tgId}?`)) return;
+  const res = await api(`/api/admin/users/${tgId}/balance`, 'POST', { amount, mode: 'add' });
+  if(res.ok) {
+    toast(`+${amount} FWC added ✅`, 'success');
+    await loadUsers();
+    renderContent();
+  } else toast('Error: ' + (res.error||''), 'error');
+}
+async function submitBalance() {
+  const tgId = parseInt(document.getElementById('bal_tg_id').value);
+  const amount = parseFloat(document.getElementById('bal_amount').value);
+  const mode = document.getElementById('bal_mode').value;
+  if(!tgId || isNaN(amount)) { document.getElementById('bal_result').textContent = 'Invalid input'; return; }
+  const res = await api(`/api/admin/users/${tgId}/balance`, 'POST', { amount, mode });
+  if(res.ok) {
+    document.getElementById('bal_result').textContent = `Success! New balance: ${res.newBalance?.toFixed(2) || ''}`;
+    toast('Balance updated ✅', 'success');
+    await loadUsers();
+    setTimeout(()=>{ closeBalanceModal(); renderContent(); }, 800);
+  } else {
+    document.getElementById('bal_result').textContent = 'Error: ' + (res.error||'');
+  }
+}
+async function resetWithdrawals(tgId) {
+  if(!confirm(`Delete ALL withdrawals for ${tgId}? This resets Hold test to first withdraw.`)) return;
+  const res = await api(`/api/admin/users/${tgId}/withdrawals/reset`, 'POST');
+  if(res.ok) {
+    toast(`Withdrawals reset (${res.deleted} deleted) ✅`, 'success');
+  } else toast('Error: ' + (res.error||''), 'error');
+}
+
 
 let searchTimeout = null;
 function debounceSearch(q) {
@@ -1111,8 +1212,13 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;
+window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.saveHold = saveHold;
+window.openBalanceModal = openBalanceModal;
+window.closeBalanceModal = closeBalanceModal;
+window.quickAddBalance = quickAddBalance;
+window.submitBalance = submitBalance;
+window.resetWithdrawals = resetWithdrawals;
 window.checkPassword = checkPassword;
 </script>
-</body>
+<script>document.addEventListener('click', (e)=>{ const m=document.getElementById('balanceModal'); if(m && e.target===m) closeBalanceModal(); });</script><script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
