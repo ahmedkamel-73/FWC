@@ -524,17 +524,11 @@ export default {
           let jettonBal = 0;
           try {
             if (apiKey && CONFIG.jetton) {
-              const res = await fetch(`https://toncenter.com/api/v3/jetton/wallets?owner_address=${user.wallet}&jetton_address=${CONFIG.jetton}&limit=1`, {
-                headers: { 'X-API-Key': apiKey }
-              });
-              const data = await res.json();
-              if (data.jetton_wallets && data.jetton_wallets.length > 0) {
-                jettonBal = parseFloat(data.jetton_wallets[0].balance) / 1e9;
-              }
+              const r = await fetch(`https://toncenter.com/api/v3/jetton/wallets?owner_address=${user.wallet}&jetton_address=${CONFIG.jetton}&limit=1`, { headers: { 'X-API-Key': apiKey } });
+              const d = await r.json();
+              if (d.jetton_wallets && d.jetton_wallets.length > 0) jettonBal = parseFloat(d.jetton_wallets[0].balance) / 1e9;
             }
-          } catch (e) {
-            // API error, return 0
-          }
+          } catch {}
           const wdCount = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE telegram_id = ? AND status != 'rejected'`).bind(targetId).first();
           return json({ ok: true, wallet: user.wallet, jettonBalance: jettonBal, withdrawCount: wdCount?.c || 0, holdAmount });
         }
