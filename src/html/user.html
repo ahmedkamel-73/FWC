@@ -106,25 +106,18 @@
 </style>
 
 <script>
-// === AUTO AD: In-App Interstitial - Once per session, 5 sec delay, max profit ===
+// AUTO: In-App Interstitial - 2 ads per 6 min, first after 5 sec
 document.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
-    try {
+    try{
       if(typeof show_12138342 === 'function'){
-        console.log('[Auto] Showing In-App Interstitial');
+        console.log('[Auto] In-App Interstitial');
         show_12138342({
           type: 'inApp',
-          inAppSettings: {
-            frequency: 2,
-            capping: 0.1,
-            interval: 30,
-            timeout: 5,
-            everyPage: false
-          }
+          inAppSettings: { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false }
         });
-        sessionStorage.setItem('fwc_auto_ad_shown','1');
       }
-    } catch(e){ console.log('Auto ad error', e); }
+    }catch(e){ console.log('Auto err', e); }
   }, 1000);
 });
 </script>
@@ -158,10 +151,10 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 
   
-  <div style="margin:12px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center">
-    <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD • SUPPORTS FWC</div>
-    <div id="banner-top"><iframe data-aa="2322345" src="//ad.a-ads.com/2322345?size=320x50" style="width:320px;height:50px;border:0;max-width:100%"></iframe></div>
-  </div>
+<div style="margin:12px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center">
+  <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD • SUPPORTS FWC</div>
+  <div id="banner-top"><iframe data-aa="2322345" src="//ad.a-ads.com/2322345?size=320x50" style="width:320px;height:50px;border:0;max-width:100%"></iframe></div>
+</div>
 
   <div class="content">
     <div id="tab-mine">
@@ -279,10 +272,10 @@ document.addEventListener('DOMContentLoaded', function(){
   </div>
 
   
-  <div style="margin:12px 16px 90px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center">
-    <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD</div>
-    <div id="banner-bottom"><iframe data-aa="2322345" src="//ad.a-ads.com/2322345?size=320x50" style="width:320px;height:50px;border:0;max-width:100%"></iframe></div>
-  </div>
+<div style="margin:12px 16px 90px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center">
+  <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD</div>
+  <div id="banner-bottom"><iframe data-aa="2322345" src="//ad.a-ads.com/2322345?size=320x50" style="width:320px;height:50px;border:0;max-width:100%"></iframe></div>
+</div>
 
   <nav class="tab-bar">
     <button class="tab-btn active" data-tab="mine" onclick="switchTab('mine')">
@@ -354,24 +347,22 @@ function toast(msg, type = 'info') {
 
 // ========== ADSGRAM ==========
 async function showAd(blockId) {
-  blockId = blockId || STATE.adBlockId || '56360';
-  if (blockId && window.Adsgram) {
-    try {
-      const controller = window.Adsgram.init({ blockId: String(blockId), debug: true });
-      const result = await controller.show();
-      console.log('Adsgram result', result);
-      return true; // debug true -> always count as watched
-    } catch (e) {
-      console.log('Adsgram err', e.message||e);
-    }
+  blockId = blockId || STATE.adBlockId || '12138342';
+  if(blockId && window.Adsgram){
+    try{
+      const c = window.Adsgram.init({blockId: String(blockId), debug: true});
+      const r = await c.show();
+      console.log('[Adsgram]', r);
+      return true;
+    }catch(e){ console.log('Adsgram err', e.message||e); }
   }
-  try {
-    if (typeof show_12138342 === 'function') { await show_12138342(); return true; }
-    if (typeof window.show_12138342 === 'function') { await window.show_12138342(); return true; }
-  } catch (e) { console.log('Monetag err', e); }
-  // In debug, allow anyway so task doesn't stuck
+  try{
+    if(typeof show_12138342 === 'function'){ await show_12138342(); return true; }
+    if(typeof window.show_12138342 === 'function'){ await window.show_12138342(); return true; }
+  }catch(e){ console.log('Monetag err', e); return true; }
   return true;
 }
+
 
 // ========== TON CONNECT ==========
 function initTonConnect() {
@@ -466,68 +457,70 @@ function startCooldown(remainingMs) {
 }
 
 async function doMine() {
-  // === MAX PROFIT: Claim requires ad ===
-  const claimBtn = document.getElementById('claimBtn');
-  const origText = claimBtn ? claimBtn.innerHTML : '';
-  if(claimBtn){ claimBtn.innerHTML = '<span class="spinner"></span> Loading Ad...'; claimBtn.disabled = true; }
+  const btn = document.getElementById('claimBtn');
+  const bonusBtn = document.getElementById('bonusBtn');
+  const origHTML = btn ? btn.innerHTML : '';
+  if(btn){ btn.innerHTML = '<span class="spinner"></span> Loading Ad...'; btn.disabled = true; }
+  if(bonusBtn) bonusBtn.disabled = true;
+  
   const watched = await showAd(STATE.adBlockId);
   if(!watched){
     toast('لازم تشوف الإعلان عشان تطالب','error');
-    if(claimBtn){ claimBtn.innerHTML = origText; claimBtn.disabled = false; }
+    if(btn){ btn.innerHTML = origHTML; btn.disabled = false; }
+    if(bonusBtn) bonusBtn.disabled = false;
     return;
   }
-  if(claimBtn){ claimBtn.innerHTML = '<span class="spinner"></span> Mining...'; }
- const bonusBtn=document.getElementById('bonusBtn'); if(bonusBtn) bonusBtn.disabled=true; 
-  const btn = document.getElementById('claimBtn');
-  const bonusBtn = document.getElementById('bonusBtn');
-  btn.disabled = true;
-  bonusBtn.disabled = true;
+  
+  if(btn) btn.innerHTML = '<span class="spinner"></span> Mining...';
   const res = await api('/api/mine', 'POST', {});
-  if (res.ok) {
+  if(res.ok){
     STATE.balance = res.newBalance;
-    toast(`+${res.amount} FWC ✅ مطالبة عادية`, 'success');
-    if (tg) tg.HapticFeedback?.notificationOccurred('success');
+    toast(`+${res.amount} FWC ✅`, 'success');
+    if(tg) tg.HapticFeedback?.notificationOccurred('success');
     await loadUser();
   } else {
-    if (res.error === 'cooldown') {
+    if(res.error === 'cooldown'){
       startCooldown(res.remaining);
-      toast('انتظر انتهاء الوقت', 'error');
+      toast('انتظر انتهاء الوقت','error');
     } else {
-      toast('Error: ' + (res.error || ''), 'error');
+      toast('Error: '+(res.error||''),'error');
       await loadUser();
+    }
+  }
+  if(btn){ btn.innerHTML = origHTML; }
+}
+
+
+async function watchAdForBonus() {
+  const btn = document.getElementById('bonusBtn');
+  const claimBtn = document.getElementById('claimBtn');
+  if(btn) btn.disabled = true;
+  if(claimBtn) claimBtn.disabled = true;
+  const watched = await showAd(STATE.adBlockId);
+  if(!watched){
+    toast('لازم تشوف الإعلان كامل','error');
+    if(btn) btn.disabled = false;
+    if(claimBtn) claimBtn.disabled = false;
+    return;
+  }
+  const res = await api('/api/bonus', 'POST');
+  if(res.ok){
+    STATE.balance = res.newBalance;
+    toast(`+${res.amount} FWC 🎁`,'success');
+    if(tg) tg.HapticFeedback?.notificationOccurred('success');
+    await loadUser();
+  } else {
+    if(res.error === 'cooldown'){
+      startCooldown(res.remaining);
+      toast('انتظر انتهاء الوقت','error');
+    } else {
+      toast('Error: '+(res.error||''),'error');
+      if(btn) btn.disabled = false;
+      if(claimBtn) claimBtn.disabled = false;
     }
   }
 }
 
-async function watchAdForBonus() { const claimBtn=document.getElementById('claimBtn'); if(claimBtn) claimBtn.disabled=true; 
-  const btn = document.getElementById('bonusBtn');
-  const claimBtn = document.getElementById('claimBtn');
-  btn.disabled = true;
-  claimBtn.disabled = true;
-  const watched = await showAd(STATE.adBlockId);
-  if (!watched) {
-    toast('لازم تشوف الإعلان كامل', 'error');
-    btn.disabled = false;
-    claimBtn.disabled = false;
-    return;
-  }
-  const res = await api('/api/bonus', 'POST');
-  if (res.ok) {
-    STATE.balance = res.newBalance;
-    toast(`+${res.amount} FWC 🎁 مضاعف بالإعلان`, 'success');
-    if (tg) tg.HapticFeedback?.notificationOccurred('success');
-    await loadUser();
-  } else {
-    if (res.error === 'cooldown') {
-      startCooldown(res.remaining);
-      toast('انتظر انتهاء الوقت', 'error');
-    } else {
-      toast('Error: ' + (res.error || ''), 'error');
-      btn.disabled = false;
-      claimBtn.disabled = false;
-    }
-  }
-}
 
 async function doCheckin() { const res = await api('/api/checkin', 'POST'); if (res.ok) { toast(`+${res.reward} FWC • Streak ${res.streak} 🔥`, 'success'); await loadUser(); } else if (res.error === 'already_checked_in') { toast('Already checked in today ✅'); } else { toast('Error: ' + res.error, 'error'); } }
 
