@@ -318,9 +318,26 @@ export default {
       if (path === '/api/tasks' && tgUser) {
         const tasks = await getDailyTasks(env.DB);
         const date = new Date().toISOString().split('T')[0];
-        const progress = await getUserDailyProgress(env.DB, tgUser.id, date);
+        let progress = {};
+        let progressList = [];
+        try {
+          progress = await getUserDailyProgress(env.DB, tgUser.id, date);
+          // If progress is map (new), also create list for old frontend
+          if (progress && typeof progress === 'object' && !Array.isArray(progress)) {
+            progressList = Object.keys(progress);
+          } else {
+            progressList = progress;
+            // Convert list to map for new frontend
+            const map = {};
+            for (const tid of progressList) map[tid] = (map[tid] || 0) + 1;
+            progress = map;
+          }
+        } catch(e) {
+          progress = {};
+          progressList = [];
+        }
         const streak = await getCheckinStreak(env.DB, tgUser.id);
-        return json({ ok: true, tasks, progress, date, streak });
+        return json({ ok: true, tasks, progress, progressList, date, streak });
       }
 
       if (path === '/api/checkin' && request.method === 'POST' && tgUser) {
