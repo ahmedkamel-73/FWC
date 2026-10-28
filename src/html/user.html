@@ -92,7 +92,7 @@ body::before {
 
 .container { max-width: 500px; margin: 0 auto; position: relative; z-index: 2; }
 
-/* ============ SPLASH SCREEN ============ */
+/* ============ SPLASH SCREEN (CALM) ============ */
 #splash-screen {
   position: fixed;
   inset: 0;
@@ -102,167 +102,114 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.8s ease, visibility 0.8s ease;
+  transition: opacity 0.5s ease, visibility 0.5s ease;
   overflow: hidden;
 }
 #splash-screen.hidden-splash { opacity: 0; visibility: hidden; }
 
 .splash-logo {
   position: relative;
-  width: 160px; height: 160px;
+  width: 130px; height: 130px;
   border-radius: 50%;
   background: radial-gradient(circle at 32% 28%, #FFF9E0 0%, #FFE9A8 8%, #E8C766 18%, #D4AF37 32%, #B8860B 55%, #5C4610 82%, #2a2008 100%);
   display: flex; align-items: center; justify-content: center;
-  font-size: 32px; font-weight: 900; color: #2a2008;
+  font-size: 26px; font-weight: 900; color: #2a2008;
   letter-spacing: 0.08em;
-  text-shadow: 0 2px 0 rgba(255,255,255,0.7), 0 -1px 0 rgba(0,0,0,0.4);
+  text-shadow: 0 2px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(0,0,0,0.3);
   box-shadow:
-    0 0 0 3px rgba(139,105,20,0.6), 0 0 0 9px rgba(92,70,16,0.4),
-    0 0 60px rgba(212,175,55,0.8), 0 0 120px rgba(212,175,55,0.4),
-    0 25px 50px rgba(0,0,0,0.95),
-    inset 0 -12px 30px rgba(0,0,0,0.7),
-    inset 0 12px 30px rgba(255,255,255,0.4);
-  animation: splashLogoIn 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, splashPulse 2s ease-in-out 1s infinite;
-  transform: scale(0) rotate(-180deg);
+    0 0 0 3px rgba(139,105,20,0.5),
+    0 0 0 8px rgba(92,70,16,0.3),
+    0 0 50px rgba(212,175,55,0.6),
+    0 20px 40px rgba(0,0,0,0.9),
+    inset 0 -10px 25px rgba(0,0,0,0.6),
+    inset 0 10px 25px rgba(255,255,255,0.35);
+  animation: splashLogoIn 0.7s ease-out forwards;
+  transform: scale(0.8);
   opacity: 0;
 }
 @keyframes splashLogoIn {
-  0% { transform: scale(0) rotate(-180deg); opacity: 0; }
-  60% { transform: scale(1.15) rotate(10deg); opacity: 1; }
-  100% { transform: scale(1) rotate(0); opacity: 1; }
+  to { transform: scale(1); opacity: 1; }
 }
-@keyframes splashPulse {
-  0%, 100% {
-    box-shadow: 0 0 0 3px rgba(139,105,20,0.6), 0 0 0 9px rgba(92,70,16,0.4), 0 0 60px rgba(212,175,55,0.8), 0 0 120px rgba(212,175,55,0.4), 0 25px 50px rgba(0,0,0,0.95), inset 0 -12px 30px rgba(0,0,0,0.7), inset 0 12px 30px rgba(255,255,255,0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 3px rgba(139,105,20,0.9), 0 0 0 9px rgba(92,70,16,0.6), 0 0 90px rgba(255,215,0,1), 0 0 160px rgba(212,175,55,0.6), 0 25px 50px rgba(0,0,0,0.95), inset 0 -12px 30px rgba(0,0,0,0.7), inset 0 12px 30px rgba(255,255,255,0.5);
-  }
-}
+
 .splash-logo::before {
   content: '';
   position: absolute;
   top: 8%; left: 18%;
   width: 42%; height: 32%;
   border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.85), transparent 65%);
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.7), transparent 65%);
   filter: blur(6px);
-  animation: splashSpecular 2s ease-in-out infinite;
-}
-@keyframes splashSpecular {
-  0%, 100% { transform: translate(0, 0); opacity: 0.7; }
-  50% { transform: translate(6px, 3px); opacity: 1; }
-}
-
-.splash-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
   pointer-events: none;
 }
+
+/* حلقة واحدة بس، دوّارة ببطء */
 .splash-ring-1 {
-  width: 240px; height: 240px;
-  border-top-color: rgba(255,215,0,0.7);
-  border-right-color: rgba(212,175,55,0.3);
-  animation: splashRingSpin 3s linear infinite;
-  box-shadow: 0 0 30px rgba(212,175,55,0.4);
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 190px; height: 190px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: rgba(255,215,0,0.6);
+  border-right-color: rgba(212,175,55,0.2);
+  transform: translate(-50%, -50%);
+  animation: splashRingSpin 4s linear infinite;
+  pointer-events: none;
 }
-.splash-ring-2 {
-  width: 300px; height: 300px;
-  border-top-color: rgba(212,175,55,0.4);
-  border-left-color: rgba(255,215,0,0.2);
-  border-style: dashed;
-  animation: splashRingSpin 5s linear infinite reverse;
-  box-shadow: 0 0 40px rgba(212,175,55,0.2);
+@keyframes splashRingSpin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 }
-.splash-ring-3 {
-  width: 360px; height: 360px;
-  border-top-color: rgba(255,215,0,0.2);
-  border-bottom-color: rgba(212,175,55,0.15);
-  animation: splashRingSpin 8s linear infinite;
-}
-@keyframes splashRingSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
 .splash-title {
-  margin-top: 50px;
-  font-size: 26px; font-weight: 900;
+  margin-top: 40px;
+  font-size: 22px; font-weight: 900;
   letter-spacing: 0.15em;
   background: linear-gradient(135deg, #FFF3C4 0%, #FFE9A8 20%, #D4AF37 50%, #B8860B 80%, #8B6914 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text; background-clip: text;
+  -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.8));
-  animation: splashTitleIn 1s ease-out 0.5s forwards, goldShimmer 3s linear infinite;
-  opacity: 0; transform: translateY(20px);
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8));
+  animation: fadeUp 0.6s ease-out 0.3s forwards;
+  opacity: 0;
+  transform: translateY(10px);
   text-align: center;
 }
-@keyframes splashTitleIn { to { opacity: 1; transform: translateY(0); } }
-@keyframes goldShimmer { to { background-position: 200% center; } }
+@keyframes fadeUp {
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .splash-subtitle {
-  margin-top: 8px;
-  font-size: 11px; font-weight: 600;
+  margin-top: 6px;
+  font-size: 10px; font-weight: 600;
   letter-spacing: 0.3em;
-  color: rgba(212,175,55,0.7);
+  color: rgba(212,175,55,0.65);
   font-family: var(--mono);
-  animation: splashTitleIn 1s ease-out 0.8s forwards;
-  opacity: 0; transform: translateY(15px);
+  animation: fadeUp 0.6s ease-out 0.5s forwards;
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .splash-loader {
-  margin-top: 40px;
-  width: 180px; height: 4px;
-  border-radius: 4px;
+  margin-top: 30px;
+  width: 140px; height: 3px;
+  border-radius: 3px;
   background: rgba(212,175,55,0.15);
   overflow: hidden;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.6);
-  animation: splashTitleIn 0.6s ease-out 1s forwards;
-  opacity: 0; transform: translateY(10px);
   position: relative;
+  animation: fadeUp 0.5s ease-out 0.6s forwards;
+  opacity: 0;
+  transform: translateY(8px);
 }
 .splash-loader::before {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(90deg, transparent, #FFD700, #FFF3C4, #FFD700, transparent);
-  animation: splashLoaderMove 1.5s ease-in-out infinite;
-  box-shadow: 0 0 12px rgba(255,215,0,0.8);
-  border-radius: 4px;
+  animation: splashLoaderMove 1.2s ease-in-out infinite;
+  border-radius: 3px;
 }
 @keyframes splashLoaderMove {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
-}
-
-.splash-particle {
-  position: absolute;
-  width: 4px; height: 4px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #FFF3C4, #D4AF37);
-  box-shadow: 0 0 10px rgba(255,215,0,0.8);
-  pointer-events: none;
-  animation: splashParticleFloat 3s ease-out forwards;
-  opacity: 0;
-}
-@keyframes splashParticleFloat {
-  0% { transform: translate(0, 0) scale(0); opacity: 0; }
-  20% { opacity: 1; transform: translate(0, 0) scale(1); }
-  100% { transform: translate(var(--px, 0), var(--py, -100px)) scale(0.3); opacity: 0; }
-}
-
-#splash-screen::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(212,175,55,0.12), transparent 50%);
-  animation: splashBgPulse 3s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes splashBgPulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.1); }
 }
 
 /* ============ HEADER ============ */
@@ -316,6 +263,7 @@ body::before {
   filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
   animation: goldShimmer 4s linear infinite;
 }
+@keyframes goldShimmer { to { background-position: 200% center; } }
 .logo-sub {
   font-size: 9px; color: var(--text-muted);
   font-family: var(--mono);
@@ -1009,11 +957,9 @@ document.addEventListener('DOMContentLoaded', function(){
 </head>
 <body>
 
-<!-- ============ SPLASH SCREEN ============ -->
+<!-- ============ SPLASH SCREEN (CALM) ============ -->
 <div id="splash-screen">
-  <div class="splash-ring splash-ring-1"></div>
-  <div class="splash-ring splash-ring-2"></div>
-  <div class="splash-ring splash-ring-3"></div>
+  <div class="splash-ring-1"></div>
   <div class="splash-logo">FWC</div>
   <div class="splash-title">FWC FARMING</div>
   <div class="splash-subtitle">LIVE • SECURE • EARN</div>
@@ -1195,41 +1141,16 @@ document.addEventListener('DOMContentLoaded', function(){
 <div class="toast" id="toast"></div>
 
 <script>
-// ========== SPLASH SCREEN ==========
+// ========== SPLASH SCREEN (CALM) ==========
 (function initSplash() {
   const splash = document.getElementById('splash-screen');
   if (!splash) return;
   
-  function createParticles() {
-    const centerX = window.innerWidth / 2;
-    const centerY = window.innerHeight / 2;
-    for (let i = 0; i < 20; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'splash-particle';
-      const angle = (Math.PI * 2 * i) / 20 + Math.random() * 0.5;
-      const distance = 80 + Math.random() * 120;
-      const px = Math.cos(angle) * distance;
-      const py = Math.sin(angle) * distance;
-      particle.style.left = centerX + 'px';
-      particle.style.top = centerY + 'px';
-      particle.style.setProperty('--px', px + 'px');
-      particle.style.setProperty('--py', py + 'px');
-      particle.style.animationDelay = (i * 0.05) + 's';
-      particle.style.animationDuration = (2.5 + Math.random() * 1.5) + 's';
-      particle.style.width = (2 + Math.random() * 4) + 'px';
-      particle.style.height = particle.style.width;
-      splash.appendChild(particle);
-      setTimeout(() => particle.remove(), 4000);
-    }
-  }
-  
-  setTimeout(createParticles, 800);
-  setTimeout(createParticles, 1600);
-  
-  const SPLASH_DURATION = 2800;
+  // مدة قصيرة وبسيطة - 1.8 ثانية بس
+  const SPLASH_DURATION = 1800;
   setTimeout(() => {
     splash.classList.add('hidden-splash');
-    setTimeout(() => splash.remove(), 900);
+    setTimeout(() => splash.remove(), 600);
   }, SPLASH_DURATION);
 })();
 
@@ -1343,7 +1264,7 @@ function renderMine() {
   if (STATE.is_banned) { statusEl.textContent = '⛔ ' + t('banned'); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('banned'); return; }
   if (!STATE.wallet) { statusEl.textContent = '⚠️ ' + t('addWallet'); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('addWallet'); btn.onclick = () => switchTab('wallet'); return; }
   if (STATE.canMine.ok) { 
-    statusEl.textContent = '✅ ' + t('ready') + ' - اختر: مطالبة عادية أو مضاعفة بإعلان'; 
+    statusEl.textContent = '✅ ' + t('ready');
     btn.disabled = false; 
     bonusBtn.disabled = false;
     btnText.textContent = `⚡ ${t('claim')} ${STATE.miningAmount.toFixed(2)} FWC`; 
