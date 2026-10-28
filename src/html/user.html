@@ -485,12 +485,36 @@ async function watchAdForBonus() {
 
 async function doCheckin() { const res = await api('/api/checkin', 'POST'); if (res.ok) { toast(`+${res.reward} FWC • Streak ${res.streak} 🔥`, 'success'); await loadUser(); } else if (res.error === 'already_checked_in') { toast('Already checked in today ✅'); } else { toast('Error: ' + res.error, 'error'); } }
 
-async function loadTasks() { const res = await api('/api/tasks'); if (!res.ok) return; STATE.tasks = res.tasks; STATE.progress = res.progress; renderTasks(); }
+async function loadTasks() { 
+  const res = await api('/api/tasks'); 
+  if (!res.ok) return; 
+  STATE.tasks = res.tasks; 
+  STATE.progress = res.progress; 
+  STATE.progressList = res.progressList || [];
+  // For backward compat, if progress is map, also keep list
+  if (STATE.progress && typeof STATE.progress === 'object' && !Array.isArray(STATE.progress)) {
+    STATE.progressList = Object.keys(STATE.progress);
+  }
+  renderTasks(); 
+}
 function renderTasks() {
   const el = document.getElementById('tasksList');
   if (!STATE.tasks.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No tasks</div>'; return; }
   const icons = { checkin: '📅', ads: '📺', join: '🔗', youtube: '▶️', x: '𝕏', invite: '👥' };
-  el.innerHTML = STATE.tasks.map(task => { const done = STATE.progress.includes(task.id); const icon = icons[task.type] || '📌'; const title = STATE.language === 'ar' && task.title_ar ? task.title_ar : task.title; return `<div class="task-item ${done ? 'done' : ''}"><div class="task-info"><div class="task-icon">${icon}</div><div><div class="task-name">${title}</div><div class="task-reward">+${task.reward} FWC</div></div></div>${done ? '<span style="color:var(--accent-2);font-size:11px;font-weight:700;">✓ Done</span>' : `<button class="task-btn" onclick="completeTask('${task.id}')">${task.type === 'checkin' ? t('checkin') : 'Start'}</button>`}</div>`; }).join('');
+  el.innerHTML = STATE.tasks.map(task => { 
+    const progressMap = STATE.progress && typeof STATE.progress === 'object' && !Array.isArray(STATE.progress) ? STATE.progress : {};
+    const progressList = Array.isArray(STATE.progress) ? STATE.progress : (STATE.progressList || []);
+    const count = progressMap[task.id] || 0;
+    const max = task.max_per_day || 1;
+    const isDone = task.once ? progressList.includes(task.id) || count > 0 : count >= max;
+    const icon = icons[task.type] || '📌'; 
+    const title = STATE.language === 'ar' && task.title_ar ? task.title_ar : task.title; 
+    let statusText = '';
+    if (task.type === 'ads' && max > 1) {
+      statusText = ` (${count}/${max})`;
+    }
+    return `<div class="task-item ${isDone ? 'done' : ''}"><div class="task-info"><div class="task-icon">${icon}</div><div><div class="task-name">${title}${statusText}</div><div class="task-reward">+${task.reward} FWC${max > 1 ? ` x${max}` : ''}</div></div></div>${isDone ? '<span style="color:var(--accent-2);font-size:11px;font-weight:700;">✓ Done</span>' : `<button class="task-btn" onclick="completeTask('${task.id}')">${task.type === 'checkin' ? t('checkin') : (task.type === 'ads' ? 'Watch' : 'Start')}</button>`}</div>`; 
+  }).join('');
 }
 
 async function completeTask(id) {
