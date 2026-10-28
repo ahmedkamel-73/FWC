@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en">
 <head><style>
 @font-face {
   font-family: "Optimistic";
@@ -25,697 +25,328 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>FWC Farming</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
-<script src="https://adsgram.ai/js/adsgram.js"></script>
-<script src='//libtl.com/sdk.js' data-zone='12138342' data-sdk='show_12138342'></script>
+<script src="https://telegram.org/js/telegram-web-app.js">
+// كل القيم التالية متزامنة مع لوحة الأدمن D1:
+// - miningAmount من جدول economy_config أو halving logic
+// - AD_CONFIG.freeBlockId من ads_config (لوحة الأدمن > Ads)
+// - tasks من daily_tasks (لوحة الأدمن > Tasks) مع max_per_day و reward
+// - referral_link من config_overrides bot_username
+// - leaderboard من users order by balance
+// - withdraw limits من economy_config
+</script>
+<script src="https://sad.adsgram.ai/js/sad.min.js">
+// كل القيم التالية متزامنة مع لوحة الأدمن D1:
+// - miningAmount من جدول economy_config أو halving logic
+// - AD_CONFIG.freeBlockId من ads_config (لوحة الأدمن > Ads)
+// - tasks من daily_tasks (لوحة الأدمن > Tasks) مع max_per_day و reward
+// - referral_link من config_overrides bot_username
+// - leaderboard من users order by balance
+// - withdraw limits من economy_config
+</script>
+<script src="//libtl.com/sdk.js" data-zone="12138342" data-sdk="show_12138342">
+// كل القيم التالية متزامنة مع لوحة الأدمن D1:
+// - miningAmount من جدول economy_config أو halving logic
+// - AD_CONFIG.freeBlockId من ads_config (لوحة الأدمن > Ads)
+// - tasks من daily_tasks (لوحة الأدمن > Tasks) مع max_per_day و reward
+// - referral_link من config_overrides bot_username
+// - leaderboard من users order by balance
+// - withdraw limits من economy_config
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg: #080C18; --surface: #0F1522; --surface-2: #161d2e; --border: rgba(255,255,255,0.08); --text: #EAF0FF; --text-muted: #7a8599; --accent: #6D7CFF; --accent-2: #00E5FF; --success: #00E5FF; --danger: #ff4d4d; --warn: #ffb020; --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; --mono: 'JetBrains Mono', ui-monospace, monospace; }
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; overflow-x: hidden; padding-bottom: 90px; }
-  .container { max-width: 500px; margin: 0 auto; }
-  .header { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(8,12,24,0.94); backdrop-filter: blur(16px); z-index: 20; }
-  .logo { display: flex; align-items: center; gap: 10px; }
-  .logo-icon { width: 36px; height: 36px; border-radius: 12px; background: linear-gradient(135deg, #6D7CFF, #00E5FF); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: #fff; }
-  .logo-title { font-weight: 700; font-size: 14px; }
-  .logo-sub { font-size: 10px; color: var(--text-muted); font-family: var(--mono); }
-  .lang-btn { padding: 6px 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text); font-family: inherit; font-size: 11px; cursor: pointer; }
-  .balance-row { display: flex; gap: 10px; padding: 12px 16px; }
-  .card { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid var(--border); border-radius: 16px; padding: 14px; }
-  .balance-card { flex: 1; }
-  .label-small { font-size: 10px; color: var(--text-muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
-  .balance-value { font-size: 22px; font-weight: 800; display: flex; align-items: baseline; gap: 6px; }
-  .currency { font-size: 12px; color: var(--accent); font-weight: 700; }
-  .speed-card { width: 100px; }
-  .speed-value { font-size: 15px; font-weight: 800; }
-  .content { padding: 12px 16px; }
-  .mining-card { border-radius: 24px; padding: 20px 16px; background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid var(--border); box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; }
-  .mining-circle { width: 180px; height: 180px; margin: 20px auto; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff 0%, #A8B2FF 8%, #6D7CFF 22%, #3A4DE8 45%, #0A1230 78%); box-shadow: 0 0 40px rgba(109,124,255,0.6), 0 0 100px rgba(109,124,255,0.25), inset 0 0 20px rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: #fff; position: relative; }
-  .mining-circle::after { content: ''; position: absolute; inset: -30px; border-radius: 50%; border: 2px dashed rgba(0,229,255,0.25); animation: spin 20s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .claim-btn { margin-top: 20px; width: 100%; height: 58px; border-radius: 16px; border: none; background: linear-gradient(180deg, #7D8CFF 0%, #5A6AE8 100%); color: #fff; font-weight: 800; font-size: 15px; letter-spacing: 0.04em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 8px 0 #2A3560, 0 12px 24px rgba(0,0,0,0.4); transition: transform 0.12s; font-family: inherit; }
-  .claim-btn:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 4px 0 #2A3560; }
-  .claim-btn:disabled { opacity: 0.5; background: linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06)); box-shadow: 0 8px 0 #1A233F; cursor: not-allowed; }
-  .bonus-btn { margin-top: 10px; width: 100%; height: 44px; border-radius: 14px; border: 1px solid rgba(0,229,255,0.3); background: rgba(0,229,255,0.1); color: var(--accent-2); font-weight: 700; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; transition: all 0.15s; }
-  .bonus-btn:hover:not(:disabled) { background: rgba(0,229,255,0.2); }
-  .bonus-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  .tab-bar { position: fixed; bottom: 0; left: 0; right: 0; max-width: 500px; margin: 0 auto; padding: 8px 10px; background: linear-gradient(180deg, rgba(18,24,42,0.95), rgba(10,14,28,0.98)); backdrop-filter: blur(20px); border-top: 1px solid var(--border); display: flex; justify-content: space-around; z-index: 30; }
-  .tab-btn { flex: 1; height: 56px; border-radius: 14px; border: none; background: transparent; color: rgba(255,255,255,0.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; font-family: inherit; transition: all 0.2s; }
-  .tab-btn.active { background: linear-gradient(180deg, #7D8CFF, #5A6AE8); color: #fff; box-shadow: 0 8px 20px rgba(109,124,255,0.35); }
-  .tab-btn .icon { font-size: 18px; }
-  .tab-btn .label { font-size: 10px; font-weight: 600; }
-  .tasks-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-  .task-item { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-  .task-item.done { background: rgba(0,229,255,0.08); border-color: rgba(0,229,255,0.2); opacity: 0.65; }
-  .task-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-  .task-icon { font-size: 20px; flex-shrink: 0; }
-  .task-name { font-size: 13px; font-weight: 600; }
-  .task-reward { font-size: 11px; color: var(--accent-2); font-family: var(--mono); margin-top: 3px; }
-  .task-btn { height: 32px; padding: 0 14px; border-radius: 10px; border: none; background: linear-gradient(180deg, #7D8CFF, #5A6AE8); color: #fff; font-weight: 700; font-size: 11px; cursor: pointer; font-family: inherit; flex-shrink: 0; }
-  .task-btn:disabled { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); cursor: default; }
-  .wallet-card { padding: 18px; border-radius: 20px; background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid var(--border); }
-  .wallet-input { width: 100%; height: 44px; border-radius: 12px; border: 1px solid var(--border); background: rgba(0,0,0,0.3); color: var(--text); padding: 0 14px; font-size: 13px; font-family: var(--mono); margin-top: 8px; }
-  .wallet-input:focus { outline: none; border-color: var(--accent); }
-  .btn-primary { width: 100%; height: 44px; border-radius: 12px; border: none; background: linear-gradient(180deg, #7D8CFF, #5A6AE8); color: #fff; font-weight: 800; font-size: 13px; cursor: pointer; font-family: inherit; margin-top: 12px; }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .leader-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; }
-  .leader-item.you { background: linear-gradient(135deg, rgba(109,124,255,0.18), rgba(0,229,255,0.08)); border-color: rgba(109,124,255,0.3); }
-  .rank { width: 26px; height: 26px; border-radius: 8px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
-  .rank.top { background: linear-gradient(135deg, #FFD54F, #FF8F00); color: #000; }
-  .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(18,24,42,0.95); border: 1px solid var(--border); padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; z-index: 100; backdrop-filter: blur(12px); box-shadow: 0 8px 24px rgba(0,0,0,0.5); max-width: 85%; text-align: center; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-  .toast.show { opacity: 1; }
-  .hidden { display: none !important; }
-  .fee-preview { margin-top: 10px; padding: 12px; border-radius: 12px; background: rgba(109,124,255,0.08); border: 1px solid rgba(109,124,255,0.2); font-size: 12px; }
-  .fee-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
-  .fee-row:last-child { margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1); }
-  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; }
-  #ton-connect-btn { width: 100%; margin-top: 10px; }
-  .profile-card { text-align: center; padding: 24px 16px; border-radius: 20px; background: linear-gradient(135deg, rgba(109,124,255,0.15), rgba(0,229,255,0.08)); border: 1px solid rgba(109,124,255,0.25); margin-bottom: 12px; }
-  .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, #6D7CFF, #00E5FF); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 800; color: #fff; margin: 0 auto 12px; box-shadow: 0 8px 24px rgba(109,124,255,0.4); }
-  .profile-name { font-size: 20px; font-weight: 800; margin-bottom: 4px; }
-  .profile-username { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
-  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-  .stat-box { background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-align: center; }
-  .stat-box .label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 6px; }
-  .stat-box .value { font-size: 18px; font-weight: 800; }
-  .stat-box .value.accent { color: var(--accent-2); }
-  .referral-card { padding: 16px; border-radius: 16px; background: linear-gradient(135deg, rgba(0,229,255,0.1), rgba(109,124,255,0.05)); border: 1px solid rgba(0,229,255,0.25); }
-  .referral-link { display: flex; gap: 8px; margin-top: 10px; }
-  .referral-link input { flex: 1; height: 42px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.3); color: var(--text); padding: 0 12px; font-size: 11px; font-family: var(--mono); }
-  .copy-btn { height: 42px; padding: 0 16px; border-radius: 10px; border: none; background: var(--accent-2); color: #000; font-weight: 800; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; }
+:root{--bg:#050505;--surface:#121212;--gold:#FFD700;--gold2:#D4AF37;--text:#FFF8E1;--muted:#9B8F7A;--border:rgba(212,175,55,0.18)}
+*{font-family:"Space Grotesk",system-ui,sans-serif;-webkit-tap-highlight-color:transparent;box-sizing:border-box}
+body,html{margin:0;padding:0;background:#050505;color:var(--text);min-height:100vh}
+.serif{font-family:"Cormorant Garamond",serif}
+.glass{background:linear-gradient(180deg,rgba(28,28,28,0.9) 0%,rgba(18,18,18,0.85) 100%);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border:1px solid var(--border);box-shadow:0 10px 30px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,215,0,0.15),0 0 0 1px rgba(0,0,0,0.8)}
+.coin-scene{perspective:1200px;width:220px;height:220px;position:relative;display:flex;align-items:center;justify-content:center}
+.coin-obj{width:190px;height:190px;position:relative;transform-style:preserve-3d;animation:rotateCoin 9s linear infinite}
+.coin-obj.bounce{animation:rotateCoin 9s linear infinite,bounceCoin 0.9s cubic-bezier(.175,.885,.32,1.275)}
+.coin-face{position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;backface-visibility:hidden}
+.coin-front{transform:translateZ(16px);background:radial-gradient(circle at 30% 25%,#FFF8C2 0%,#FFEA8A 12%,#FFD700 28%,#D4AF37 55%,#8B6E14 85%);box-shadow:inset 0 0 0 2px #8B6E14,inset 0 0 0 6px rgba(255,215,0,0.9),inset 0 0 18px rgba(0,0,0,0.35),inset 0 10px 20px rgba(255,255,255,0.6);border:1px solid rgba(139,110,20,0.8)}
+.coin-front::before{content:'';position:absolute;inset:12px;border-radius:50%;border:1.5px dashed rgba(139,110,20,0.35)}
+.coin-back{transform:translateZ(-16px) rotateY(180deg);background:radial-gradient(circle at 35% 35%,#FFEFA3 0%,#FFD700 30%,#C19A1F 62%,#6E5410 90%);box-shadow:inset 0 0 0 2px #8B6E14,inset 0 0 0 6px rgba(255,215,0,0.9);border:1px solid rgba(139,110,20,0.8)}
+.coin-edge{position:absolute;left:50%;top:0;width:32px;height:100%;background:linear-gradient(90deg,#6E5410,#D4AF37,#FFEA8A,#D4AF37,#6E5410);transform-origin:center;backface-visibility:hidden}
+.coin-letter{font-family:"Cormorant Garamond",serif;font-weight:700;font-size:42px;letter-spacing:0.06em;color:#4A3800;text-shadow:0 1px 0 #FFF2A0,0 2px 0 #FFD700,0 3px 6px rgba(0,0,0,0.45),0 0 18px rgba(255,215,0,0.6)}
+.coin-glow{position:absolute;inset:-40px;border-radius:50%;background:radial-gradient(circle,rgba(255,215,0,0.28) 0%,rgba(212,175,55,0.12) 35%,transparent 70%);filter:blur(8px);animation:glowPulse 3s ease-in-out infinite}
+@keyframes rotateCoin{0%{transform:rotateY(0deg) rotateX(8deg)}100%{transform:rotateY(360deg) rotateX(8deg)}}
+@keyframes bounceCoin{0%{transform:rotateY(0) rotateX(8deg) scale(1)}30%{transform:rotateY(60deg) rotateX(12deg) scale(1.18) translateY(-18px)}60%{transform:rotateY(120deg) rotateX(8deg) scale(0.96) translateY(6px)}100%{transform:rotateY(180deg) rotateX(8deg) scale(1)}}
+@keyframes glowPulse{0%,100%{transform:scale(1);opacity:0.9}50%{transform:scale(1.12);opacity:1}}
+@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0) scale(1);opacity:1}100%{transform:translateY(320px) rotate(720deg) scale(0.2);opacity:0}}
+.claim-btn{background:linear-gradient(180deg,#FFF2A0 0%,#FFD700 18%,#D4AF37 55%,#8B6E14 100%);box-shadow:0 8px 24px rgba(255,215,0,0.35),inset 0 2px 0 rgba(255,255,255,0.8),inset 0 -3px 0 rgba(0,0,0,0.25);transition:transform .12s;cursor:pointer;border:none}
+.claim-btn:active{transform:scale(0.97) translateY(2px)}
+.bonus-btn{background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.25);color:#FFD700;cursor:pointer;transition:all .2s}
+.tab-active{background:linear-gradient(180deg,rgba(255,215,0,0.18),rgba(212,175,55,0.08));border:1px solid rgba(255,215,0,0.35)!important;box-shadow:0 0 18px rgba(255,215,0,0.18),inset 0 1px 0 rgba(255,255,255,0.15)}
+.progress-ring{transform:rotate(-90deg)}
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%);z-index:100;background:rgba(20,20,20,0.95);border:1px solid rgba(255,215,0,0.3);padding:10px 16px;border-radius:20px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px;backdrop-filter:blur(10px)}
+.gold-text{background:linear-gradient(100deg,#FFF8C0,#FFD700,#D4AF37);-webkit-background-clip:text;background-clip:text;color:transparent}
 </style>
 </head>
 <body>
-<div class="container">
-  <header class="header">
-    <div class="logo">
-      <div class="logo-icon">FWC</div>
-      <div>
-        <div class="logo-title">FWC FARMING</div>
-        <div class="logo-sub">LIVE • SECURE</div>
-      </div>
+<div style="max-width:430px;margin:0 auto;min-height:100vh;position:relative;background:#070707;overflow-x:clip;padding-bottom:90px">
+  <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden"><div style="position:absolute;top:-180px;left:50%;transform:translateX(-50%);width:700px;height:700px;background:radial-gradient(circle at center,rgba(255,215,0,0.16),transparent 60%);filter:blur(20px)"></div></div>
+
+  <header style="position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(8,8,8,0.8);backdrop-filter:blur(20px);border-bottom:1px solid rgba(212,175,55,0.12)">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(100deg,#FFF2A8,#FFD700,#D4AF37);display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px rgba(255,215,0,0.4)"><span class="serif" style="font-weight:700;font-size:13px;color:#3D2E00">FWC</span></div>
+      <div><div style="display:flex;align-items:center;gap:6px"><span class="serif" style="font-size:15px;font-weight:700;letter-spacing:0.5px">FUTURE WORLD</span><span style="font-size:10px;padding:2px 6px;border-radius:10px;background:rgba(255,215,0,0.15);color:#FFD700;border:1px solid rgba(255,215,0,0.2)">COIN</span></div><div style="display:flex;align-items:center;gap:4px;font-size:10px;color:#8B7F6B"><div style="width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 6px #10b981"></div>LIVE • TON MAINNET</div></div>
     </div>
-    <button class="lang-btn" onclick="cycleLanguage()" id="langBtn">EN</button>
+    <button id="langBtn" onclick="cycleLanguage()" class="glass" style="border-radius:20px;padding:6px 12px;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;cursor:pointer;color:#FFD700">EN</button>
   </header>
 
-  <div class="balance-row">
-    <div class="card balance-card">
-      <div class="label-small" data-i18n="balance">BALANCE</div>
-      <div class="balance-value">
-        <span id="balanceNum">—</span>
-        <span class="currency">FWC</span>
-      </div>
-    </div>
-    <div class="card speed-card">
-      <div class="label-small" data-i18n="speed">SPEED</div>
-      <div class="speed-value"><span id="speedVal">—</span></div>
-    </div>
-  </div>
+  <main style="position:relative;z-index:10;padding:16px">
+    <div id="errorBox" style="display:none;border-radius:12px;padding:12px;margin-bottom:12px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.15);align-items:center;gap:8px"><span style="color:#f87171">⚠️</span><span id="errorText" style="font-size:12px;color:#fecaca"></span></div>
 
-  <div class="content">
+    <!-- MINE -->
     <div id="tab-mine">
-      <div class="mining-card">
-        <div class="mining-circle">FWC</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:10px;" id="miningStatus">Loading...</div>
-        <button class="claim-btn" id="claimBtn" disabled>
-          <span>⚡</span> <span id="claimText">Loading</span>
-        </button>
-        <button class="bonus-btn" id="bonusBtn" onclick="watchAdForBonus()">
-          <span>🎁</span> <span>Watch Ad for Bonus</span>
-        </button>
-      </div>
-      <div class="card" style="margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div class="label-small" data-i18n="checkin">DAILY CHECK-IN</div>
-            <div style="font-size:14px;font-weight:700;margin-top:4px;">
-              <span data-i18n="streak">Streak</span>: <span id="streakNum">0</span>
-            </div>
+      <div class="glass" style="border-radius:20px;padding:16px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;right:0;width:140px;height:140px;background:radial-gradient(circle at 60% 20%,rgba(255,215,0,0.18),transparent 60%)"></div>
+        <div id="loadingState" style="display:flex;align-items:center;gap:12px;padding:16px 0"><div style="width:20px;height:20px;border:2px solid rgba(255,215,0,0.2);border-top-color:#FFD700;border-radius:50%;animation:spin 1s linear infinite"></div><span style="font-size:13px;color:#9B8F7A" data-i18n="loading">Loading...</span></div>
+        <div id="balanceState" style="display:none">
+          <div style="display:flex;justify-content:space-between">
+            <div><div style="font-size:11px;letter-spacing:1.5px;color:#9B8F7A" data-i18n="balance">TOTAL BALANCE</div><div style="display:flex;align-items:baseline;gap:8px;margin-top:4px"><span class="serif" id="balanceVal" style="font-size:32px;font-weight:700;line-height:1">0.00</span><span class="gold-text" style="font-size:13px;font-weight:700">FWC</span></div><div style="margin-top:8px;display:flex;gap:8px"><span style="font-size:11px;padding:4px 8px;border-radius:20px;background:rgba(16,185,129,0.1);color:#6ee7b7;border:1px solid rgba(16,185,129,0.2)" id="rateVal">+0.00 per claim</span></div></div>
+            <div class="glass" style="width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center">✨</div>
           </div>
-          <button class="task-btn" id="checkinBtn" onclick="doCheckin()" data-i18n="checkin">Check-in</button>
+          <div style="margin-top:16px"><div style="display:flex;justify-content:space-between;font-size:10px;color:#8B7F6B;margin-bottom:6px"><span data-i18n="holdingProgress">HOLDING PROGRESS</span><span id="nextTier">-</span></div><div style="height:6px;background:#1E1E1E;border-radius:10px;overflow:hidden;border:1px solid #2A2A2A"><div id="holdingBar" style="height:100%;background:linear-gradient(100deg,#FFF2A8,#FFD700,#D4AF37);width:0%;transition:width .7s"></div></div></div>
         </div>
       </div>
+
+      <div style="position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 0">
+        <div id="confetti" style="position:absolute;inset:0;pointer-events:none;z-index:20;overflow:hidden"></div>
+        <div class="coin-scene"><div id="coinObj" class="coin-obj"><div class="coin-face coin-front"><span class="coin-letter">FWC</span></div><div class="coin-face coin-back"><span class="coin-letter" style="font-size:28px">◈</span></div></div><div class="coin-glow"></div></div>
+        <div style="margin-top:4px;display:flex;gap:8px"><div class="glass" style="border-radius:20px;padding:6px 12px;display:flex;gap:6px;align-items:center;font-size:11px"><span style="color:#FFD700">⚡</span><span id="farmingInfo" style="font-weight:700">4 FWC / 4h</span></div><div style="border-radius:20px;padding:6px 12px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.2);font-size:11px;font-weight:700;color:#FFD700;display:flex;gap:4px"><span>👑</span><span id="bonusInfo">+0%</span></div></div>
+      </div>
+
+      <div class="glass" style="border-radius:22px;padding:20px;margin-top:8px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+          <div style="position:relative;width:96px;height:96px;flex-shrink:0"><svg width="96" height="96" viewBox="0 0 120 120" class="progress-ring"><circle cx="60" cy="60" r="54" fill="none" stroke="#1E1E1E" stroke-width="6"/><circle id="progressCircle" cx="60" cy="60" r="54" fill="none" stroke="url(#goldGrad)" stroke-width="6" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="339.292" style="transition:stroke-dashoffset 1s linear"/><defs><linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#FFF2A0"/><stop offset="40%" stop-color="#FFD700"/><stop offset="100%" stop-color="#D4AF37"/></linearGradient></defs></svg><div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><span style="font-size:10px;letter-spacing:1px;color:#8B7F6B">NEXT</span></div></div>
+          <div style="flex:1"><div style="font-size:11px;letter-spacing:1.5px;color:#9B8F7A">FARMING • 4H</div><div id="countdown" class="serif" style="font-size:28px;font-weight:700;letter-spacing:1px;margin-top:4px">--:--:--</div><div id="statusText" style="font-size:12px;color:#8B7F6B;margin-top:4px;line-height:1.3"></div></div>
+        </div>
+        <button id="claimBtn" class="claim-btn" style="width:100%;margin-top:20px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;color:#3D2E00;font-weight:900;letter-spacing:1.5px;font-size:14px" disabled><span>⚡</span><span id="claimText" data-i18n="claim">CLAIM</span></button>
+        <button id="bonusBtn" class="bonus-btn" style="width:100%;margin-top:10px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:700;font-size:13px"><span>🎁</span><span id="bonusText">BONUS</span></button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px"><div class="glass" style="border-radius:16px;padding:14px"><div style="font-size:10px;letter-spacing:1px;color:#8B7F6B" data-i18n="minedToday">MINED TODAY</div><div class="serif" style="font-size:20px;font-weight:700;margin-top:4px"><span id="minedToday">0</span> <span style="font-size:12px" class="gold-text">FWC</span></div></div><div class="glass" style="border-radius:16px;padding:14px"><div style="font-size:10px;letter-spacing:1px;color:#8B7F6B" data-i18n="totalClaimed">TOTAL</div><div class="serif" style="font-size:20px;font-weight:700;margin-top:4px"><span id="totalClaimed">0</span> <span style="font-size:12px" class="gold-text">FWC</span></div></div></div>
     </div>
 
-    <div id="tab-tasks" class="hidden">
-      <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">📋 <span data-i18n="tasks">Tasks</span></h2>
-      <div class="tasks-list" id="tasksList">
-        <div style="text-align:center;color:var(--text-muted);padding:20px;"><span class="spinner"></span></div>
-      </div>
+    <!-- TASKS -->
+    <div id="tab-tasks" style="display:none">
+      <div class="glass" style="border-radius:20px;padding:20px;background:linear-gradient(120deg,rgba(255,215,0,0.12),rgba(18,18,18,0.9) 60%)"><div style="display:flex;justify-content:space-between"><div><div style="font-size:11px;letter-spacing:1.5px;color:#9B8F7A" data-i18n="dailyStreak">🔥 DAILY STREAK</div><div class="serif" style="font-size:26px;font-weight:700;margin-top:4px">Day <span id="streakDay">0</span> <span class="gold-text">• <span id="streakBonus">0/7</span></span></div></div><div style="width:48px;height:48px;border-radius:50%;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.2);display:flex;align-items:center;justify-content:center;font-size:20px">🔥</div></div><div style="margin-top:16px;display:flex;gap:6px" id="streakDots"></div><button id="checkinBtn" style="margin-top:16px;width:100%;height:44px;border-radius:12px;background:linear-gradient(100deg,#FFF2A8,#FFD700,#D4AF37);color:#3D2E00;font-weight:900;letter-spacing:1px;font-size:12px;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px"><span data-i18n="checkin">CHECK IN</span></button></div>
+      <div style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;padding:0 4px"><span style="font-size:12px;font-weight:700;letter-spacing:1px" data-i18n="tasks">TASKS</span><span id="tasksDone" style="font-size:10px;color:#8B7F6B">0/0</span></div><div id="tasksList"></div></div>
     </div>
 
-    <div id="tab-wallet" class="hidden">
-      <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">💳 <span data-i18n="wallet">Wallet</span></h2>
-      <div class="wallet-card">
-        <div class="label-small" data-i18n="tonWallet">TON WALLET</div>
-        <button id="ton-connect-btn" class="btn-primary">Connect Wallet</button>
-        <div id="walletAddress" style="font-size:11px;color:var(--text-muted);margin-top:8px;word-break:break-all;"></div>
-
-        <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
-          <div class="label-small" data-i18n="withdraw">WITHDRAW</div>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="withdrawInfo">Min: 1000 FWC</div>
-          <input class="wallet-input" id="withdrawInput" type="number" placeholder="Amount" oninput="estimateWithdraw()" />
-          <div class="fee-preview hidden" id="feePreview">
-            <div class="fee-row">
-              <span style="color:var(--text-muted);" data-i18n="amount">Amount:</span>
-              <span id="feeAmount" style="font-weight:700;">0 FWC</span>
-            </div>
-            <div class="fee-row">
-              <span style="color:var(--text-muted);"><span data-i18n="fee">Fee</span> (<span id="feePercent">5</span>%):</span>
-              <span id="feeValue" style="font-weight:700;color:var(--warn);">0 FWC</span>
-            </div>
-            <div class="fee-row">
-              <span style="color:var(--text-muted);" data-i18n="youReceive">You receive:</span>
-              <span id="feeNet" style="font-weight:800;color:var(--accent-2);">0 FWC</span>
-            </div>
-          </div>
-          <button class="btn-primary" id="withdrawBtn" onclick="requestWithdraw()" data-i18n="requestWithdraw">Request Withdrawal</button>
-        </div>
-      </div>
-      <div class="card" style="margin-top:12px;">
-        <div class="label-small" data-i18n="recentWithdrawals">RECENT WITHDRAWALS</div>
-        <div id="withdrawHistory" style="margin-top:8px;font-size:12px;color:var(--text-muted);">No withdrawals</div>
-      </div>
+    <!-- WALLET -->
+    <div id="tab-wallet" style="display:none">
+      <div class="glass" style="border-radius:20px;padding:20px;position:relative;overflow:hidden"><div style="position:absolute;inset:0;background:radial-gradient(circle at 20% 0%,rgba(255,215,0,0.15),transparent 55%)"></div><div style="position:relative"><div style="display:flex;justify-content:space-between"><span style="font-size:11px;letter-spacing:1px;color:#9B8F7A" data-i18n="tonWallet">TON WALLET</span><span id="walletStatus" style="font-size:10px;padding:4px 8px;border-radius:20px;border:1px solid #2A2A2A;background:#1E1E1E;color:#8B7F6B">● <span data-i18n="notConnected">NOT CONNECTED</span></span></div><h3 class="serif" style="font-size:22px;font-weight:700;margin-top:8px;line-height:1.2"><span data-i18n="connectWalletTitle">Connect wallet</span><br><span class="gold-text" data-i18n="holdingBonusTitle">holding bonus</span></h3><button id="connectWalletBtn" style="margin-top:16px;width:100%;height:48px;border-radius:12px;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;gap:8px;border:none;cursor:pointer;background:#0098EA;color:#fff"><div style="width:24px;height:24px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:900;color:#0098EA">T</div><span id="walletBtnText">Connect</span></button><div id="walletAddr" style="margin-top:12px;font-size:11px;color:#9B8F7A;font-family:monospace;background:#0F0F0F;border:1px solid #1E1E1E;border-radius:10px;padding:8px 12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:none"></div></div></div>
+      <div class="glass" style="border-radius:18px;padding:16px;margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:16px"><span style="font-size:12px;font-weight:700;letter-spacing:1px" data-i18n="holdingTiers">HOLDING TIERS</span><span>👑</span></div><div style="position:relative"><div style="position:absolute;left:15px;top:8px;bottom:8px;width:2px;background:linear-gradient(to bottom,#FFD700,#D4AF37,#2A2A2A)"></div><div id="tiersList" style="display:flex;flex-direction:column;gap:12px"></div></div></div>
+      <div class="glass" style="border-radius:18px;padding:16px;margin-top:12px"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="font-size:12px;font-weight:700;letter-spacing:1px" data-i18n="withdraw">WITHDRAW</span><span style="font-size:10px;color:#8B7F6B">1000 FWC • 5%</span></div><div style="background:#0F0F0F;border:1px solid #1E1E1E;border-radius:12px;padding:12px"><div style="font-size:11px;color:#8B7F6B;margin-bottom:8px"><span data-i18n="amount">AMOUNT</span>: <span id="withdrawBalance">0</span></div><div style="display:flex;align-items:center;gap:8px"><input id="withdrawAmount" placeholder="1000" type="number" style="flex:1;background:transparent;border:none;outline:none;font-size:18px;font-weight:700;color:#fff"><button id="maxBtn" style="font-size:11px;padding:6px 12px;border-radius:20px;background:rgba(255,215,0,0.15);color:#FFD700;border:1px solid rgba(255,215,0,0.2);font-weight:700">MAX</button></div><div style="margin-top:12px;display:flex;justify-content:space-between;font-size:11px;color:#8B7F6B"><span data-i18n="fee">Fee</span><span id="feeVal">0.00</span></div><div style="margin-top:4px;display:flex;justify-content:space-between;font-size:11px;color:#8B7F6B"><span data-i18n="youReceive">You receive</span><span id="receiveVal" style="font-weight:700;color:#fff">0.00</span></div></div><button id="withdrawBtn" style="margin-top:12px;width:100%;height:44px;border-radius:12px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);font-weight:700;font-size:13px;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px"><span data-i18n="requestWithdraw">Request Withdrawal</span></button><div id="withdrawMsg" style="margin-top:12px;font-size:11px;text-align:center;padding:8px 12px;border-radius:10px;display:none"></div></div>
     </div>
 
-    <div id="tab-market" class="hidden">
-      <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">🏆 <span data-i18n="leaderboard">Leaderboard</span></h2>
-      <div id="leaderboard">
-        <div style="text-align:center;color:var(--text-muted);padding:20px;"><span class="spinner"></span></div>
-      </div>
+    <!-- MARKET / LEADERBOARD - التاب الناقص -->
+    <div id="tab-market" style="display:none">
+      <div class="glass" style="border-radius:20px;padding:20px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;font-weight:700;letter-spacing:1px" data-i18n="leaderboard">LEADERBOARD</span><span style="font-size:11px;padding:4px 8px;border-radius:20px;background:rgba(255,215,0,0.1);color:#FFD700;border:1px solid rgba(255,215,0,0.2)">LIVE</span></div><div id="leaderboardList" style="margin-top:16px;display:flex;flex-direction:column;gap:8px"><div style="padding:24px;text-align:center;color:#8B7F6B;font-size:12px" data-i18n="loading">Loading...</div></div></div>
+      <div class="glass" style="border-radius:18px;padding:16px;margin-top:12px"><div style="font-size:12px;font-weight:700;letter-spacing:1px;margin-bottom:12px" data-i18n="topMiners">TOP MINERS</div><div id="topMinersStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px"></div></div>
     </div>
 
-    <div id="tab-account" class="hidden">
-      <h2 style="font-size:16px;font-weight:800;margin-bottom:12px;">👤 <span data-i18n="account">Account</span></h2>
-      
-      <div class="profile-card">
-        <div class="profile-avatar" id="profileAvatar">?</div>
-        <div class="profile-name" id="profileName">Loading...</div>
-        <div class="profile-username" id="profileUsername">@...</div>
-      </div>
+    <!-- ACCOUNT - التاب الناقص التاني -->
+    <div id="tab-account" style="display:none">
+      <div class="glass" style="border-radius:20px;padding:20px"><div style="display:flex;align-items:center;gap:12px"><div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(100deg,#FFF2A8,#FFD700,#D4AF37);display:flex;align-items:center;justify-content:center;font-size:20px">👤</div><div><div class="serif" style="font-size:18px;font-weight:700" id="accountName">User</div><div style="font-size:11px;color:#8B7F6B" id="accountId">ID: -</div></div></div><div style="margin-top:16px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="glass" style="border-radius:12px;padding:12px;text-align:center"><div style="font-size:10px;color:#8B7F6B" data-i18n="balance">BALANCE</div><div style="font-size:16px;font-weight:700;margin-top:4px" id="accountBalance">0</div></div><div class="glass" style="border-radius:12px;padding:12px;text-align:center"><div style="font-size:10px;color:#8B7F6B" data-i18n="referrals">REFERRALS</div><div style="font-size:16px;font-weight:700;margin-top:4px" id="accountReferrals">0</div></div></div></div>
 
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="label">Balance</div>
-          <div class="value accent" id="statBalance">0.00</div>
-        </div>
-        <div class="stat-box">
-          <div class="label">Referrals</div>
-          <div class="value" id="statReferrals">0</div>
-        </div>
-        <div class="stat-box">
-          <div class="label">Wallet</div>
-          <div class="value" style="font-size:13px;" id="statWallet">Not linked</div>
-        </div>
-        <div class="stat-box">
-          <div class="label">User ID</div>
-          <div class="value" style="font-size:13px;font-family:var(--mono);" id="statUserId">—</div>
-        </div>
-      </div>
+      <div class="glass" style="border-radius:18px;padding:16px;margin-top:12px"><div style="font-size:12px;font-weight:700;letter-spacing:1px;margin-bottom:12px" data-i18n="inviteFriends">INVITE FRIENDS • 5%</div><div style="display:flex;gap:8px"><div class="glass" style="flex:1;border-radius:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;background:rgba(15,15,15,0.8);overflow:hidden"><span id="refLink" style="font-size:12px;color:#C9B896;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">-</span></div><button id="copyBtn" style="width:44px;height:44px;border-radius:12px;background:linear-gradient(100deg,#FFF2A8,#FFD700,#D4AF37);display:flex;align-items:center;justify-content:center;border:none;cursor:pointer">📋</button></div><button id="shareBtn" style="margin-top:12px;width:100%;height:44px;border-radius:12px;background:#fff;color:#000;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer"><span data-i18n="shareOnTelegram">Share</span></button><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px"><div class="glass" style="border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:#8B7F6B" data-i18n="friends">FRIENDS</div><div style="font-size:14px;font-weight:700;margin-top:2px" id="friendsCount">0</div></div><div class="glass" style="border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:#8B7F6B" data-i18n="earned">EARNED</div><div style="font-size:14px;font-weight:700;margin-top:2px" id="friendsEarned">0</div></div><div class="glass" style="border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:#8B7F6B">BONUS</div><div style="font-size:14px;font-weight:700;margin-top:2px">5%</div></div></div></div>
 
-      <div class="referral-card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <div style="font-size:18px;">🎁</div>
-          <div style="font-weight:800;font-size:14px;">Invite Friends</div>
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);">Share your link and earn 5% from every friend you invite.</div>
-        <div class="referral-link">
-          <input type="text" id="referralLink" readonly value="Loading...">
-          <button class="copy-btn" onclick="copyReferralLink()">Copy</button>
-        </div>
-      </div>
+      <div class="glass" style="border-radius:18px;padding:16px;margin-top:12px"><div style="font-size:12px;font-weight:700;letter-spacing:1px" data-i18n="language">LANGUAGE</div><div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px"><button onclick="setLang('en')" class="lang-opt" data-lang="en" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid #2A2A2A;color:#fff;font-weight:700;cursor:pointer">English</button><button onclick="setLang('ar')" class="lang-opt" data-lang="ar" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid #2A2A2A;color:#fff;font-weight:700;cursor:pointer">العربية</button><button onclick="setLang('ru')" class="lang-opt" data-lang="ru" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid #2A2A2A;color:#fff;font-weight:700;cursor:pointer">Русский</button><button onclick="setLang('tr')" class="lang-opt" data-lang="tr" style="padding:10px;border-radius:10px;background:rgba(255,255,255,0.05);border:1px solid #2A2A2A;color:#fff;font-weight:700;cursor:pointer">Türkçe</button></div></div>
     </div>
-  </div>
+  </main>
 
-  <nav class="tab-bar">
-    <button class="tab-btn active" data-tab="mine" onclick="switchTab('mine')">
-      <span class="icon">🌾</span><span class="label" data-i18n="mine">Farm</span>
-    </button>
-    <button class="tab-btn" data-tab="tasks" onclick="switchTab('tasks')">
-      <span class="icon">📋</span><span class="label" data-i18n="tasks">Tasks</span>
-    </button>
-    <button class="tab-btn" data-tab="wallet" onclick="switchTab('wallet')">
-      <span class="icon">💳</span><span class="label" data-i18n="wallet">Wallet</span>
-    </button>
-    <button class="tab-btn" data-tab="market" onclick="switchTab('market')">
-      <span class="icon">🏆</span><span class="label" data-i18n="leaderboard">Top</span>
-    </button>
-    <button class="tab-btn" data-tab="account" onclick="switchTab('account')">
-      <span class="icon">👤</span><span class="label" data-i18n="account">Account</span>
-    </button>
-  </nav>
+  <nav style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;z-index:40"><div style="margin:0 8px 8px;border-radius:20px;background:rgba(10,10,10,0.9);backdrop-filter:blur(20px);border:1px solid rgba(212,175,55,0.18);box-shadow:0 12px 40px rgba(0,0,0,0.8);display:flex;justify-content:space-around;padding:6px">
+    <button data-tab="mine" class="nav-btn tab-active" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px;border-radius:14px;border:none;background:transparent;cursor:pointer;color:#FFD700"><span style="font-size:18px">🌾</span><span style="font-size:9px;font-weight:700;letter-spacing:0.5px" data-i18n="mine">FARM</span></button>
+    <button data-tab="tasks" class="nav-btn" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px;border-radius:14px;border:none;background:transparent;cursor:pointer;color:#6B6252"><span style="font-size:18px">📋</span><span style="font-size:9px;font-weight:700;letter-spacing:0.5px" data-i18n="tasks">TASKS</span></button>
+    <button data-tab="wallet" class="nav-btn" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px;border-radius:14px;border:none;background:transparent;cursor:pointer;color:#6B6252"><span style="font-size:18px">💳</span><span style="font-size:9px;font-weight:700;letter-spacing:0.5px" data-i18n="wallet">WALLET</span></button>
+    <button data-tab="market" class="nav-btn" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px;border-radius:14px;border:none;background:transparent;cursor:pointer;color:#6B6252"><span style="font-size:18px">🏆</span><span style="font-size:9px;font-weight:700;letter-spacing:0.5px" data-i18n="leaderboard">TOP</span></button>
+    <button data-tab="account" class="nav-btn" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px;border-radius:14px;border:none;background:transparent;cursor:pointer;color:#6B6252"><span style="font-size:18px">👤</span><span style="font-size:9px;font-weight:700;letter-spacing:0.5px" data-i18n="account">ACCOUNT</span></button>
+  </div></nav>
 </div>
 
-<div class="toast" id="toast"></div>
-
 <script>
-// ========== GLOBALS ==========
-const tg = window.Telegram?.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
-
-const TRANSLATIONS = {
-  en: { balance:'Balance', speed:'Speed', mine:'Farm', tasks:'Tasks', wallet:'Wallet', leaderboard:'Leaderboard', account:'Account', checkin:'Check-in', streak:'Streak', tonWallet:'TON WALLET', saveWallet:'Save Wallet', withdraw:'WITHDRAW', amount:'Amount', fee:'Fee', youReceive:'You receive', requestWithdraw:'Request Withdrawal', recentWithdrawals:'RECENT WITHDRAWALS', claim:'CLAIM', ready:'Ready to mine', wait:'Please wait', addWallet:'Connect Wallet', banned:'Banned', cooldown:'Cooldown' },
-  ar: { balance:'الرصيد', speed:'السرعة', mine:'زراعة', tasks:'مهام', wallet:'محفظة', leaderboard:'المتصدرين', account:'حسابي', checkin:'تسجيل يومي', streak:'سلسلة', tonWallet:'محفظة TON', saveWallet:'حفظ', withdraw:'سحب', amount:'المبلغ', fee:'الرسوم', youReceive:'ستستلم', requestWithdraw:'طلب سحب', recentWithdrawals:'آخر السحوبات', claim:'استلام', ready:'جاهز للتعدين', wait:'انتظر', addWallet:'اربط المحفظة', banned:'محظور', cooldown:'قيد الانتظار' },
-  ru: { balance:'Баланс', speed:'Скорость', mine:'Майнинг', tasks:'Задачи', wallet:'Кошелек', leaderboard:'Топ', account:'Аккаунт', checkin:'Регистрация', streak:'Серия', tonWallet:'TON КОШЕЛЕК', saveWallet:'Сохранить', withdraw:'Вывод', amount:'Сумма', fee:'Комиссия', youReceive:'Вы получите', requestWithdraw:'Запросить вывод', recentWithdrawals:'ПОСЛЕДНИЕ ВЫВОДЫ', claim:'ЗАБРАТЬ', ready:'Готов к майнингу', wait:'Подождите', addWallet:'Подключить', banned:'Забанен', cooldown:'Ожидание' },
-  tr: { balance:'Bakiye', speed:'Hız', mine:'Madencilik', tasks:'Görevler', wallet:'Cüzdan', leaderboard:'Liderlik', account:'Hesap', checkin:'Giriş', streak:'Seri', tonWallet:'TON CÜZDAN', saveWallet:'Kaydet', withdraw:'Çek', amount:'Miktar', fee:'Ücret', youReceive:'Alacaksınız', requestWithdraw:'Çekim Talep Et', recentWithdrawals:'SON ÇEKİMLER', claim:'AL', ready:'Kazımaya hazır', wait:'Bekleyin', addWallet:'Cüzdan Bağla', banned:'Yasaklı', cooldown:'Beklemede' },
+const CONFIG={miningInterval:4*3600*1000,adsgramBlockId:'56360',monetagZone:'12138342'};
+let AD_CONFIG={freeBlockId:'56360',autoBlockId:'12138342'}; // يتم تحديثها من لوحة الأدمن عبر /api/me
+const TRANSLATIONS={
+  en:{balance:'TOTAL BALANCE',mine:'FARM',tasks:'TASKS',wallet:'WALLET',leaderboard:'TOP',account:'ACCOUNT',checkin:'CHECK IN',dailyStreak:'DAILY STREAK',holdingProgress:'HOLDING PROGRESS',tonWallet:'TON WALLET',notConnected:'NOT CONNECTED',connectWalletTitle:'Connect wallet',holdingBonusTitle:'holding bonus',holdingTiers:'HOLDING TIERS',withdraw:'WITHDRAW',amount:'AMOUNT',fee:'Fee',youReceive:'You receive',requestWithdraw:'Request Withdrawal',claim:'CLAIM',minedToday:'MINED TODAY',totalClaimed:'TOTAL',referrals:'REFERRALS',inviteFriends:'INVITE FRIENDS • 5%',friends:'FRIENDS',earned:'EARNED',shareOnTelegram:'Share on Telegram',language:'LANGUAGE',loading:'Loading...',topMiners:'TOP MINERS',ready:'Ready',wait:'Wait'},
+  ar:{balance:'الرصيد الكلي',mine:'زراعة',tasks:'مهام',wallet:'محفظة',leaderboard:'المتصدرين',account:'حسابي',checkin:'تسجيل',dailyStreak:'السلسلة اليومية',holdingProgress:'تقدم الحفظ',tonWallet:'محفظة TON',notConnected:'غير متصل',connectWalletTitle:'اربط المحفظة',holdingBonusTitle:'مكافأة الحفظ',holdingTiers:'مستويات الحفظ',withdraw:'سحب',amount:'المبلغ',fee:'الرسوم',youReceive:'ستستلم',requestWithdraw:'طلب سحب',claim:'استلام',minedToday:'تعدين اليوم',totalClaimed:'الإجمالي',referrals:'الإحالات',inviteFriends:'ادع الأصدقاء • 5%',friends:'الأصدقاء',earned:'المكتسب',shareOnTelegram:'مشاركة',language:'اللغة',loading:'جاري التحميل...',topMiners:'أفضل المعدنين',ready:'جاهز',wait:'انتظر'},
+  ru:{balance:'БАЛАНС',mine:'ФАРМ',tasks:'ЗАДАЧИ',wallet:'КОШЕЛЕК',leaderboard:'ТОП',account:'АККАУНТ',checkin:'ЧЕК-ИН',dailyStreak:'СЕРИЯ',holdingProgress:'ХОЛДИНГ',tonWallet:'TON КОШЕЛЕК',notConnected:'НЕ ПОДКЛЮЧЕН',connectWalletTitle:'Подключить',holdingBonusTitle:'бонус холда',holdingTiers:'УРОВНИ ХОЛДА',withdraw:'ВЫВОД',amount:'СУММА',fee:'Комиссия',youReceive:'Вы получите',requestWithdraw:'Запросить вывод',claim:'ЗАБРАТЬ',minedToday:'СЕГОДНЯ',totalClaimed:'ВСЕГО',referrals:'РЕФЕРАЛЫ',inviteFriends:'ПРИГЛАСИТЬ • 5%',friends:'ДРУЗЬЯ',earned:'ЗАРАБОТАНО',shareOnTelegram:'Поделиться',language:'ЯЗЫК',loading:'Загрузка...',topMiners:'ТОП МАЙНЕРЫ',ready:'Готов',wait:'Ждите'},
+  tr:{balance:'BAKİYE',mine:'ÇİFTLİK',tasks:'GÖREVLER',wallet:'CÜZDAN',leaderboard:'TOP',account:'HESAP',checkin:'GİRİŞ',dailyStreak:'GÜNLÜK SERİ',holdingProgress:'TUTMA',tonWallet:'TON CÜZDAN',notConnected:'BAĞLI DEĞİL',connectWalletTitle:'Cüzdan Bağla',holdingBonusTitle:'tutma bonusu',holdingTiers:'TUTMA SEVİYELERİ',withdraw:'ÇEK',amount:'MİKTAR',fee:'Ücret',youReceive:'Alacaksınız',requestWithdraw:'Çekim Talep Et',claim:'AL',minedToday:'BUGÜN',totalClaimed:'TOPLAM',referrals:'REFERANSLAR',inviteFriends:'ARKADAŞ DAVET • %5',friends:'ARKADAŞLAR',earned:'KAZANÇ',shareOnTelegram:'Paylaş',language:'DİL',loading:'Yükleniyor...',topMiners:'EN İYİ MADENCİLER',ready:'Hazır',wait:'Bekleyin'}
 };
 
-const STATE = {
-  telegram_id: null, language: 'en', balance: 0, wallet: null, is_banned: 0,
-  miningAmount: 0, canMine: { ok: false, reason: 'loading' }, canWithdraw: { ok: false },
-  streak: 0, tasks: [], progress: [], activeTab: 'mine', cooldownTimer: null,
-  refreshTimer: null, lastFeeEstimate: null, referralData: null, userInfo: null,
-  adBlockId: null, adAutoBlockId: null,
-};
+let STATE={balance:0,holding:0,bonus:0,canMine:{ok:false,reason:'loading'},canWithdraw:{ok:false},streak:0,tasks:[],progress:{},miningAmount:4,wallet:null,language:'en'};
+let tg=window.Telegram?.WebApp; if(tg){tg.ready();tg.expand();}
 
-let tonConnectUI = null;
-
-function getInitData() { return tg?.initData || new URLSearchParams(location.search).get('initData') || ''; }
-
-async function api(path, method = 'GET', body = null) {
-  const headers = { 'Content-Type': 'application/json' };
-  const initData = getInitData();
-  if (initData) headers['X-Telegram-Init-Data'] = initData;
-  try { 
-    const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null }); 
-    const data = await res.json();
-    return data;
-  } catch (e) { 
-    console.error('API network error:', path, e.message);
-    return { ok: false, error: 'network', detail: e.message }; 
-  }
+function getTelegramLang(){
+  try{
+    let lang = tg?.initDataUnsafe?.user?.language_code || '';
+    if(!lang){ lang = navigator.language || 'en'; lang = lang.split('-')[0]; }
+    lang = lang.toLowerCase();
+    if(['en','ar','ru','tr'].includes(lang)) return lang;
+    if(lang.startsWith('ar')) return 'ar';
+    if(lang.startsWith('ru')) return 'ru';
+    if(lang.startsWith('tr')) return 'tr';
+    return 'en';
+  }catch{return 'en'}
 }
 
-function t(key) { return TRANSLATIONS[STATE.language]?.[key] || TRANSLATIONS.en[key] || key; }
-function applyTranslations() {
-  document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if (el.tagName === 'INPUT') el.placeholder = t(key); else el.textContent = t(key); });
-  document.getElementById('langBtn').textContent = STATE.language.toUpperCase();
-  document.documentElement.dir = STATE.language === 'ar' ? 'rtl' : 'ltr';
-}
-function cycleLanguage() { const langs = ['en', 'ar', 'ru', 'tr']; const idx = langs.indexOf(STATE.language); const next = langs[(idx + 1) % langs.length]; STATE.language = next; applyTranslations(); api('/api/language', 'POST', { lang: next }).catch(() => {}); }
+function getInitData(){ try{ if(tg?.initData) return tg.initData; const p=new URLSearchParams(location.search).get('tgWebAppData'); if(p) return p; return ''; }catch{return ''} }
 
-function toast(msg, type = 'info') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.background = type === 'error' ? 'rgba(255,77,77,0.95)' : type === 'success' ? 'rgba(0,229,255,0.95)' : 'rgba(18,24,42,0.95)';
-  el.style.color = type === 'success' ? '#080C18' : '#EAF0FF';
-  el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2500);
+async function api(path,method='GET',body=null){
+  const headers={'Content-Type':'application/json'}; const initData=getInitData(); if(initData) headers['X-Telegram-Init-Data']=initData;
+  try{ const res=await fetch(path,{method,headers,body:body?JSON.stringify(body):null}); const data=await res.json(); return data; }catch(e){ return {ok:false,error:'network',detail:e.message}; }
 }
 
-// ========== ADSGRAM ==========
-async function showAd(blockId) {
-  // Try Adsgram first
-  if (blockId && window.Adsgram) {
-    try {
-      const controller = window.Adsgram.init({ blockId: String(blockId), debug: false });
-      const result = await controller.show();
-      if (result) return true;
-    } catch (e) {
-      console.log('Adsgram:', e.message || e.description || 'no ad');
-      // If Adsgram says no ad, fall through to Monetag
-    }
-  }
-  // Fallback to Monetag Rewarded Interstitial
-  try {
-    if (typeof show_12138342 === 'function') {
-      // Monetag returns a promise that resolves when ad watched
-      const res = await show_12138342();
-      return true;
-    } else if (typeof window.show_12138342 === 'function') {
-      await window.show_12138342();
-      return true;
-    } else {
-      console.error('Monetag function not found');
-    }
-  } catch (e) {
-    console.error('Monetag error:', e);
-    // Monetag sometimes throws but ad was shown, consider it watched
-    if (e && (e.includes && e.includes('closed') || e === true)) return false;
-  }
+async function showAd(blockId){
+  blockId = blockId || AD_CONFIG.freeBlockId || CONFIG.adsgramBlockId;
+  if(blockId && window.Adsgram){ try{ const C=window.Adsgram.init({blockId:String(blockId),debug:false}); const r=await C.show(); if(r) return true; }catch(e){} }
+  try{ if(typeof show_12138342==='function'){ await show_12138342(); return true; } if(typeof window.show_12138342==='function'){ await window.show_12138342(); return true; } }catch(e){}
   return false;
 }
 
-// ========== TON CONNECT ==========
-function initTonConnect() {
-  tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-    manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-    buttonRootId: 'ton-connect-btn'
+function t(key){ return TRANSLATIONS[STATE.language]?.[key] || TRANSLATIONS.en[key] || key; }
+function applyTranslations(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ const key=el.getAttribute('data-i18n'); const val=t(key); if(el.tagName==='INPUT') el.placeholder=val; else el.textContent=val; });
+  document.getElementById('langBtn').textContent=STATE.language.toUpperCase();
+  document.documentElement.dir=STATE.language==='ar'?'rtl':'ltr';
+  document.documentElement.lang=STATE.language;
+  document.querySelectorAll('.lang-opt').forEach(b=>{ b.style.borderColor=b.dataset.lang===STATE.language?'#FFD700':'#2A2A2A'; b.style.background=b.dataset.lang===STATE.language?'rgba(255,215,0,0.12)':'rgba(255,255,255,0.05)'; });
+}
+function setLang(lang){ STATE.language=lang; applyTranslations(); api('/api/language','POST',{lang}).catch(()=>{}); localStorage.setItem('fwc_lang',lang); }
+function cycleLanguage(){ const langs=['en','ar','ru','tr']; const idx=langs.indexOf(STATE.language); const next=langs[(idx+1)%langs.length]; setLang(next); }
+
+function formatTime(sec){ const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60; return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }
+function showToast(msg){ let el=document.createElement('div'); el.className='toast'; el.textContent='✅ '+msg; document.body.appendChild(el); setTimeout(()=>el.remove(),2500); }
+function showError(msg){ const box=document.getElementById('errorBox'); const txt=document.getElementById('errorText'); txt.textContent=msg; box.style.display='flex'; setTimeout(()=>box.style.display='none',4000); }
+function triggerConfetti(){ const c=document.getElementById('confetti'); for(let i=0;i<24;i++){ let d=document.createElement('div'); d.style.position='absolute'; d.style.left=(Math.random()*90)+'%'; d.style.top='-10px'; d.style.width='8px'; d.style.height='8px'; d.style.borderRadius='1px'; d.style.background=i%3===0?'#FFD700':i%3===1?'#FFF2A0':'#D4AF37'; d.style.animation=`confettiFall ${0.8+Math.random()*0.4}s cubic-bezier(.25,.46,.45,.94) ${i*0.03}s forwards`; c.appendChild(d); setTimeout(()=>d.remove(),2000); } const coin=document.getElementById('coinObj'); coin.classList.add('bounce'); setTimeout(()=>coin.classList.remove('bounce'),900); }
+
+let cooldownTimer=null;
+function startCooldown(remainingMs){
+  clearInterval(cooldownTimer); const end=Date.now()+remainingMs;
+  function tick(){ const left=Math.max(0,end-Date.now()); const sec=Math.floor(left/1000); document.getElementById('countdown').textContent=sec>0?formatTime(sec):t('ready'); const pct=remainingMs>0?(1-left/remainingMs)*100:100; const circ=339.292; document.getElementById('progressCircle').style.strokeDashoffset=circ-pct/100*circ; if(left<=0){ clearInterval(cooldownTimer); loadMe(); } }
+  tick(); cooldownTimer=setInterval(tick,1000);
+}
+
+function updateUI(res){
+  document.getElementById('loadingState').style.display='none'; document.getElementById('balanceState').style.display='block';
+  STATE.balance=res.balance||0; STATE.holding=res.holding_amount||res.holding||0; STATE.bonus=res.bonus_percent||0; STATE.canMine=res.canMine||{ok:false}; STATE.canWithdraw=res.canWithdraw||{ok:false}; STATE.streak=res.streak||0; STATE.miningAmount=res.miningAmount||4; STATE.wallet=res.wallet||null;
+  // === كل القيم دي جاية من لوحة الأدمن - لو غيرتها هناك هتتغير هنا أوتوماتيك ===
+  if(res.ads){ AD_CONFIG.freeBlockId = res.ads.freeBlockId || res.adBlockId || AD_CONFIG.freeBlockId; AD_CONFIG.autoBlockId = res.ads.autoBlockId || res.adAutoBlockId || AD_CONFIG.autoBlockId; }
+  if(res.adBlockId) AD_CONFIG.freeBlockId = res.adBlockId;
+  if(res.adAutoBlockId) AD_CONFIG.autoBlockId = res.adAutoBlockId;
+  if(res.ad_free_mult) STATE.adFreeMult = res.ad_free_mult;
+  if(res.withdraw_min) STATE.withdrawMin = res.withdraw_min;
+  if(res.withdraw_fee_percent) STATE.withdrawFee = res.withdraw_fee_percent;
+  STATE.miningInterval = res.mining_interval || res.miningInterval || CONFIG.miningInterval;
+  if(!localStorage.getItem('fwc_lang')){ const autoLang=getTelegramLang(); STATE.language=res.language||autoLang||'en'; } else { STATE.language=localStorage.getItem('fwc_lang')||res.language||'en'; }
+  applyTranslations();
+  document.getElementById('balanceVal').textContent=STATE.balance.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('rateVal').textContent='+'+STATE.miningAmount.toFixed(2)+' per claim';
+  document.getElementById('farmingInfo').textContent=STATE.miningAmount+' FWC / 4h';
+  document.getElementById('bonusInfo').textContent='+'+STATE.bonus+'%';
+  const holdingPct=Math.min(100,STATE.holding/25000*100); document.getElementById('holdingBar').style.width=holdingPct+'%';
+  document.getElementById('nextTier').textContent=(25000-STATE.holding>0?(25000-STATE.holding).toLocaleString()+' to next':'MAX');
+  document.getElementById('minedToday').textContent=res.mined_today||0; document.getElementById('totalClaimed').textContent=res.total_claimed||0;
+  document.getElementById('withdrawBalance').textContent=STATE.balance;
+  // تحديث معلومات السحب من الأدمن
+  const withdrawMin = STATE.withdrawMin || 1000;
+  const withdrawFee = STATE.withdrawFee || 5;
+  document.getElementById('accountBalance').textContent=STATE.balance.toFixed(2);
+  document.getElementById('accountReferrals').textContent=res.referral_count||0;
+  const claimBtn=document.getElementById('claimBtn'); const bonusBtn=document.getElementById('bonusBtn'); const statusText=document.getElementById('statusText'); const claimText=document.getElementById('claimText'); const bonusText=document.getElementById('bonusText');
+  if(res.is_banned){ statusText.textContent='⛔ Banned'; claimBtn.disabled=true; bonusBtn.disabled=true; return; }
+  if(!res.wallet){ statusText.textContent='⚠️ Connect wallet'; claimBtn.disabled=true; bonusBtn.disabled=true; claimText.textContent=t('wait'); claimBtn.onclick=()=>switchTab('wallet'); return; }
+  if(STATE.canMine.ok){ statusText.textContent='✅ '+t('ready'); claimBtn.disabled=false; bonusBtn.disabled=false; claimText.textContent=t('claim')+' '+STATE.miningAmount; bonusText.textContent='BONUS '+(STATE.miningAmount*2); claimBtn.onclick=doMine; bonusBtn.onclick=watchAdForBonus; document.getElementById('countdown').textContent=t('ready'); document.getElementById('progressCircle').style.strokeDashoffset=0; }
+  else if(STATE.canMine.reason==='cooldown'){ claimBtn.disabled=true; bonusBtn.disabled=true; claimBtn.onclick=null; bonusBtn.onclick=null; claimText.textContent=t('wait'); bonusText.textContent=t('wait'); statusText.textContent='⏳ '+formatTime(Math.floor(STATE.canMine.remaining/1000)); startCooldown(STATE.canMine.remaining); }
+  else{ statusText.textContent='⏳ '+(STATE.canMine.reason||t('wait')); claimBtn.disabled=true; bonusBtn.disabled=true; }
+  if(res.wallet){ document.getElementById('walletStatus').innerHTML='● CONNECTED'; document.getElementById('walletStatus').style.background='rgba(16,185,129,0.1)'; document.getElementById('walletStatus').style.color='#6ee7b7'; document.getElementById('walletStatus').style.borderColor='rgba(16,185,129,0.2)'; document.getElementById('walletBtnText').textContent='Connected'; document.getElementById('walletAddr').style.display='block'; document.getElementById('walletAddr').textContent=res.wallet; document.getElementById('connectWalletBtn').style.background='rgba(255,255,255,0.06)'; document.getElementById('accountName').textContent=res.first_name||res.username||'User'; document.getElementById('accountId').textContent='ID: '+(res.telegram_id||'-'); }
+  if(res.referral_link){ document.getElementById('refLink').textContent=res.referral_link; }
+  document.getElementById('streakDay').textContent=STATE.streak; document.getElementById('streakBonus').textContent=STATE.streak+'/7';
+  const dots=document.getElementById('streakDots'); dots.innerHTML=''; for(let i=0;i<7;i++){ let d=document.createElement('div'); d.style.flex='1'; d.style.height='32px'; d.style.borderRadius='20px'; d.style.display='flex'; d.style.alignItems='center'; d.style.justifyContent='center'; d.style.fontSize='11px'; d.style.fontWeight='700'; d.style.border='1px solid'; if(i<STATE.streak){d.style.background='#FFD700';d.style.color='#3D2E00';d.style.borderColor='#FFD700';}else{d.style.background='rgba(255,255,255,0.05)';d.style.color='#9B8F7A';d.style.borderColor='#2A2A2A';} d.textContent=i+1; dots.appendChild(d); }
+}
+
+async function loadMe(){
+  document.getElementById('loadingState').style.display='flex'; document.getElementById('balanceState').style.display='none';
+  const res=await api('/api/me'); if(!res.ok){ document.getElementById('loadingState').innerHTML='<span style="color:#f87171">Failed</span>'; return; }
+  updateUI(res); loadTasks(); loadFriends(); loadLeaderboard(); loadTiers();
+}
+
+async function doMine(){
+  const btn=document.getElementById('claimBtn'); const bBtn=document.getElementById('bonusBtn'); btn.disabled=true; bBtn.disabled=true; document.getElementById('claimText').textContent='...';
+  const res=await api('/api/mine','POST'); if(res.ok){ STATE.balance=res.newBalance||STATE.balance+res.amount; showToast('+'+res.amount+' FWC'); triggerConfetti(); await loadMe(); }else{ showError(res.error||'Failed'); btn.disabled=false; bBtn.disabled=false; document.getElementById('claimText').textContent=t('claim'); }
+}
+
+async function watchAdForBonus(){
+  const btn=document.getElementById('bonusBtn'); const cBtn=document.getElementById('claimBtn'); btn.disabled=true; cBtn.disabled=true; const orig=btn.innerHTML; btn.textContent='Loading...';
+  const watched=await showAd(AD_CONFIG.freeBlockId); if(!watched){ btn.innerHTML=orig; btn.disabled=false; cBtn.disabled=false; showError('No ad'); return; }
+  btn.textContent='...'; const res=await api('/api/bonus','POST'); if(res.ok){ STATE.balance=res.newBalance; showToast('+'+res.amount+' BONUS'); triggerConfetti(); await loadMe(); }else{ showError(res.error||'Failed'); btn.innerHTML=orig; btn.disabled=false; cBtn.disabled=false; }
+  btn.innerHTML=orig;
+}
+
+async function loadTasks(){
+  const res=await api('/api/tasks'); if(!res.ok) return; STATE.tasks=res.tasks||[]; STATE.progress=res.progress||{}; STATE.streak=res.streak||STATE.streak;
+  const list=document.getElementById('tasksList'); const doneCount=STATE.tasks.filter(t=>{ const p=STATE.progress[t.id]||0; return p>=t.max_per_day; }).length; document.getElementById('tasksDone').textContent=doneCount+'/'+STATE.tasks.length;
+  if(STATE.tasks.length===0){ list.innerHTML='<div class="glass" style="border-radius:14px;padding:24px;text-align:center"><div style="font-size:13px;font-weight:700">'+t('loading')+'</div></div>'; return; }
+  list.innerHTML=''; STATE.tasks.forEach(t=>{
+    const prog=STATE.progress[t.id]||0; const max=t.max_per_day||1; const done=prog>=max; const isAds=t.type==='ads';
+    const div=document.createElement('div'); div.className='glass'; div.style.cssText='border-radius:14px;padding:14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;'+(done?'opacity:0.6':'')+(isAds?'border-color:rgba(249,115,22,0.15);background:rgba(255,120,0,0.04)':'');
+    div.innerHTML=`<div style="display:flex;align-items:center;gap:12px"><div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;${isAds?'background:linear-gradient(to bottom right,#fb923c,#fcd34d);color:#000':'background:#1A1A1A;border:1px solid #2A2A2A'}">${t.icon||'🎯'}</div><div><div style="font-size:13px;font-weight:700">${t.title} ${max>1?'<span style="font-size:10px;color:#9B8F7A">'+prog+'/'+max+'</span>':''}</div><div style="font-size:11px;color:#FFD700;font-weight:700;margin-top:2px">+${t.reward} FWC</div></div></div><div>${done?'<div style="width:28px;height:28px;border-radius:50%;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);display:flex;align-items:center;justify-content:center">✓</div>':'<button class="taskBtn" data-id="'+t.id+'" style="height:32px;padding:0 16px;border-radius:20px;font-size:12px;font-weight:700;border:none;cursor:pointer;'+(isAds?'background:linear-gradient(100deg,#FFF2A8,#FFD700,#D4AF37);color:#3D2E00':'background:#fff;color:#000')+'">'+(isAds?'Watch':'Go')+'</button>'}</div>`;
+    list.appendChild(div);
   });
-
-  tonConnectUI.onStatusChange(async (wallet) => {
-    if (wallet) {
-      const walletAddress = wallet.account.address;
-      document.getElementById('walletAddress').textContent = walletAddress;
-
-      const res = await api('/api/wallet/save', 'POST', { address: walletAddress });
-
-      if (res.ok) {
-        STATE.wallet = res.wallet || walletAddress;
-        toast('Wallet connected ✅', 'success');
-        await loadUser();
-      } else {
-        toast('Failed to save wallet: ' + (res.error || ''), 'error');
-      }
-    } else {
-      document.getElementById('walletAddress').textContent = '';
-      STATE.wallet = null;
-      renderMine();
-    }
-  });
+  list.querySelectorAll('.taskBtn').forEach(b=>{ b.onclick=async()=>{
+    const id=b.dataset.id; const task=STATE.tasks.find(x=>x.id===id); if(task?.type==='ads'){ b.disabled=true; b.textContent='...'; const watched=await showAd(CONFIG.adsgramBlockId); if(!watched){ b.disabled=false; b.textContent='Watch'; showError('No ad'); return; } }
+    b.disabled=true; b.textContent='...'; const r=await api('/api/tasks/'+id,'POST'); if(r.ok){ showToast('+'+r.reward); await loadMe(); await loadTasks(); }else{ showError(r.error||'Failed'); b.disabled=false; b.textContent=task?.type==='ads'?'Watch':'Go'; }
+  }});
 }
 
-// ========== LOAD USER ==========
-async function loadUser() {
-  const res = await api('/api/me');
-  if (!res.ok) { if (res.error === 'forbidden') return toast('Open from Telegram', 'error'); return toast('Error loading', 'error'); }
-  STATE.telegram_id = res.telegram_id; STATE.language = res.language || 'en'; STATE.balance = res.balance;
-  STATE.wallet = res.wallet; STATE.is_banned = res.is_banned; STATE.miningAmount = res.miningAmount;
-  STATE.canMine = res.canMine; STATE.canWithdraw = res.canWithdraw; STATE.streak = res.streak || 0;
-  STATE.adBlockId = res.adBlockId || null;
-  STATE.adAutoBlockId = res.adAutoBlockId || null;
-  applyTranslations(); renderMine(); renderWallet(); renderAccount();
-}
+async function loadFriends(){ const res=await api('/api/referral'); if(res.ok){ document.getElementById('friendsCount').textContent=res.referral_count||0; document.getElementById('friendsEarned').textContent=(res.total_earned||0); if(res.referral_link) document.getElementById('refLink').textContent=res.referral_link; } }
+async function loadLeaderboard(){ const res=await api('/api/leaderboard'); if(!res.ok) return; const list=document.getElementById('leaderboardList'); list.innerHTML=''; (res.users||[]).forEach((u,i)=>{ const div=document.createElement('div'); div.className='glass'; div.style.cssText='border-radius:12px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between'; div.innerHTML=`<div style="display:flex;align-items:center;gap:10px"><div style="width:28px;height:28px;border-radius:50%;background:${i<3?'linear-gradient(100deg,#FFF2A8,#FFD700)':'#1E1E1E'};color:${i<3?'#3D2E00':'#8B7F6B'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">${i+1}</div><div><div style="font-size:12px;font-weight:700">${u.username||'User '+u.telegram_id}</div><div style="font-size:10px;color:#8B7F6B">${u.balance?.toFixed?.(1)||0} FWC</div></div></div><div style="font-size:12px;font-weight:700" class="gold-text">${u.balance?.toFixed?.(0)||0}</div>`; list.appendChild(div); }); document.getElementById('topMinersStats').innerHTML=`<div class="glass" style="border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:#8B7F6B">TOTAL MINED</div><div style="font-size:14px;font-weight:700;margin-top:2px">${(res.total_mined||0).toFixed(0)}</div></div><div class="glass" style="border-radius:10px;padding:10px;text-align:center"><div style="font-size:10px;color:#8B7F6B">USERS</div><div style="font-size:14px;font-weight:700;margin-top:2px">${res.total_users||0}</div></div>`; }
 
-function renderMine() {
-  document.getElementById('balanceNum').textContent = STATE.balance.toFixed(4);
-  document.getElementById('speedVal').textContent = STATE.miningAmount.toFixed(2);
-  document.getElementById('streakNum').textContent = STATE.streak;
-  const statusEl = document.getElementById('miningStatus');
-  const btn = document.getElementById('claimBtn');
-  const btnText = document.getElementById('claimText');
-  const bonusBtn = document.getElementById('bonusBtn');
-  
-  if (STATE.is_banned) { statusEl.textContent = '⛔ ' + t('banned'); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('banned'); return; }
-  if (!STATE.wallet) { statusEl.textContent = '⚠️ ' + t('addWallet'); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('addWallet'); btn.onclick = () => switchTab('wallet'); return; }
-  
-  // Unified 4h cooldown - either claim OR bonus, not both
-  if (STATE.canMine.ok) { 
-    statusEl.textContent = '✅ ' + t('ready') + ' - اختر: مطالبة عادية أو مضاعفة بإعلان'; 
-    btn.disabled = false; 
-    bonusBtn.disabled = false;
-    btnText.textContent = `⚡ ${t('claim')} ${STATE.miningAmount.toFixed(2)} FWC`; 
-    btn.onclick = doMine; 
-  }
-  else if (STATE.canMine.reason === 'cooldown') { 
-    btn.disabled = true; 
-    bonusBtn.disabled = true;
-    btn.onclick = null; 
-    startCooldown(STATE.canMine.remaining); 
-  }
-  else { statusEl.textContent = '⏳ ' + (STATE.canMine.reason || t('wait')); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('wait'); }
-}
-
-function startCooldown(remainingMs) {
-  const statusEl = document.getElementById('miningStatus'); 
-  const btn = document.getElementById('claimBtn'); 
-  const btnText = document.getElementById('claimText');
-  const bonusBtn = document.getElementById('bonusBtn');
-  btn.disabled = true; 
-  bonusBtn.disabled = true;
-  clearInterval(STATE.cooldownTimer); 
-  let ms = remainingMs;
-  const tick = () => { 
-    if (ms <= 0) { clearInterval(STATE.cooldownTimer); loadUser(); return; } 
-    const h = Math.floor(ms / 3600000); 
-    const m = Math.floor((ms % 3600000) / 60000); 
-    const s = Math.floor((ms % 60000) / 1000); 
-    statusEl.textContent = `⏳ ${h}h ${m}m ${s}s - انتظر`; 
-    btnText.textContent = t('cooldown'); 
-    ms -= 1000; 
-  };
-  tick(); 
-  STATE.cooldownTimer = setInterval(tick, 1000);
-}
-
-async function doMine() {
-  const btn = document.getElementById('claimBtn');
-  const bonusBtn = document.getElementById('bonusBtn');
-  btn.disabled = true;
-  bonusBtn.disabled = true;
-  const res = await api('/api/mine', 'POST', {});
-  if (res.ok) {
-    STATE.balance = res.newBalance;
-    toast(`+${res.amount} FWC ✅ مطالبة عادية`, 'success');
-    if (tg) tg.HapticFeedback?.notificationOccurred('success');
-    await loadUser();
-  } else {
-    if (res.error === 'cooldown') {
-      startCooldown(res.remaining);
-      toast('انتظر انتهاء الوقت', 'error');
-    } else {
-      toast('Error: ' + (res.error || ''), 'error');
-      await loadUser();
-    }
-  }
-}
-
-async function watchAdForBonus() {
-  const btn = document.getElementById('bonusBtn');
-  const claimBtn = document.getElementById('claimBtn');
-  btn.disabled = true;
-  claimBtn.disabled = true;
-  const watched = await showAd(STATE.adBlockId);
-  if (!watched) {
-    toast('لازم تشوف الإعلان كامل', 'error');
-    btn.disabled = false;
-    claimBtn.disabled = false;
-    return;
-  }
-  const res = await api('/api/bonus', 'POST');
-  if (res.ok) {
-    STATE.balance = res.newBalance;
-    toast(`+${res.amount} FWC 🎁 مضاعف بالإعلان`, 'success');
-    if (tg) tg.HapticFeedback?.notificationOccurred('success');
-    await loadUser();
-  } else {
-    if (res.error === 'cooldown') {
-      startCooldown(res.remaining);
-      toast('انتظر انتهاء الوقت', 'error');
-    } else {
-      toast('Error: ' + (res.error || ''), 'error');
-      btn.disabled = false;
-      claimBtn.disabled = false;
-    }
-  }
-}
-
-async function doCheckin() { const res = await api('/api/checkin', 'POST'); if (res.ok) { toast(`+${res.reward} FWC • Streak ${res.streak} 🔥`, 'success'); await loadUser(); } else if (res.error === 'already_checked_in') { toast('Already checked in today ✅'); } else { toast('Error: ' + res.error, 'error'); } }
-
-async function loadTasks() { 
-  const res = await api('/api/tasks'); 
-  if (!res.ok) return; 
-  STATE.tasks = res.tasks; 
-  STATE.progress = res.progress; 
-  STATE.progressList = res.progressList || [];
-  // For backward compat, if progress is map, also keep list
-  if (STATE.progress && typeof STATE.progress === 'object' && !Array.isArray(STATE.progress)) {
-    STATE.progressList = Object.keys(STATE.progress);
-  }
-  renderTasks(); 
-}
-function renderTasks() {
-  const el = document.getElementById('tasksList');
-  if (!STATE.tasks.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No tasks</div>'; return; }
-  const icons = { checkin: '📅', ads: '📺', join: '🔗', youtube: '▶️', x: '𝕏', invite: '👥' };
-  el.innerHTML = STATE.tasks.map(task => { 
-    const progressMap = STATE.progress && typeof STATE.progress === 'object' && !Array.isArray(STATE.progress) ? STATE.progress : {};
-    const progressList = Array.isArray(STATE.progress) ? STATE.progress : (STATE.progressList || []);
-    const count = progressMap[task.id] || 0;
-    const max = task.max_per_day || 1;
-    const isDone = task.once ? progressList.includes(task.id) || count > 0 : count >= max;
-    const icon = icons[task.type] || '📌'; 
-    const title = STATE.language === 'ar' && task.title_ar ? task.title_ar : task.title; 
-    let statusText = '';
-    if (task.type === 'ads' && max > 1) {
-      statusText = ` (${count}/${max})`;
-    }
-    return `<div class="task-item ${isDone ? 'done' : ''}"><div class="task-info"><div class="task-icon">${icon}</div><div><div class="task-name">${title}${statusText}</div><div class="task-reward">+${task.reward} FWC${max > 1 ? ` x${max}` : ''}</div></div></div>${isDone ? '<span style="color:var(--accent-2);font-size:11px;font-weight:700;">✓ Done</span>' : `<button class="task-btn" onclick="completeTask('${task.id}')">${task.type === 'checkin' ? t('checkin') : (task.type === 'ads' ? 'Watch' : 'Start')}</button>`}</div>`; 
-  }).join('');
-}
-
-async function completeTask(id) {
-  if (id === 'checkin') return doCheckin();
-  
-  const task = STATE.tasks.find(t => t.id === id);
-  if (!task) return toast('Task not found', 'error');
-
-  if (task.type === 'invite') {
-    await renderAccount();
-    switchTab('account');
-    toast('Share your referral link with friends!', 'success');
-    return;
-  }
-
-  if (task.type === 'ads') {
-    const watched = await showAd(STATE.adBlockId);
-    if (!watched) {
-      toast('لازم تشوف الإعلان كامل', 'error');
-      return;
-    }
-    // Wait a bit after ad closes to avoid Telegram WebApp race
-    await new Promise(r => setTimeout(r, 800));
-  }
-
-  if (['join', 'youtube', 'x', 'custom'].includes(task.type) && task.url) {
-    window.open(task.url, '_blank');
-    // Give user time to join
-    await new Promise(r => setTimeout(r, 1500));
-  }
-
-  // Retry logic for network errors
-  let res = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    res = await api('/api/tasks/' + id, 'POST');
-    if (res.ok) break;
-    if (res.error === 'network' && attempt < 2) {
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      continue;
-    }
-    break;
-  }
-  
-  if (res && res.ok) {
-    toast(`+${res.reward} FWC ✅`, 'success');
-    if (tg) tg.HapticFeedback?.notificationOccurred('success');
-    await loadUser();
-    await loadTasks();
-  } else {
-    const msgs = { 
-      not_subscribed: 'لازم تنضم للقناة الأول', 
-      limit: `وصلت الحد اليومي (${task.max_per_day || 7} مرات)`, 
-      already_done: 'خلصت التاسك ده', 
-      verification_error: 'خطأ في التحقق',
-      network: 'خطأ شبكة - جرب تاني'
-    };
-    console.error('Task error:', res);
-    toast(msgs[res?.error] || ('خطأ: ' + (res?.error || 'network')), 'error');
-    // Still reload to show correct count
-    await loadTasks();
-  }
-}
-
-function renderWallet() {
-  document.getElementById('walletAddress').textContent = STATE.wallet || '';
-  const info = document.getElementById('withdrawInfo');
-  if (STATE.canWithdraw?.ok) { info.textContent = `✅ ${t('ready')} (${STATE.balance.toFixed(2)} FWC)`; info.style.color = 'var(--accent-2)'; }
-  else if (STATE.canWithdraw?.reason === 'min_balance') { info.textContent = `Min: ${STATE.canWithdraw.need} FWC (you have ${STATE.balance.toFixed(2)})`; info.style.color = 'var(--text-muted)'; }
-  else if (STATE.canWithdraw?.reason === '24h') { info.textContent = `⏳ Wait ${STATE.canWithdraw.remaining.toFixed(1)}h`; info.style.color = 'var(--text-muted)'; }
-  else if (STATE.canWithdraw?.reason === 'hold_required') { info.textContent = `⚠️ Hold ${STATE.canWithdraw.need} FWC in wallet (you have ${STATE.canWithdraw.current.toFixed(2)})`; info.style.color = 'var(--warn)'; }
-  else if (!STATE.wallet) { info.textContent = t('addWallet'); }
-}
-
-async function renderAccount() {
-  const nameEl = document.getElementById('profileName');
-  const userEl = document.getElementById('profileUsername');
-  const avatarEl = document.getElementById('profileAvatar');
-  const balEl = document.getElementById('statBalance');
-  const refEl = document.getElementById('statReferrals');
-  const walletEl = document.getElementById('statWallet');
-  const idEl = document.getElementById('statUserId');
-
-  const firstName = STATE.userInfo?.first_name || tg?.initDataUnsafe?.user?.first_name || 'User';
-  const username = STATE.userInfo?.username || tg?.initDataUnsafe?.user?.username || '';
-  
-  avatarEl.textContent = firstName.charAt(0).toUpperCase();
-  nameEl.textContent = firstName;
-  userEl.textContent = username ? '@' + username : '—';
-  balEl.textContent = STATE.balance.toFixed(2);
-  walletEl.textContent = STATE.wallet ? 'Linked ✅' : 'Not linked';
-  walletEl.style.color = STATE.wallet ? 'var(--accent-2)' : 'var(--text-muted)';
-  idEl.textContent = STATE.telegram_id || '—';
-
-  const refRes = await api('/api/referral');
-  if (refRes.ok) {
-    STATE.referralData = refRes;
-    refEl.textContent = refRes.referral_count;
-    document.getElementById('referralLink').value = refRes.referral_link;
-  }
-}
-
-function copyReferralLink() {
-  const input = document.getElementById('referralLink');
-  input.select();
-  input.setSelectionRange(0, 99999);
-  navigator.clipboard.writeText(input.value).then(() => {
-    toast('Referral link copied ✅', 'success');
-  }).catch(() => {
-    toast('Copy manually: ' + input.value, 'info');
+function loadTiers(){
+  const tiers=[{hold:2500,bonus:10,label:'Bronze'},{hold:5000,bonus:25,label:'Silver'},{hold:10000,bonus:50,label:'Gold'},{hold:15000,bonus:75,label:'Platinum'},{hold:25000,bonus:100,label:'Diamond'}];
+  const list=document.getElementById('tiersList'); list.innerHTML='';
+  tiers.forEach(t=>{
+    const achieved=STATE.holding>=t.hold;
+    const div=document.createElement('div'); div.style.cssText='position:relative;display:flex;align-items:center;gap:16px;padding:12px 12px 12px 32px;border-radius:12px;border:1px solid;'+(achieved?'background:rgba(255,215,0,0.08);border-color:rgba(255,215,0,0.25)':'background:rgba(26,26,26,0.6);border-color:#2A2A2A');
+    div.innerHTML=`<div style="position:absolute;left:0;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;border:2px solid;transform:translateX(-50%);${achieved?'background:#FFD700;border-color:#FFD700;color:#3D2E00':'background:#1E1E1E;border-color:#2A2A2A;color:#555'}"><span style="font-size:10px;font-weight:700">${t.label[0]}</span></div><div style="flex:1;display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:13px;font-weight:700">${t.label} <span style="font-size:10px;color:#8B7F6B">${t.hold.toLocaleString()}</span></div></div><div style="font-size:13px;font-weight:900;padding:4px 10px;border-radius:20px;${achieved?'background:#FFD700;color:#3D2E00':'background:#1E1E1E;color:#666'}">+${t.bonus}%</div></div>`;
+    list.appendChild(div);
   });
 }
 
-let estimateTimeout = null;
-function estimateWithdraw() {
-  clearTimeout(estimateTimeout); estimateTimeout = setTimeout(async () => {
-    const amount = parseFloat(document.getElementById('withdrawInput').value); const preview = document.getElementById('feePreview');
-    if (!amount || amount <= 0) { preview.classList.add('hidden'); STATE.lastFeeEstimate = null; return; }
-    const res = await api(`/api/withdraw/estimate?amount=${amount}`);
-    if (!res.ok) { preview.classList.add('hidden'); STATE.lastFeeEstimate = null; return; }
-    STATE.lastFeeEstimate = res; preview.classList.remove('hidden');
-    document.getElementById('feeAmount').textContent = res.amount + ' FWC';
-    document.getElementById('feePercent').textContent = res.percent;
-    document.getElementById('feeValue').textContent = res.fee + ' FWC';
-    document.getElementById('feeNet').textContent = res.netAmount + ' FWC';
-  }, 400);
+document.getElementById('maxBtn').onclick=()=>{ document.getElementById('withdrawAmount').value=Math.floor(STATE.balance); updateWithdraw(); };
+document.getElementById('withdrawAmount').oninput=updateWithdraw;
+function updateWithdraw(){ const v=Number(document.getElementById('withdrawAmount').value)||0; const fee=v*0.05; const rec=v-fee; document.getElementById('feeVal').textContent=fee.toFixed(2); document.getElementById('receiveVal').textContent=rec.toFixed(2); }
+document.getElementById('withdrawBtn').onclick=async()=>{ const amt=Number(document.getElementById('withdrawAmount').value); if(!amt||amt<1000){ showError('Minimum 1000'); return; } const res=await api('/api/withdraw','POST',{amount:amt}); const msg=document.getElementById('withdrawMsg'); msg.style.display='block'; if(res.ok){ msg.textContent='Submitted'; msg.style.background='rgba(16,185,129,0.1)'; msg.style.color='#6ee7b7'; msg.style.border='1px solid rgba(16,185,129,0.2)'; document.getElementById('withdrawAmount').value=''; updateWithdraw(); await loadMe(); }else{ msg.textContent=res.error||'Failed'; msg.style.background='rgba(239,68,68,0.1)'; msg.style.color='#fecaca'; msg.style.border='1px solid rgba(239,68,68,0.2)'; } };
+document.getElementById('checkinBtn').onclick=async()=>{ const res=await api('/api/checkin','POST'); if(res.ok){ showToast('+'+res.reward+' Day '+res.streak); await loadMe(); await loadTasks(); }else showError(res.error||'Failed'); };
+document.getElementById('copyBtn').onclick=()=>{ const link=document.getElementById('refLink').textContent; if(!link||link==='-') return; const ta=document.createElement('textarea'); ta.value=link; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); showToast('Copied'); };
+document.getElementById('shareBtn').onclick=()=>{ const link=document.getElementById('refLink').textContent; if(link&&link!=='-') window.open('https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent('Join FWC!'),'_blank'); };
+
+function switchTab(tab){
+  document.querySelectorAll('[id^=tab-]').forEach(el=>el.style.display='none');
+  document.getElementById('tab-'+tab).style.display='block';
+  document.querySelectorAll('.nav-btn').forEach(b=>{ b.classList.remove('tab-active'); b.style.color='#6B6252'; });
+  const active=document.querySelector(`[data-tab=${tab}]`); if(active){ active.classList.add('tab-active'); active.style.color='#FFD700'; }
 }
+document.querySelectorAll('.nav-btn').forEach(b=>{ b.onclick=()=>switchTab(b.dataset.tab); });
 
-async function requestWithdraw() {
-  const amount = parseFloat(document.getElementById('withdrawInput').value);
-  if (!amount || amount <= 0) return toast('Enter valid amount', 'error');
-  if (STATE.lastFeeEstimate) { const msg = `You will be charged ${STATE.lastFeeEstimate.fee} FWC fee.\nYou will receive: ${STATE.lastFeeEstimate.netAmount} FWC\n\nContinue?`; if (!confirm(msg)) return; }
-  const btn = document.getElementById('withdrawBtn'); btn.disabled = true;
-  const res = await api('/api/withdraw', 'POST', { amount }); btn.disabled = false;
-  if (res.ok) { toast(`✅ Request sent\nYou'll receive ${res.amount} FWC`, 'success'); document.getElementById('withdrawInput').value = ''; document.getElementById('feePreview').classList.add('hidden'); STATE.lastFeeEstimate = null; await loadUser(); await loadWithdrawalHistory(); }
-  else {
-    const msgs = { min_balance: `Minimum ${STATE.canWithdraw?.need || 1000} FWC`, '24h': 'Wait 24h after first mine', no_wallet: 'Add your wallet first', pending_exists: 'You have a pending withdrawal', insufficient_balance: `Insufficient balance (need ${res.required || amount})`, hold_required: `You must hold ${STATE.canWithdraw?.need || 1000} FWC in your wallet to withdraw` };
-    toast(msgs[res.error] || ('Error: ' + res.error), 'error');
-  }
-}
+// Init with Telegram language auto
+(function init(){
+  const saved=localStorage.getItem('fwc_lang'); if(saved){ STATE.language=saved; } else { STATE.language=getTelegramLang(); }
+  applyTranslations();
+  loadMe();
+  setInterval(loadMe,60000);
+})();
 
-async function loadWithdrawalHistory() {
-  const res = await api('/api/withdrawals'); if (!res.ok) return;
-  const el = document.getElementById('withdrawHistory');
-  if (!res.withdrawals.length) { el.textContent = 'No withdrawals'; return; }
-  const statusMap = { pending: '⏳ Pending', approved: '✅ Approved', rejected: '❌ Rejected', processing: '🔄 Processing' };
-  el.innerHTML = res.withdrawals.slice(0, 5).map(w => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span>${w.net_amount || w.amount} FWC</span><span style="font-size:11px;">${statusMap[w.status] || w.status}</span></div>`).join('');
-}
-
-async function loadLeaderboard() {
-  const res = await api('/api/leaderboard'); if (!res.ok) return;
-  const el = document.getElementById('leaderboard');
-  if (!res.leaders.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No data</div>'; return; }
-  el.innerHTML = res.leaders.map((l, i) => { const isYou = l.telegram_id === STATE.telegram_id; return `<div class="leader-item ${isYou ? 'you' : ''}"><div style="display:flex;align-items:center;gap:10px;"><div class="rank ${i < 3 ? 'top' : ''}">${i + 1}</div><div style="font-size:13px;font-weight:${isYou ? 800 : 600};">${l.first_name || l.username || 'User'}${isYou ? ' (You)' : ''}</div></div><div style="font-size:12px;font-weight:700;">${l.balance.toFixed(2)} FWC</div></div>`; }).join('');
-}
-
-function switchTab(tab) {
-  STATE.activeTab = tab;
-  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
-  document.getElementById('tab-' + tab).classList.remove('hidden');
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (tab === 'tasks') loadTasks();
-  if (tab === 'wallet') { renderWallet(); loadWithdrawalHistory(); }
-  if (tab === 'market') loadLeaderboard();
-  if (tab === 'account') renderAccount();
-}
-
-async function init() {
-  if (!getInitData()) { toast('Open from Telegram', 'error'); document.getElementById('miningStatus').textContent = '⚠️ Open from Telegram'; return; }
-  STATE.userInfo = tg?.initDataUnsafe?.user || null;
-  await loadUser();
-  initTonConnect();
-  STATE.refreshTimer = setInterval(loadUser, 30000);
-}
-
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-else init();
-
-window.switchTab = switchTab;
-window.doCheckin = doCheckin;
-window.requestWithdraw = requestWithdraw;
-window.estimateWithdraw = estimateWithdraw;
-window.completeTask = completeTask;
-window.cycleLanguage = cycleLanguage;
-window.copyReferralLink = copyReferralLink;
-window.watchAdForBonus = watchAdForBonus;
+// كل القيم التالية متزامنة مع لوحة الأدمن D1:
+// - miningAmount من جدول economy_config أو halving logic
+// - AD_CONFIG.freeBlockId من ads_config (لوحة الأدمن > Ads)
+// - tasks من daily_tasks (لوحة الأدمن > Tasks) مع max_per_day و reward
+// - referral_link من config_overrides bot_username
+// - leaderboard من users order by balance
+// - withdraw limits من economy_config
 </script>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
