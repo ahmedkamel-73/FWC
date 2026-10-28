@@ -357,7 +357,7 @@ async function loadTab() {
   try {
     switch (STATE.tab) {
       case 'dashboard': await loadStats(); await loadEconomy(); break;
-      case 'users': await loadUsers(); break;
+      case 'users': await loadHold(); await loadUsers(); break;
       case 'mining': await loadEconomy(); break;
       case 'tasks': await loadTasksAdmin(); break;
       case 'withdrawals': await loadWithdrawals(); break;
@@ -471,9 +471,11 @@ function renderUsers(el) {
   el.innerHTML = `
     <div class="section">
       <div class="section-title">
-        <span>Users (${STATE.users.length})</span>
-        <div style="display:flex;gap:8px;">
-          <input type="text" class="search-input" placeholder="Search user..." oninput="debounceSearch(this.value)" style="padding:6px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);">
+        <span>Users (${STATE.users.length}) - Hold: ${STATE.holdAmount||1000} FWC</span>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <input type="number" id="holdAmountInput" value="${STATE.holdAmount||1000}" style="width:70px;padding:6px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);">
+          <button class="btn btn-sm btn-primary" onclick="saveHold()">Save</button>
+          <input type="text" class="search-input" placeholder="Search..." oninput="debounceSearch(this.value)" style="padding:6px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);">
           <button class="btn btn-sm btn-primary" onclick="openBalanceModal()">💰 Add</button>
         </div>
       </div>
@@ -494,7 +496,7 @@ function renderUsers(el) {
                 <tr>
                   <td>
                     <div style="font-weight:700;">${u.first_name || '—'}</div>
-                    <div style="font-size:10px;color:var(--text-muted);">ID: ${u.telegram_id}</div>
+                    <div style="font-size:10px;color:var(--text-muted);">ID: ${u.telegram_id} ${u.username ? '@'+u.username : ''}</div>
                   </td>
                   <td>
                     <div style="font-weight:700;">${(u.balance || 0).toFixed(2)}</div>
@@ -503,14 +505,14 @@ function renderUsers(el) {
                       <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;background:rgba(200,255,60,0.15);" onclick="quickAddBalance(${u.telegram_id}, 5000)">+5k</button>
                     </div>
                   </td>
-                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? u.wallet.slice(0,8)+'... <span style="font-size:9px;color:var(--text-muted);">('+ (u.wallet_verified?'✅':'') +')</span>' : '—'}</td>
+                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? u.wallet.slice(0,8)+'...' : '—'}</td>
                   <td>${u.is_banned ? `<span class="badge-status badge-banned">Banned</span>` : `<span class="badge-status badge-active">Active</span>`}</td>
                   <td>
                     <div style="display:flex;gap:4px;flex-wrap:wrap;">
                       <button class="btn btn-sm ${u.is_banned ? 'btn-primary' : 'btn-danger'}" onclick="toggleBan(${u.telegram_id}, ${u.is_banned})">${u.is_banned ? 'Unban' : 'Ban'}</button>
-                      <button class="btn btn-sm" onclick="openBalanceModal(${u.telegram_id})" title="Add/Edit Balance">💰</button>
-                      <button class="btn btn-sm" onclick="checkUserHold(${u.telegram_id})" title="Check Jetton Balance">🔍 Hold</button>
-                      <button class="btn btn-sm" onclick="resetWithdrawals(${u.telegram_id})" title="Reset withdrawals">🔄</button>
+                      <button class="btn btn-sm" onclick="openBalanceModal(${u.telegram_id})" title="Edit Balance">💰</button>
+                      <button class="btn btn-sm" onclick="checkUserHold(${u.telegram_id})" title="Check Hold Balance">🔍 Hold</button>
+                      <button class="btn btn-sm" onclick="resetWithdrawals(${u.telegram_id})" title="Reset Withdrawals">🔄</button>
                     </div>
                   </td>
                 </tr>
@@ -521,8 +523,8 @@ function renderUsers(el) {
     </div>
     <div id="balanceModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center;">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;width:90%;max-width:360px;">
-        <h3>💰 Add Balance</h3>
-        <div class="form-group" style="margin-top:12px;"><label>ID</label><input type="number" id="bal_tg_id"></div>
+        <h3 style="font-size:14px;margin-bottom:12px;">💰 Manage Balance</h3>
+        <div class="form-group"><label>Telegram ID</label><input type="number" id="bal_tg_id"></div>
         <div class="form-group"><label>Amount</label><input type="number" id="bal_amount"></div>
         <div class="form-group"><label>Mode</label><select id="bal_mode"><option value="add">Add</option><option value="set">Set</option></select></div>
         <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-primary" style="flex:1;" onclick="submitBalance()">Save</button><button class="btn" style="flex:1;" onclick="closeBalanceModal()">Cancel</button></div>
@@ -530,25 +532,6 @@ function renderUsers(el) {
       </div>
     </div>
   `;
-}
-
-async function quickAddBalance(tgId, amount){
-  if(!confirm('Add '+amount+' to '+tgId+'?')) return;
-  const res = await api('/api/admin/users/'+tgId+'/balance','POST',{amount,mode:'add'});
-  if(res.ok){toast('+'+amount+' ✅','success'); await loadUsers(); renderContent();} else toast('Error','error');
-}
-function openBalanceModal(tgId=null){
-  document.getElementById('balanceModal').style.display='flex';
-  if(tgId) document.getElementById('bal_tg_id').value=tgId;
-}
-function closeBalanceModal(){document.getElementById('balanceModal').style.display='none';}
-async function submitBalance(){
-  const tgId=parseInt(document.getElementById('bal_tg_id').value);
-  const amount=parseFloat(document.getElementById('bal_amount').value);
-  const mode=document.getElementById('bal_mode').value;
-  if(!tgId||isNaN(amount)){document.getElementById('bal_result').textContent='Invalid';return;}
-  const res=await api('/api/admin/users/'+tgId+'/balance','POST',{amount,mode});
-  if(res.ok){document.getElementById('bal_result').textContent='New: '+res.newBalance; toast('Updated ✅','success'); await loadUsers(); setTimeout(()=>{closeBalanceModal();renderContent();},800);} else document.getElementById('bal_result').textContent='Error';
 }
 
 
@@ -1174,7 +1157,7 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
+window.copyWallet = copyWallet;window.loadHold = loadHold;window.saveHold = saveHold;window.checkUserHold = checkUserHold;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;window.resetWithdrawals = resetWithdrawals;
 window.checkPassword = checkPassword;
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
