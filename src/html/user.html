@@ -317,35 +317,26 @@ function toast(msg, type = 'info') {
 
 // ========== ADSGRAM ==========
 async function showAd(blockId) {
-  // Try Adsgram first (primary)
   if (blockId) {
     try {
       if (window.Adsgram) {
         const controller = window.Adsgram.init({ blockId: String(blockId), debug: false });
         const result = await controller.show();
         if (result && result.done) return true;
-        if (result && result.done !== false) return true;
       }
     } catch (e) {
-      console.log('Adsgram failed, trying Monetag:', e.message);
+      console.log('Adsgram failed, trying Monetag', e.message);
     }
   }
-  
-  // Fallback to Monetag (secondary) - Zone 12138342
   try {
     if (typeof show_12138342 === 'function') {
-      const monetagResult = await show_12138342();
+      await show_12138342();
       return true;
-    } else {
-      // Monetag SDK not loaded yet, try alternative
-      toast('Ad loading...', 'info');
-      return false;
     }
   } catch (e) {
-    console.error('Monetag failed:', e);
-    toast('No ads available now', 'error');
-    return false;
+    console.error('Monetag failed', e);
   }
+  return false;
 }
 
 // ========== TON CONNECT ==========
@@ -396,57 +387,100 @@ function renderMine() {
   const statusEl = document.getElementById('miningStatus');
   const btn = document.getElementById('claimBtn');
   const btnText = document.getElementById('claimText');
-  if (STATE.is_banned) { statusEl.textContent = '⛔ ' + t('banned'); btn.disabled = true; btnText.textContent = t('banned'); return; }
-  if (!STATE.wallet) { statusEl.textContent = '⚠️ ' + t('addWallet'); btn.disabled = true; btnText.textContent = t('addWallet'); btn.onclick = () => switchTab('wallet'); return; }
-  if (STATE.canMine.ok) { statusEl.textContent = '✅ ' + t('ready'); btn.disabled = false; btnText.textContent = `${t('claim')} ${STATE.miningAmount.toFixed(2)} FWC`; btn.onclick = doMine; }
-  else if (STATE.canMine.reason === 'cooldown') { btn.disabled = true; btn.onclick = null; startCooldown(STATE.canMine.remaining); }
-  else { statusEl.textContent = '⏳ ' + (STATE.canMine.reason || t('wait')); btn.disabled = true; btnText.textContent = t('wait'); }
+  const bonusBtn = document.getElementById('bonusBtn');
+  
+  if (STATE.is_banned) { statusEl.textContent = '⛔ ' + t('banned'); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('banned'); return; }
+  if (!STATE.wallet) { statusEl.textContent = '⚠️ ' + t('addWallet'); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('addWallet'); btn.onclick = () => switchTab('wallet'); return; }
+  
+  // Unified 4h cooldown - either claim OR bonus, not both
+  if (STATE.canMine.ok) { 
+    statusEl.textContent = '✅ ' + t('ready') + ' - اختر: مطالبة عادية أو مضاعفة بإعلان'; 
+    btn.disabled = false; 
+    bonusBtn.disabled = false;
+    btnText.textContent = `⚡ ${t('claim')} ${STATE.miningAmount.toFixed(2)} FWC`; 
+    btn.onclick = doMine; 
+  }
+  else if (STATE.canMine.reason === 'cooldown') { 
+    btn.disabled = true; 
+    bonusBtn.disabled = true;
+    btn.onclick = null; 
+    startCooldown(STATE.canMine.remaining); 
+  }
+  else { statusEl.textContent = '⏳ ' + (STATE.canMine.reason || t('wait')); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('wait'); }
 }
 
 function startCooldown(remainingMs) {
-  const statusEl = document.getElementById('miningStatus'); const btn = document.getElementById('claimBtn'); const btnText = document.getElementById('claimText');
-  btn.disabled = true; clearInterval(STATE.cooldownTimer); let ms = remainingMs;
-  const tick = () => { if (ms <= 0) { clearInterval(STATE.cooldownTimer); loadUser(); return; } const h = Math.floor(ms / 3600000); const m = Math.floor((ms % 3600000) / 60000); const s = Math.floor((ms % 60000) / 1000); statusEl.textContent = `⏳ ${h}h ${m}m ${s}s`; btnText.textContent = t('cooldown'); ms -= 1000; };
-  tick(); STATE.cooldownTimer = setInterval(tick, 1000);
+  const statusEl = document.getElementById('miningStatus'); 
+  const btn = document.getElementById('claimBtn'); 
+  const btnText = document.getElementById('claimText');
+  const bonusBtn = document.getElementById('bonusBtn');
+  btn.disabled = true; 
+  bonusBtn.disabled = true;
+  clearInterval(STATE.cooldownTimer); 
+  let ms = remainingMs;
+  const tick = () => { 
+    if (ms <= 0) { clearInterval(STATE.cooldownTimer); loadUser(); return; } 
+    const h = Math.floor(ms / 3600000); 
+    const m = Math.floor((ms % 3600000) / 60000); 
+    const s = Math.floor((ms % 60000) / 1000); 
+    statusEl.textContent = `⏳ ${h}h ${m}m ${s}s - انتظر`; 
+    btnText.textContent = t('cooldown'); 
+    ms -= 1000; 
+  };
+  tick(); 
+  STATE.cooldownTimer = setInterval(tick, 1000);
 }
 
 async function doMine() {
   const btn = document.getElementById('claimBtn');
+  const bonusBtn = document.getElementById('bonusBtn');
   btn.disabled = true;
-
+  bonusBtn.disabled = true;
   const res = await api('/api/mine', 'POST', {});
   if (res.ok) {
     STATE.balance = res.newBalance;
-    toast(`+${res.amount} FWC ✅`, 'success');
+    toast(`+${res.amount} FWC ✅ مطالبة عادية`, 'success');
     if (tg) tg.HapticFeedback?.notificationOccurred('success');
     await loadUser();
   } else {
-    toast('Error: ' + (res.error || ''), 'error');
-    await loadUser();
+    if (res.error === 'cooldown') {
+      startCooldown(res.remaining);
+      toast('انتظر انتهاء الوقت', 'error');
+    } else {
+      toast('Error: ' + (res.error || ''), 'error');
+      await loadUser();
+    }
   }
 }
 
 async function watchAdForBonus() {
   const btn = document.getElementById('bonusBtn');
+  const claimBtn = document.getElementById('claimBtn');
   btn.disabled = true;
-
+  claimBtn.disabled = true;
   const watched = await showAd(STATE.adBlockId);
   if (!watched) {
-    toast('You must watch the full ad to get bonus', 'error');
+    toast('لازم تشوف الإعلان كامل', 'error');
     btn.disabled = false;
+    claimBtn.disabled = false;
     return;
   }
-
   const res = await api('/api/bonus', 'POST');
   if (res.ok) {
     STATE.balance = res.newBalance;
-    toast(`+${res.amount} FWC Bonus 🎁`, 'success');
+    toast(`+${res.amount} FWC 🎁 مضاعف بالإعلان`, 'success');
     if (tg) tg.HapticFeedback?.notificationOccurred('success');
     await loadUser();
   } else {
-    toast('Error: ' + (res.error || ''), 'error');
+    if (res.error === 'cooldown') {
+      startCooldown(res.remaining);
+      toast('انتظر انتهاء الوقت', 'error');
+    } else {
+      toast('Error: ' + (res.error || ''), 'error');
+      btn.disabled = false;
+      claimBtn.disabled = false;
+    }
   }
-  btn.disabled = false;
 }
 
 async function doCheckin() { const res = await api('/api/checkin', 'POST'); if (res.ok) { toast(`+${res.reward} FWC • Streak ${res.streak} 🔥`, 'success'); await loadUser(); } else if (res.error === 'already_checked_in') { toast('Already checked in today ✅'); } else { toast('Error: ' + res.error, 'error'); } }
