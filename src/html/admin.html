@@ -465,7 +465,7 @@ function renderUsers(el) {
   el.innerHTML = `
     <div class="section">
       <div class="section-title">
-        <span>Users (${STATE.users.length})</span>
+        <span>Users (${STATE.users.length}) - Hold: ${STATE.holdAmount||1000} FWC</span><div style="display:flex;gap:6px;"><input type="number" id="holdAmountInput" value="${STATE.holdAmount||1000}" style="width:70px;padding:4px 6px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;color:var(--text);"><button class="btn btn-sm btn-primary" onclick="saveHold()">Save</button></div>
         <div style="display:flex;gap:8px;align-items:center;">
           <input type="text" class="search-input" placeholder="Search user..." oninput="debounceSearch(this.value)" style="padding:6px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:12px;">
           <button class="btn btn-sm btn-primary" onclick="openBalanceModal()">💰 Add Balance</button>
@@ -501,7 +501,7 @@ function renderUsers(el) {
                       <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;" onclick="openBalanceModal(${u.telegram_id})">Edit</button>
                     </div>
                   </td>
-                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? `<span title="${u.wallet}">${u.wallet.slice(0, 6)}...${u.wallet.slice(-4)} <button class="btn btn-sm" style="padding:1px 4px;" onclick="copyWallet('${u.wallet}')">📋</button></span>` : '—'}</td>
+                  <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? `<span title="${u.wallet}">${u.wallet.slice(0, 6)}...${u.wallet.slice(-4)} <button class="btn btn-sm" style="padding:1px 4px;" onclick="copyWallet('${u.wallet}')"><button class="btn btn-sm" style="margin-left:4px;padding:2px 5px;font-size:10px;" onclick="checkUserHold(${u.telegram_id})">🔍</button><span style="display:none">📋</button></span>` : '—'}</td>
                   <td>
                     ${u.is_banned ?
                       `<span class="badge-status badge-banned">Banned</span>` :
