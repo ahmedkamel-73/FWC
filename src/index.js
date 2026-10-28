@@ -349,21 +349,29 @@ export default {
       }
 
       if (path.startsWith('/api/tasks/') && request.method === 'POST' && tgUser) {
-        const taskId = path.split('/')[3];
-        if (!taskId) return json({ ok: false, error: 'invalid_task' }, 400);
+        try {
+          const taskId = path.split('/')[3];
+          if (!taskId) return json({ ok: false, error: 'invalid_task' }, 400);
 
-        const date = new Date().toISOString().split('T')[0];
+          const date = new Date().toISOString().split('T')[0];
 
-        if (taskId === 'checkin') {
-          const already = await hasCheckedInToday(env.DB, tgUser.id, date);
-          if (already) return json({ ok: false, error: 'already_checked_in' }, 400);
-          const r = await doCheckin(env.DB, tgUser.id, date);
-          return json({ ok: true, reward: r.reward, streak: r.streak });
+          if (taskId === 'checkin') {
+            const already = await hasCheckedInToday(env.DB, tgUser.id, date);
+            if (already) return json({ ok: false, error: 'already_checked_in' }, 400);
+            const r = await doCheckin(env.DB, tgUser.id, date);
+            return json({ ok: true, reward: r.reward, streak: r.streak });
+          }
+
+          const result = await doTask(env.DB, tgUser.id, taskId, date, env);
+          if (!result.ok) {
+            // Return detailed error for debugging
+            return json({ ok: false, error: result.reason, detail: result.detail || null, count: result.count || 0, max: result.max || 0 }, 400);
+          }
+          return json({ ok: true, reward: result.reward, newBalance: result.newBalance, count: result.count || 1 });
+        } catch(e) {
+          console.error('Tasks API error:', e.message, e.stack);
+          return json({ ok: false, error: 'server_error', detail: e.message }, 500);
         }
-
-        const result = await doTask(env.DB, tgUser.id, taskId, date, env);
-        if (!result.ok) return json({ ok: false, error: result.reason }, 400);
-        return json({ ok: true, reward: result.reward, newBalance: result.newBalance });
       }
 
       if (path === '/api/withdraw/estimate' && tgUser) {
