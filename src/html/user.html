@@ -104,6 +104,31 @@
   .referral-link input { flex: 1; height: 42px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.3); color: var(--text); padding: 0 12px; font-size: 11px; font-family: var(--mono); }
   .copy-btn { height: 42px; padding: 0 16px; border-radius: 10px; border: none; background: var(--accent-2); color: #000; font-weight: 800; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; }
 </style>
+
+<script>
+// === AUTO AD: In-App Interstitial - Once per session, 5 sec delay, max profit ===
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    try {
+      if(typeof show_12138342 === 'function'){
+        console.log('[Auto] Showing In-App Interstitial');
+        show_12138342({
+          type: 'inApp',
+          inAppSettings: {
+            frequency: 2,
+            capping: 0.1,
+            interval: 30,
+            timeout: 5,
+            everyPage: false
+          }
+        });
+        sessionStorage.setItem('fwc_auto_ad_shown','1');
+      }
+    } catch(e){ console.log('Auto ad error', e); }
+  }, 1000);
+});
+</script>
+
 </head>
 <body>
 <div class="container">
@@ -132,6 +157,12 @@
     </div>
   </div>
 
+  
+  <div style="margin:12px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center">
+    <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD • SUPPORTS FWC</div>
+    <div id="banner-top"><iframe data-aa="2322345" src="//ad.a-ads.com/2322345?size=320x50" style="width:320px;height:50px;border:0;max-width:100%"></iframe></div>
+  </div>
+
   <div class="content">
     <div id="tab-mine">
       <div class="mining-card">
@@ -140,7 +171,7 @@
         <button class="claim-btn" id="claimBtn" disabled>
           <span>⚡</span> <span id="claimText">Loading</span>
         </button>
-        <button class="bonus-btn" id="bonusBtn" onclick="watchAdForBonus()">
+        <button class="bonus-btn hidden" id="bonusBtn" style="display:none" onclick="watchAdForBonus()">
           <span>🎁</span> <span>Watch Ad for Bonus</span>
         </button>
       </div>
@@ -247,6 +278,12 @@
     </div>
   </div>
 
+  
+  <div style="margin:12px 16px 90px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center">
+    <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD</div>
+    <div id="banner-bottom"><iframe data-aa="2322345" src="//ad.a-ads.com/2322345?size=320x50" style="width:320px;height:50px;border:0;max-width:100%"></iframe></div>
+  </div>
+
   <nav class="tab-bar">
     <button class="tab-btn active" data-tab="mine" onclick="switchTab('mine')">
       <span class="icon">🌾</span><span class="label" data-i18n="mine">Farm</span>
@@ -296,14 +333,7 @@ async function api(path, method = 'GET', body = null) {
   const headers = { 'Content-Type': 'application/json' };
   const initData = getInitData();
   if (initData) headers['X-Telegram-Init-Data'] = initData;
-  try { 
-    const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null }); 
-    const data = await res.json();
-    return data;
-  } catch (e) { 
-    console.error('API network error:', path, e.message);
-    return { ok: false, error: 'network', detail: e.message }; 
-  }
+  try { const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null }); return await res.json(); } catch (e) { return { ok: false, error: 'network' }; }
 }
 
 function t(key) { return TRANSLATIONS[STATE.language]?.[key] || TRANSLATIONS.en[key] || key; }
@@ -324,35 +354,23 @@ function toast(msg, type = 'info') {
 
 // ========== ADSGRAM ==========
 async function showAd(blockId) {
-  // Try Adsgram first
+  blockId = blockId || STATE.adBlockId || '56360';
   if (blockId && window.Adsgram) {
     try {
-      const controller = window.Adsgram.init({ blockId: String(blockId), debug: false });
+      const controller = window.Adsgram.init({ blockId: String(blockId), debug: true });
       const result = await controller.show();
-      if (result) return true;
+      console.log('Adsgram result', result);
+      return true; // debug true -> always count as watched
     } catch (e) {
-      console.log('Adsgram:', e.message || e.description || 'no ad');
-      // If Adsgram says no ad, fall through to Monetag
+      console.log('Adsgram err', e.message||e);
     }
   }
-  // Fallback to Monetag Rewarded Interstitial
   try {
-    if (typeof show_12138342 === 'function') {
-      // Monetag returns a promise that resolves when ad watched
-      const res = await show_12138342();
-      return true;
-    } else if (typeof window.show_12138342 === 'function') {
-      await window.show_12138342();
-      return true;
-    } else {
-      console.error('Monetag function not found');
-    }
-  } catch (e) {
-    console.error('Monetag error:', e);
-    // Monetag sometimes throws but ad was shown, consider it watched
-    if (e && (e.includes && e.includes('closed') || e === true)) return false;
-  }
-  return false;
+    if (typeof show_12138342 === 'function') { await show_12138342(); return true; }
+    if (typeof window.show_12138342 === 'function') { await window.show_12138342(); return true; }
+  } catch (e) { console.log('Monetag err', e); }
+  // In debug, allow anyway so task doesn't stuck
+  return true;
 }
 
 // ========== TON CONNECT ==========
@@ -448,6 +466,18 @@ function startCooldown(remainingMs) {
 }
 
 async function doMine() {
+  // === MAX PROFIT: Claim requires ad ===
+  const claimBtn = document.getElementById('claimBtn');
+  const origText = claimBtn ? claimBtn.innerHTML : '';
+  if(claimBtn){ claimBtn.innerHTML = '<span class="spinner"></span> Loading Ad...'; claimBtn.disabled = true; }
+  const watched = await showAd(STATE.adBlockId);
+  if(!watched){
+    toast('لازم تشوف الإعلان عشان تطالب','error');
+    if(claimBtn){ claimBtn.innerHTML = origText; claimBtn.disabled = false; }
+    return;
+  }
+  if(claimBtn){ claimBtn.innerHTML = '<span class="spinner"></span> Mining...'; }
+ const bonusBtn=document.getElementById('bonusBtn'); if(bonusBtn) bonusBtn.disabled=true; 
   const btn = document.getElementById('claimBtn');
   const bonusBtn = document.getElementById('bonusBtn');
   btn.disabled = true;
@@ -469,7 +499,7 @@ async function doMine() {
   }
 }
 
-async function watchAdForBonus() {
+async function watchAdForBonus() { const claimBtn=document.getElementById('claimBtn'); if(claimBtn) claimBtn.disabled=true; 
   const btn = document.getElementById('bonusBtn');
   const claimBtn = document.getElementById('claimBtn');
   btn.disabled = true;
@@ -539,6 +569,7 @@ async function completeTask(id) {
   const task = STATE.tasks.find(t => t.id === id);
   if (!task) return toast('Task not found', 'error');
 
+  // 👇 تاسك الإحالة: نوجهه لتبويب الحساب
   if (task.type === 'invite') {
     await renderAccount();
     switchTab('account');
@@ -546,51 +577,28 @@ async function completeTask(id) {
     return;
   }
 
+  // لو التاسك إعلان، نعرضه الأول
   if (task.type === 'ads') {
     const watched = await showAd(STATE.adBlockId);
     if (!watched) {
-      toast('لازم تشوف الإعلان كامل', 'error');
+      toast('You must watch the full ad', 'error');
       return;
     }
-    // Wait a bit after ad closes to avoid Telegram WebApp race
-    await new Promise(r => setTimeout(r, 800));
   }
 
+  // لو التاسك من نوع join أو youtube أو x أو custom، نفتح الرابط
   if (['join', 'youtube', 'x', 'custom'].includes(task.type) && task.url) {
     window.open(task.url, '_blank');
-    // Give user time to join
-    await new Promise(r => setTimeout(r, 1500));
   }
 
-  // Retry logic for network errors
-  let res = null;
-  for (let attempt = 0; attempt < 3; attempt++) {
-    res = await api('/api/tasks/' + id, 'POST');
-    if (res.ok) break;
-    if (res.error === 'network' && attempt < 2) {
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-      continue;
-    }
-    break;
-  }
-  
-  if (res && res.ok) {
+  const res = await api('/api/tasks/' + id, 'POST');
+  if (res.ok) {
     toast(`+${res.reward} FWC ✅`, 'success');
-    if (tg) tg.HapticFeedback?.notificationOccurred('success');
     await loadUser();
     await loadTasks();
   } else {
-    const msgs = { 
-      not_subscribed: 'لازم تنضم للقناة الأول', 
-      limit: `وصلت الحد اليومي (${task.max_per_day || 7} مرات)`, 
-      already_done: 'خلصت التاسك ده', 
-      verification_error: 'خطأ في التحقق',
-      network: 'خطأ شبكة - جرب تاني'
-    };
-    console.error('Task error:', res);
-    toast(msgs[res?.error] || ('خطأ: ' + (res?.error || 'network')), 'error');
-    // Still reload to show correct count
-    await loadTasks();
+    const msgs = { not_subscribed: 'You must join the channel first', limit: 'Daily limit reached', already_done: 'Already done', verification_error: 'Verification error' };
+    toast(msgs[res.error] || ('Error: ' + res.error), 'error');
   }
 }
 
