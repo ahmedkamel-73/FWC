@@ -260,26 +260,12 @@ export default {
         return json({ ok: true, ...res });
       }
 
-            if (path === '/api/bonus' && request.method === 'POST' && tgUser) {
+      if (path === '/api/bonus' && request.method === 'POST' && tgUser) {
         const bonusMult = await getEconomyConfig(env.DB, 'ad_free_mult') || 2;
         const baseAmount = await getCurrentMiningAmount(env.DB);
-        const freeDurationSec = parseInt(await getEconomyConfig(env.DB, 'ad_free_duration_sec')) || 7200;
-        
-        // Ensure column exists
-        try { await env.DB.prepare(`ALTER TABLE users ADD COLUMN last_bonus_at INTEGER`).run(); } catch(e) {}
-        
-        const userRow = await env.DB.prepare(`SELECT last_bonus_at FROM users WHERE telegram_id = ?`).bind(tgUser.id).first();
-        const now = Math.floor(Date.now() / 1000);
-        const lastBonus = userRow?.last_bonus_at || 0;
-        
-        if (now - lastBonus < freeDurationSec) {
-          const remaining = freeDurationSec - (now - lastBonus);
-          return json({ ok: false, error: 'cooldown', remaining: remaining * 1000 }, 400);
-        }
-        
         const totalBonus = baseAmount * bonusMult;
-        await env.DB.prepare(`UPDATE users SET balance = balance + ?, last_bonus_at = ? WHERE telegram_id = ?`)
-          .bind(totalBonus, now, tgUser.id).run();
+        await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+          .bind(totalBonus, tgUser.id).run();
         const user = await getUser(env.DB, tgUser.id);
         return json({ ok: true, amount: totalBonus, newBalance: user?.balance || 0 });
       }
