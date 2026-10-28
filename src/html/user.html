@@ -15,6 +15,27 @@
   font-display: swap;
   src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
 }
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
+</style><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
 :where(html) { font-family: "Optimistic", system-ui, sans-serif; }
 :where(code, pre, kbd, samp) { font-family: "Optimistic Mono", ui-monospace, monospace; }
 </style>
@@ -26,1011 +47,179 @@
 <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
 <script src="https://adsgram.ai/js/adsgram.js"></script>
 <script src='//libtl.com/sdk.js' data-zone='12138342' data-sdk='show_12138342'></script>
-
 <style>
-/* ============ DESIGN TOKENS - ULTRA GOLD 3D ============ */
 :root {
-  --bg: #050505;
-  --bg-2: #0a0805;
-  --surface: #12100a;
-  --surface-2: #1a1610;
-  --surface-3: #241f14;
-  --border: rgba(212, 175, 55, 0.18);
-  --border-strong: rgba(212, 175, 55, 0.45);
-  --text: #F5EEDC;
-  --text-muted: #9a8f7a;
-  --gold: #D4AF37;
-  --gold-light: #FFD700;
-  --gold-bright: #FFE9A8;
-  --gold-deep: #8B6914;
-  --gold-dark: #5C4610;
-  --success: #FFD700;
-  --danger: #ff4d4d;
-  --warn: #ffb020;
-  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  --mono: 'JetBrains Mono', ui-monospace, monospace;
-
+  --bg: #050505; --bg-2: #0a0805; --surface: #12100a; --surface-2: #1a1610; --surface-3: #241f14;
+  --border: rgba(212, 175, 55, 0.18); --border-strong: rgba(212, 175, 55, 0.45);
+  --text: #F5EEDC; --text-muted: #9a8f7a; --gold: #D4AF37; --gold-light: #FFD700; --gold-bright: #FFE9A8; --gold-deep: #8B6914; --gold-dark: #5C4610;
+  --success: #FFD700; --danger: #ff4d4d; --warn: #ffb020;
+  --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; --mono: 'JetBrains Mono', ui-monospace, monospace;
   --grad-gold: linear-gradient(135deg, #FFF3C4 0%, #FFE9A8 15%, #D4AF37 45%, #B8860B 75%, #8B6914 100%);
   --grad-gold-btn: linear-gradient(180deg, #FFF3C4 0%, #FFE9A8 20%, #E8C766 55%, #B8860B 100%);
   --grad-dark-card: linear-gradient(145deg, #1a1610 0%, #0d0b07 100%);
   --grad-royal: linear-gradient(135deg, #1a1610 0%, #0d0b07 60%, #1a1610 100%);
 }
-
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-
-body {
-  background: radial-gradient(circle at 50% 0%, #1a1408 0%, #050505 55%, #000 100%);
-  background-attachment: fixed;
-  color: var(--text);
-  font-family: var(--font);
-  min-height: 100vh;
-  overflow-x: hidden;
-  padding-bottom: 90px;
-  position: relative;
-}
-
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background-image:
-    radial-gradient(2px 2px at 20% 30%, rgba(255,215,0,0.4), transparent),
-    radial-gradient(2px 2px at 60% 70%, rgba(212,175,55,0.35), transparent),
-    radial-gradient(1px 1px at 80% 20%, rgba(255,233,168,0.5), transparent),
-    radial-gradient(1.5px 1.5px at 40% 85%, rgba(212,175,55,0.3), transparent),
-    radial-gradient(1px 1px at 10% 60%, rgba(255,215,0,0.25), transparent),
-    radial-gradient(2px 2px at 90% 90%, rgba(212,175,55,0.4), transparent);
-  animation: floatParticles 20s ease-in-out infinite;
-  pointer-events: none;
-  z-index: 1;
-  opacity: 0.6;
-}
-@keyframes floatParticles {
-  0%, 100% { transform: translateY(0) translateX(0); opacity: 0.6; }
-  50% { transform: translateY(-15px) translateX(5px); opacity: 0.9; }
-}
-
+body { background: radial-gradient(circle at 50% 0%, #1a1408 0%, #050505 55%, #000 100%); background-attachment: fixed; color: var(--text); font-family: var(--font); min-height: 100vh; overflow-x: hidden; padding-bottom: 90px; position: relative; }
+body::before { content: ''; position: fixed; inset: 0; background-image: radial-gradient(2px 2px at 20% 30%, rgba(255,215,0,0.4), transparent), radial-gradient(2px 2px at 60% 70%, rgba(212,175,55,0.35), transparent), radial-gradient(1px 1px at 80% 20%, rgba(255,233,168,0.5), transparent), radial-gradient(1.5px 1.5px at 40% 85%, rgba(212,175,55,0.3), transparent), radial-gradient(1px 1px at 10% 60%, rgba(255,215,0,0.25), transparent), radial-gradient(2px 2px at 90% 90%, rgba(212,175,55,0.4), transparent); animation: floatParticles 20s ease-in-out infinite; pointer-events: none; z-index: 1; opacity: 0.6; }
+@keyframes floatParticles { 0%, 100% { transform: translateY(0) translateX(0); opacity: 0.6; } 50% { transform: translateY(-15px) translateX(5px); opacity: 0.9; } }
 .container { max-width: 500px; margin: 0 auto; position: relative; z-index: 2; }
-
-/* ============ SPLASH SCREEN (CALM) ============ */
-#splash-screen {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  background: radial-gradient(circle at 50% 50%, #1a1408 0%, #050505 60%, #000 100%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  transition: opacity 0.5s ease, visibility 0.5s ease;
-  overflow: hidden;
-}
+#splash-screen { position: fixed; inset: 0; z-index: 9999; background: radial-gradient(circle at 50% 50%, #1a1408 0%, #050505 60%, #000 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s ease, visibility 0.5s ease; overflow: hidden; }
 #splash-screen.hidden-splash { opacity: 0; visibility: hidden; }
-
-.splash-logo {
-  position: relative;
-  width: 130px; height: 130px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 28%, #FFF9E0 0%, #FFE9A8 8%, #E8C766 18%, #D4AF37 32%, #B8860B 55%, #5C4610 82%, #2a2008 100%);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 26px; font-weight: 900; color: #2a2008;
-  letter-spacing: 0.08em;
-  text-shadow: 0 2px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(0,0,0,0.3);
-  box-shadow:
-    0 0 0 3px rgba(139,105,20,0.5),
-    0 0 0 8px rgba(92,70,16,0.3),
-    0 0 50px rgba(212,175,55,0.6),
-    0 20px 40px rgba(0,0,0,0.9),
-    inset 0 -10px 25px rgba(0,0,0,0.6),
-    inset 0 10px 25px rgba(255,255,255,0.35);
-  animation: splashLogoIn 0.7s ease-out forwards;
-  transform: scale(0.8);
-  opacity: 0;
-}
-@keyframes splashLogoIn {
-  to { transform: scale(1); opacity: 1; }
-}
-
-.splash-logo::before {
-  content: '';
-  position: absolute;
-  top: 8%; left: 18%;
-  width: 42%; height: 32%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.7), transparent 65%);
-  filter: blur(6px);
-  pointer-events: none;
-}
-
-.splash-ring-1 {
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 190px; height: 190px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  border-top-color: rgba(255,215,0,0.6);
-  border-right-color: rgba(212,175,55,0.2);
-  transform: translate(-50%, -50%);
-  animation: splashRingSpin 4s linear infinite;
-  pointer-events: none;
-}
-@keyframes splashRingSpin {
-  to { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-.splash-title {
-  margin-top: 40px;
-  font-size: 22px; font-weight: 900;
-  letter-spacing: 0.15em;
-  background: linear-gradient(135deg, #FFF3C4 0%, #FFE9A8 20%, #D4AF37 50%, #B8860B 80%, #8B6914 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8));
-  animation: fadeUp 0.6s ease-out 0.3s forwards;
-  opacity: 0;
-  transform: translateY(10px);
-  text-align: center;
-}
-@keyframes fadeUp {
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.splash-subtitle {
-  margin-top: 6px;
-  font-size: 10px; font-weight: 600;
-  letter-spacing: 0.3em;
-  color: rgba(212,175,55,0.65);
-  font-family: var(--mono);
-  animation: fadeUp 0.6s ease-out 0.5s forwards;
-  opacity: 0;
-  transform: translateY(10px);
-}
-
-.splash-loader {
-  margin-top: 30px;
-  width: 140px; height: 3px;
-  border-radius: 3px;
-  background: rgba(212,175,55,0.15);
-  overflow: hidden;
-  position: relative;
-  animation: fadeUp 0.5s ease-out 0.6s forwards;
-  opacity: 0;
-  transform: translateY(8px);
-}
-.splash-loader::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(90deg, transparent, #FFD700, #FFF3C4, #FFD700, transparent);
-  animation: splashLoaderMove 1.2s ease-in-out infinite;
-  border-radius: 3px;
-}
-@keyframes splashLoaderMove {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-
-/* ============ HEADER ============ */
-.header {
-  padding: 14px 16px;
-  display: flex; align-items: center; justify-content: space-between;
-  border-bottom: 1px solid var(--border);
-  position: sticky; top: 0;
-  background: linear-gradient(180deg, rgba(10,8,5,0.98), rgba(5,5,5,0.92));
-  backdrop-filter: blur(24px) saturate(180%);
-  z-index: 20;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(212,175,55,0.2);
-}
+.splash-logo { position: relative; width: 130px; height: 130px; border-radius: 50%; background: radial-gradient(circle at 32% 28%, #FFF9E0 0%, #FFE9A8 8%, #E8C766 18%, #D4AF37 32%, #B8860B 55%, #5C4610 82%, #2a2008 100%); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 900; color: #2a2008; letter-spacing: 0.08em; text-shadow: 0 2px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(0,0,0,0.3); box-shadow: 0 0 0 3px rgba(139,105,20,0.5), 0 0 0 8px rgba(92,70,16,0.3), 0 0 50px rgba(212,175,55,0.6), 0 20px 40px rgba(0,0,0,0.9), inset 0 -10px 25px rgba(0,0,0,0.6), inset 0 10px 25px rgba(255,255,255,0.35); animation: splashLogoIn 0.7s ease-out forwards; transform: scale(0.8); opacity: 0; }
+@keyframes splashLogoIn { to { transform: scale(1); opacity: 1; } }
+.splash-logo::before { content: ''; position: absolute; top: 8%; left: 18%; width: 42%; height: 32%; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255,255,255,0.7), transparent 65%); filter: blur(6px); pointer-events: none; }
+.splash-ring-1 { position: absolute; top: 50%; left: 50%; width: 190px; height: 190px; border-radius: 50%; border: 2px solid transparent; border-top-color: rgba(255,215,0,0.6); border-right-color: rgba(212,175,55,0.2); transform: translate(-50%, -50%); animation: splashRingSpin 4s linear infinite; pointer-events: none; }
+@keyframes splashRingSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.splash-title { margin-top: 40px; font-size: 22px; font-weight: 900; letter-spacing: 0.15em; background: linear-gradient(135deg, #FFF3C4 0%, #FFE9A8 20%, #D4AF37 50%, #B8860B 80%, #8B6914 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 3px 6px rgba(0,0,0,0.8)); animation: fadeUp 0.6s ease-out 0.3s forwards; opacity: 0; transform: translateY(10px); text-align: center; }
+@keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+.splash-subtitle { margin-top: 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.3em; color: rgba(212,175,55,0.65); font-family: var(--mono); animation: fadeUp 0.6s ease-out 0.5s forwards; opacity: 0; transform: translateY(10px); }
+.splash-loader { margin-top: 30px; width: 140px; height: 3px; border-radius: 3px; background: rgba(212,175,55,0.15); overflow: hidden; position: relative; animation: fadeUp 0.5s ease-out 0.6s forwards; opacity: 0; transform: translateY(8px); }
+.splash-loader::before { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, #FFD700, #FFF3C4, #FFD700, transparent); animation: splashLoaderMove 1.2s ease-in-out infinite; border-radius: 3px; }
+@keyframes splashLoaderMove { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.header { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: linear-gradient(180deg, rgba(10,8,5,0.98), rgba(5,5,5,0.92)); backdrop-filter: blur(24px) saturate(180%); z-index: 20; box-shadow: 0 4px 20px rgba(0,0,0,0.6), inset 0 -1px 0 rgba(212,175,55,0.2); }
 .logo { display: flex; align-items: center; gap: 12px; }
-.logo-icon {
-  width: 42px; height: 42px;
-  border-radius: 13px;
-  background: var(--grad-gold-btn);
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 900; font-size: 13px; color: #1a1408;
-  box-shadow: 0 3px 0 #5C4610, 0 5px 14px rgba(0,0,0,0.7), 0 0 20px rgba(212,175,55,0.35), inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.2);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
-  position: relative;
-  letter-spacing: 0.5px;
-  overflow: hidden;
-}
-.logo-icon::before {
-  content: '';
-  position: absolute; inset: 2px;
-  border-radius: 11px;
-  border: 1px solid rgba(255,255,255,0.35);
-  pointer-events: none;
-}
-.logo-icon::after {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
-  animation: logoShine 3s ease-in-out infinite;
-}
+.logo-icon { width: 42px; height: 42px; border-radius: 13px; background: var(--grad-gold-btn); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 13px; color: #1a1408; box-shadow: 0 3px 0 #5C4610, 0 5px 14px rgba(0,0,0,0.7), 0 0 20px rgba(212,175,55,0.35), inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.2); text-shadow: 0 1px 0 rgba(255,255,255,0.5); position: relative; letter-spacing: 0.5px; overflow: hidden; }
+.logo-icon::before { content: ''; position: absolute; inset: 2px; border-radius: 11px; border: 1px solid rgba(255,255,255,0.35); pointer-events: none; }
+.logo-icon::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent); animation: logoShine 3s ease-in-out infinite; }
 @keyframes logoShine { 0%, 100% { left: -100%; } 50% { left: 100%; } }
-
-.logo-title {
-  font-weight: 900; font-size: 14px;
-  background: var(--grad-gold);
-  background-size: 200% auto;
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 0.1em;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
-  animation: goldShimmer 4s linear infinite;
-}
+.logo-title { font-weight: 900; font-size: 14px; background: var(--grad-gold); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 0.1em; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8)); animation: goldShimmer 4s linear infinite; }
 @keyframes goldShimmer { to { background-position: 200% center; } }
-.logo-sub {
-  font-size: 9px; color: var(--text-muted);
-  font-family: var(--mono);
-  letter-spacing: 0.18em;
-  margin-top: 1px;
-}
-.lang-btn {
-  padding: 8px 15px;
-  border-radius: 10px;
-  background: linear-gradient(180deg, #241f14, #12100a);
-  border: 1px solid var(--border-strong);
-  color: var(--gold-light);
-  font-family: inherit;
-  font-size: 11px; font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 2px 0 #3d2f0a, 0 3px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.3);
-  letter-spacing: 0.1em;
-  transition: all 0.12s;
-}
+.logo-sub { font-size: 9px; color: var(--text-muted); font-family: var(--mono); letter-spacing: 0.18em; margin-top: 1px; }
+.lang-btn { padding: 8px 15px; border-radius: 10px; background: linear-gradient(180deg, #241f14, #12100a); border: 1px solid var(--border-strong); color: var(--gold-light); font-family: inherit; font-size: 11px; font-weight: 800; cursor: pointer; box-shadow: 0 2px 0 #3d2f0a, 0 3px 8px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.3); letter-spacing: 0.1em; transition: all 0.12s; }
 .lang-btn:active { transform: translateY(2px); box-shadow: 0 0 0 #3d2f0a, 0 1px 4px rgba(0,0,0,0.5); }
-
-/* ============ BALANCE ROW ============ */
 .balance-row { display: flex; gap: 10px; padding: 14px 16px; }
-.card {
-  background: var(--grad-dark-card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 14px;
-  position: relative;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(212,175,55,0.15);
-  overflow: hidden;
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 15%; right: 15%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,215,0,0.7), transparent);
-  animation: topLine 3s ease-in-out infinite;
-}
-@keyframes topLine {
-  0%, 100% { opacity: 0.4; left: 15%; right: 15%; }
-  50% { opacity: 1; left: 5%; right: 5%; }
-}
-.card::after {
-  content: '✦';
-  position: absolute;
-  top: 8px; right: 10px;
-  font-size: 8px;
-  color: rgba(255,215,0,0.4);
-  animation: twinkle 2s ease-in-out infinite;
-}
-@keyframes twinkle {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.3); }
-}
+.card { background: var(--grad-dark-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; position: relative; box-shadow: 0 4px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(212,175,55,0.15); overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; }
+.card::before { content: ''; position: absolute; top: 0; left: 15%; right: 15%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,215,0,0.7), transparent); animation: topLine 3s ease-in-out infinite; }
+@keyframes topLine { 0%, 100% { opacity: 0.4; left: 15%; right: 15%; } 50% { opacity: 1; left: 5%; right: 5%; } }
+.card::after { content: '✦'; position: absolute; top: 8px; right: 10px; font-size: 8px; color: rgba(255,215,0,0.4); animation: twinkle 2s ease-in-out infinite; }
+@keyframes twinkle { 0%, 100% { opacity: 0.3; transform: scale(1); } 50% { opacity: 1; transform: scale(1.3); } }
 .balance-card { flex: 1; }
 .speed-card { width: 105px; }
-.label-small {
-  font-size: 9px; color: var(--text-muted);
-  font-family: var(--mono);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  margin-bottom: 5px;
-  font-weight: 600;
-}
-.balance-value {
-  font-size: 24px; font-weight: 900;
-  display: flex; align-items: baseline; gap: 6px;
-  background: var(--grad-gold);
-  background-size: 200% auto;
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7));
-  letter-spacing: -0.02em;
-  animation: goldShimmer 4s linear infinite;
-}
-.currency {
-  font-size: 11px; font-weight: 900;
-  color: var(--gold-light);
-  -webkit-text-fill-color: var(--gold-light);
-  letter-spacing: 0.05em;
-  filter: drop-shadow(0 0 8px rgba(212,175,55,0.8));
-}
-.speed-value {
-  font-size: 16px; font-weight: 900;
-  color: var(--gold-light);
-  text-shadow: 0 0 12px rgba(212,175,55,0.7), 0 2px 3px rgba(0,0,0,0.8);
-}
-
-/* ============ CONTENT ============ */
+.label-small { font-size: 9px; color: var(--text-muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 5px; font-weight: 600; }
+.balance-value { font-size: 24px; font-weight: 900; display: flex; align-items: baseline; gap: 6px; background: var(--grad-gold); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7)); letter-spacing: -0.02em; animation: goldShimmer 4s linear infinite; }
+.currency { font-size: 11px; font-weight: 900; color: var(--gold-light); -webkit-text-fill-color: var(--gold-light); letter-spacing: 0.05em; filter: drop-shadow(0 0 8px rgba(212,175,55,0.8)); }
+.speed-value { font-size: 16px; font-weight: 900; color: var(--gold-light); text-shadow: 0 0 12px rgba(212,175,55,0.7), 0 2px 3px rgba(0,0,0,0.8); }
 .content { padding: 12px 16px; }
-
-/* ============ MINING CARD ============ */
-.mining-card {
-  border-radius: 26px;
-  padding: 26px 18px;
-  background: var(--grad-royal);
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 24px 70px rgba(0,0,0,0.85), 0 0 80px rgba(212,175,55,0.15), inset 0 1px 0 rgba(255,215,0,0.2), inset 0 -1px 0 rgba(0,0,0,0.5);
-  text-align: center;
-  position: relative;
-  overflow: hidden;
-}
-.mining-card::before {
-  content: '';
-  position: absolute;
-  top: -50%; left: -50%;
-  width: 200%; height: 200%;
-  background: radial-gradient(circle at 50% 0%, rgba(212,175,55,0.12), transparent 40%);
-  pointer-events: none;
-  animation: royalGlow 5s ease-in-out infinite;
-}
-@keyframes royalGlow {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.05); }
-}
-
-.mining-circle {
-  width: 200px; height: 200px;
-  margin: 26px auto;
-  border-radius: 50%;
-  background: radial-gradient(circle at 30% 25%, #FFFEF0 0%, #FFF3C4 5%, #FFE9A8 10%, #E8C766 20%, #D4AF37 35%, #B8860B 55%, #5C4610 80%, #2a2008 100%);
-  box-shadow:
-    0 0 0 3px rgba(139,105,20,0.6), 0 0 0 9px rgba(92,70,16,0.4),
-    0 0 40px rgba(212,175,55,0.8), 0 0 100px rgba(212,175,55,0.45), 0 0 160px rgba(212,175,55,0.2),
-    0 25px 50px rgba(0,0,0,0.95),
-    inset 0 -15px 35px rgba(0,0,0,0.7), inset 0 15px 35px rgba(255,255,255,0.4), inset 0 0 0 2px rgba(255,255,255,0.3);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28px; font-weight: 900; color: #2a2008;
-  letter-spacing: 0.08em;
-  position: relative;
-  text-shadow: 0 2px 0 rgba(255,255,255,0.7), 0 -1px 0 rgba(0,0,0,0.4);
-  transform: perspective(700px) rotateX(5deg);
-  animation: orbPulse 3s ease-in-out infinite;
-}
-@keyframes orbPulse {
-  0%, 100% {
-    box-shadow: 0 0 0 3px rgba(139,105,20,0.6), 0 0 0 9px rgba(92,70,16,0.4), 0 0 40px rgba(212,175,55,0.8), 0 0 100px rgba(212,175,55,0.45), 0 0 160px rgba(212,175,55,0.2), 0 25px 50px rgba(0,0,0,0.95), inset 0 -15px 35px rgba(0,0,0,0.7), inset 0 15px 35px rgba(255,255,255,0.4), inset 0 0 0 2px rgba(255,255,255,0.3);
-  }
-  50% {
-    box-shadow: 0 0 0 3px rgba(139,105,20,0.8), 0 0 0 9px rgba(92,70,16,0.6), 0 0 60px rgba(255,215,0,1), 0 0 130px rgba(212,175,55,0.65), 0 0 200px rgba(212,175,55,0.3), 0 25px 50px rgba(0,0,0,0.95), inset 0 -15px 35px rgba(0,0,0,0.7), inset 0 15px 35px rgba(255,255,255,0.5), inset 0 0 0 2px rgba(255,255,255,0.4);
-  }
-}
-.mining-circle::before {
-  content: '';
-  position: absolute;
-  top: 6%; left: 15%;
-  width: 45%; height: 35%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.85), transparent 65%);
-  filter: blur(8px);
-  pointer-events: none;
-  animation: specularMove 4s ease-in-out infinite;
-}
-@keyframes specularMove {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; }
-  50% { transform: translate(5px, 3px) scale(1.1); opacity: 1; }
-}
-.mining-circle::after {
-  content: '';
-  position: absolute; inset: -35px;
-  border-radius: 50%;
-  border: 2px dashed rgba(255,215,0,0.4);
-  animation: spin 22s linear infinite;
-  box-shadow: 0 0 30px rgba(212,175,55,0.4);
-}
+.mining-card { border-radius: 26px; padding: 26px 18px; background: var(--grad-royal); border: 1px solid var(--border-strong); box-shadow: 0 24px 70px rgba(0,0,0,0.85), 0 0 80px rgba(212,175,55,0.15), inset 0 1px 0 rgba(255,215,0,0.2), inset 0 -1px 0 rgba(0,0,0,0.5); text-align: center; position: relative; overflow: hidden; }
+.mining-card::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 50% 0%, rgba(212,175,55,0.12), transparent 40%); pointer-events: none; animation: royalGlow 5s ease-in-out infinite; }
+@keyframes royalGlow { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+.mining-circle { width: 200px; height: 200px; margin: 26px auto; border-radius: 50%; background: radial-gradient(circle at 30% 25%, #FFFEF0 0%, #FFF3C4 5%, #FFE9A8 10%, #E8C766 20%, #D4AF37 35%, #B8860B 55%, #5C4610 80%, #2a2008 100%); box-shadow: 0 0 0 3px rgba(139,105,20,0.6), 0 0 0 9px rgba(92,70,16,0.4), 0 0 40px rgba(212,175,55,0.8), 0 0 100px rgba(212,175,55,0.45), 0 0 160px rgba(212,175,55,0.2), 0 25px 50px rgba(0,0,0,0.95), inset 0 -15px 35px rgba(0,0,0,0.7), inset 0 15px 35px rgba(255,255,255,0.4), inset 0 0 0 2px rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; color: #2a2008; letter-spacing: 0.08em; position: relative; text-shadow: 0 2px 0 rgba(255,255,255,0.7), 0 -1px 0 rgba(0,0,0,0.4); transform: perspective(700px) rotateX(5deg); animation: orbPulse 3s ease-in-out infinite; }
+@keyframes orbPulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(139,105,20,0.6), 0 0 0 9px rgba(92,70,16,0.4), 0 0 40px rgba(212,175,55,0.8), 0 0 100px rgba(212,175,55,0.45), 0 0 160px rgba(212,175,55,0.2), 0 25px 50px rgba(0,0,0,0.95), inset 0 -15px 35px rgba(0,0,0,0.7), inset 0 15px 35px rgba(255,255,255,0.4), inset 0 0 0 2px rgba(255,255,255,0.3); } 50% { box-shadow: 0 0 0 3px rgba(139,105,20,0.8), 0 0 0 9px rgba(92,70,16,0.6), 0 0 60px rgba(255,215,0,1), 0 0 130px rgba(212,175,55,0.65), 0 0 200px rgba(212,175,55,0.3), 0 25px 50px rgba(0,0,0,0.95), inset 0 -15px 35px rgba(0,0,0,0.7), inset 0 15px 35px rgba(255,255,255,0.5), inset 0 0 0 2px rgba(255,255,255,0.4); } }
+.mining-circle::before { content: ''; position: absolute; top: 6%; left: 15%; width: 45%; height: 35%; border-radius: 50%; background: radial-gradient(ellipse at center, rgba(255,255,255,0.85), transparent 65%); filter: blur(8px); pointer-events: none; animation: specularMove 4s ease-in-out infinite; }
+@keyframes specularMove { 0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.7; } 50% { transform: translate(5px, 3px) scale(1.1); opacity: 1; } }
+.mining-circle::after { content: ''; position: absolute; inset: -35px; border-radius: 50%; border: 2px dashed rgba(255,215,0,0.4); animation: spin 22s linear infinite; box-shadow: 0 0 30px rgba(212,175,55,0.4); }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-#miningStatus {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--gold-light);
-  margin-top: 14px;
-  letter-spacing: 0.03em;
-  text-shadow: 0 0 10px rgba(212,175,55,0.5);
-  animation: statusGlow 2s ease-in-out infinite;
-}
-@keyframes statusGlow {
-  0%, 100% { text-shadow: 0 0 10px rgba(212,175,55,0.5); }
-  50% { text-shadow: 0 0 20px rgba(255,215,0,0.8), 0 0 30px rgba(212,175,55,0.5); }
-}
-
-.claim-btn {
-  margin-top: 24px;
-  width: 100%; height: 62px;
-  border-radius: 17px;
-  border: 1px solid rgba(255,233,168,0.6);
-  background: var(--grad-gold-btn);
-  color: #1a1408;
-  font-weight: 900;
-  font-size: 15px;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  box-shadow: 0 6px 0 #5C4610, 0 10px 0 #3d2f0a, 0 16px 32px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.3), inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -2px 0 rgba(0,0,0,0.25);
-  transition: transform 0.1s, box-shadow 0.1s;
-  font-family: inherit;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
-  position: relative;
-  overflow: hidden;
-}
-.claim-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
-  animation: claimShine 3s ease-in-out infinite;
-  pointer-events: none;
-}
-@keyframes claimShine {
-  0% { left: -100%; }
-  50% { left: 100%; }
-  100% { left: 100%; }
-}
-.claim-btn::after {
-  content: '';
-  position: absolute;
-  top: 3px; left: 3px; right: 3px;
-  height: 40%;
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent);
-  pointer-events: none;
-}
-.claim-btn:active:not(:disabled) {
-  transform: translateY(8px);
-  box-shadow: 0 0 0 #5C4610, 0 2px 0 #3d2f0a, 0 6px 16px rgba(0,0,0,0.8), inset 0 2px 0 rgba(255,255,255,0.3);
-}
-.claim-btn:disabled {
-  opacity: 0.55;
-  background: linear-gradient(180deg, #3a3325, #201c12);
-  color: rgba(212,175,55,0.4);
-  box-shadow: 0 4px 0 #1a1610, 0 6px 12px rgba(0,0,0,0.6);
-  text-shadow: none;
-  cursor: not-allowed;
-}
+#miningStatus { font-family: var(--mono); font-size: 11px; color: var(--gold-light); margin-top: 14px; letter-spacing: 0.03em; text-shadow: 0 0 10px rgba(212,175,55,0.5); animation: statusGlow 2s ease-in-out infinite; }
+@keyframes statusGlow { 0%, 100% { text-shadow: 0 0 10px rgba(212,175,55,0.5); } 50% { text-shadow: 0 0 20px rgba(255,215,0,0.8), 0 0 30px rgba(212,175,55,0.5); } }
+.claim-btn { margin-top: 24px; width: 100%; height: 62px; border-radius: 17px; border: 1px solid rgba(255,233,168,0.6); background: var(--grad-gold-btn); color: #1a1408; font-weight: 900; font-size: 15px; letter-spacing: 0.06em; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 6px 0 #5C4610, 0 10px 0 #3d2f0a, 0 16px 32px rgba(0,0,0,0.8), 0 0 40px rgba(212,175,55,0.3), inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -2px 0 rgba(0,0,0,0.25); transition: transform 0.1s, box-shadow 0.1s; font-family: inherit; text-shadow: 0 1px 0 rgba(255,255,255,0.5); position: relative; overflow: hidden; }
+.claim-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent); animation: claimShine 3s ease-in-out infinite; pointer-events: none; }
+@keyframes claimShine { 0% { left: -100%; } 50% { left: 100%; } 100% { left: 100%; } }
+.claim-btn::after { content: ''; position: absolute; top: 3px; left: 3px; right: 3px; height: 40%; border-radius: 14px; background: linear-gradient(180deg, rgba(255,255,255,0.4), transparent); pointer-events: none; }
+.claim-btn:active:not(:disabled) { transform: translateY(8px); box-shadow: 0 0 0 #5C4610, 0 2px 0 #3d2f0a, 0 6px 16px rgba(0,0,0,0.8), inset 0 2px 0 rgba(255,255,255,0.3); }
+.claim-btn:disabled { opacity: 0.55; background: linear-gradient(180deg, #3a3325, #201c12); color: rgba(212,175,55,0.4); box-shadow: 0 4px 0 #1a1610, 0 6px 12px rgba(0,0,0,0.6); text-shadow: none; cursor: not-allowed; }
 .claim-btn:disabled::before { animation: none; opacity: 0; }
-
-.bonus-btn {
-  margin-top: 12px;
-  width: 100%; height: 48px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,215,0,0.5);
-  background: linear-gradient(180deg, rgba(255,215,0,0.2), rgba(184,134,11,0.1));
-  color: var(--gold-light);
-  font-weight: 800;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  font-family: inherit;
-  box-shadow: 0 3px 0 rgba(92,70,16,0.6), 0 6px 14px rgba(0,0,0,0.6), 0 0 20px rgba(212,175,55,0.15), inset 0 1px 0 rgba(255,233,168,0.35);
-  transition: all 0.15s;
-  letter-spacing: 0.03em;
-  position: relative;
-  overflow: hidden;
-}
-.bonus-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,215,0,0.4), transparent);
-  animation: claimShine 4s ease-in-out infinite;
-}
-.bonus-btn:hover:not(:disabled) {
-  background: linear-gradient(180deg, rgba(255,215,0,0.3), rgba(184,134,11,0.2));
-  box-shadow: 0 3px 0 rgba(92,70,16,0.6), 0 0 30px rgba(212,175,55,0.5), inset 0 1px 0 rgba(255,233,168,0.5);
-}
+.bonus-btn { margin-top: 12px; width: 100%; height: 48px; border-radius: 14px; border: 1px solid rgba(255,215,0,0.5); background: linear-gradient(180deg, rgba(255,215,0,0.2), rgba(184,134,11,0.1)); color: var(--gold-light); font-weight: 800; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: inherit; box-shadow: 0 3px 0 rgba(92,70,16,0.6), 0 6px 14px rgba(0,0,0,0.6), 0 0 20px rgba(212,175,55,0.15), inset 0 1px 0 rgba(255,233,168,0.35); transition: all 0.15s; letter-spacing: 0.03em; position: relative; overflow: hidden; }
+.bonus-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,215,0,0.4), transparent); animation: claimShine 4s ease-in-out infinite; }
+.bonus-btn:hover:not(:disabled) { background: linear-gradient(180deg, rgba(255,215,0,0.3), rgba(184,134,11,0.2)); box-shadow: 0 3px 0 rgba(92,70,16,0.6), 0 0 30px rgba(212,175,55,0.5), inset 0 1px 0 rgba(255,233,168,0.5); }
 .bonus-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 rgba(92,70,16,0.6), 0 2px 6px rgba(0,0,0,0.6); }
 .bonus-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-/* ============ TAB BAR ============ */
-.tab-bar {
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  max-width: 500px;
-  margin: 0 auto;
-  padding: 10px 10px 12px;
-  background: linear-gradient(180deg, rgba(20,17,11,0.99), rgba(5,5,5,0.99));
-  backdrop-filter: blur(28px) saturate(180%);
-  border-top: 1px solid var(--border-strong);
-  display: flex; justify-content: space-around;
-  z-index: 30;
-  box-shadow: 0 -10px 40px rgba(0,0,0,0.9), 0 -2px 0 rgba(212,175,55,0.15), inset 0 1px 0 rgba(212,175,55,0.25);
-}
-.tab-btn {
-  flex: 1;
-  height: 58px;
-  border-radius: 14px;
-  border: none;
-  background: transparent;
-  color: rgba(245,238,220,0.5);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
+.tab-bar { position: fixed; bottom: 0; left: 0; right: 0; max-width: 500px; margin: 0 auto; padding: 10px 10px 12px; background: linear-gradient(180deg, rgba(20,17,11,0.99), rgba(5,5,5,0.99)); backdrop-filter: blur(28px) saturate(180%); border-top: 1px solid var(--border-strong); display: flex; justify-content: space-around; z-index: 30; box-shadow: 0 -10px 40px rgba(0,0,0,0.9), 0 -2px 0 rgba(212,175,55,0.15), inset 0 1px 0 rgba(212,175,55,0.25); }
+.tab-btn { flex: 1; height: 58px; border-radius: 14px; border: none; background: transparent; color: rgba(245,238,220,0.5); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; cursor: pointer; font-family: inherit; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
 .tab-btn .icon { font-size: 19px; filter: grayscale(1) opacity(0.7); transition: all 0.25s; }
 .tab-btn .label { font-size: 10px; font-weight: 700; letter-spacing: 0.03em; }
-.tab-btn.active {
-  background: var(--grad-gold-btn);
-  color: #1a1408;
-  box-shadow: 0 5px 0 #5C4610, 0 9px 20px rgba(0,0,0,0.8), 0 0 25px rgba(212,175,55,0.5), inset 0 1px 0 rgba(255,255,255,0.6);
-  transform: translateY(-3px);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
-}
+.tab-btn.active { background: var(--grad-gold-btn); color: #1a1408; box-shadow: 0 5px 0 #5C4610, 0 9px 20px rgba(0,0,0,0.8), 0 0 25px rgba(212,175,55,0.5), inset 0 1px 0 rgba(255,255,255,0.6); transform: translateY(-3px); text-shadow: 0 1px 0 rgba(255,255,255,0.5); }
 .tab-btn.active .icon { filter: none; transform: scale(1.15); }
 .tab-btn.active .label { font-weight: 900; }
-
-/* ============ TASKS ============ */
 .tasks-list { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
-.task-item {
-  background: var(--grad-dark-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 16px;
-  display: flex; justify-content: space-between; align-items: center; gap: 10px;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.12);
-  transition: all 0.25s;
-  position: relative;
-  overflow: hidden;
-}
+.task-item { background: var(--grad-dark-card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.12); transition: all 0.25s; position: relative; overflow: hidden; }
 .task-item:hover { transform: translateX(3px); border-color: rgba(255,215,0,0.35); }
-.task-item::before {
-  content: '';
-  position: absolute;
-  left: 0; top: 15%; bottom: 15%;
-  width: 3px;
-  background: var(--grad-gold);
-  border-radius: 3px;
-  box-shadow: 0 0 12px rgba(212,175,55,0.8);
-}
-.task-item.done {
-  background: linear-gradient(145deg, rgba(255,215,0,0.1), rgba(0,0,0,0.45));
-  border-color: rgba(255,215,0,0.35);
-  opacity: 0.7;
-}
+.task-item::before { content: ''; position: absolute; left: 0; top: 15%; bottom: 15%; width: 3px; background: var(--grad-gold); border-radius: 3px; box-shadow: 0 0 12px rgba(212,175,55,0.8); }
+.task-item.done { background: linear-gradient(145deg, rgba(255,215,0,0.1), rgba(0,0,0,0.45)); border-color: rgba(255,215,0,0.35); opacity: 0.7; }
 .task-item.done::before { background: var(--success); box-shadow: 0 0 12px rgba(255,215,0,1); }
 .task-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
 .task-icon { font-size: 22px; flex-shrink: 0; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.7)) drop-shadow(0 0 6px rgba(212,175,55,0.3)); }
 .task-name { font-size: 13px; font-weight: 800; color: var(--text); letter-spacing: 0.01em; }
 .task-reward { font-size: 11px; color: var(--gold-light); font-family: var(--mono); margin-top: 4px; font-weight: 700; text-shadow: 0 0 8px rgba(212,175,55,0.5); }
-.task-btn {
-  height: 34px;
-  padding: 0 16px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,233,168,0.5);
-  background: var(--grad-gold-btn);
-  color: #1a1408;
-  font-weight: 900;
-  font-size: 11px;
-  cursor: pointer;
-  font-family: inherit;
-  flex-shrink: 0;
-  box-shadow: 0 3px 0 #5C4610, 0 5px 12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.6);
-  transition: all 0.1s;
-  letter-spacing: 0.03em;
-}
+.task-btn { height: 34px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(255,233,168,0.5); background: var(--grad-gold-btn); color: #1a1408; font-weight: 900; font-size: 11px; cursor: pointer; font-family: inherit; flex-shrink: 0; box-shadow: 0 3px 0 #5C4610, 0 5px 12px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.6); transition: all 0.1s; letter-spacing: 0.03em; }
 .task-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 0 0 #5C4610, 0 1px 3px rgba(0,0,0,0.7); }
-.task-btn:disabled {
-  background: linear-gradient(180deg, #2a2418, #14110a);
-  color: rgba(212,175,55,0.3);
-  border-color: rgba(212,175,55,0.15);
-  box-shadow: 0 2px 0 #0a0805;
-  cursor: default;
-}
-
-/* ============ WALLET ============ */
-.wallet-card {
-  padding: 22px;
-  border-radius: 22px;
-  background: var(--grad-dark-card);
-  border: 1px solid var(--border-strong);
-  box-shadow: 0 10px 35px rgba(0,0,0,0.75), 0 0 50px rgba(212,175,55,0.1), inset 0 1px 0 rgba(212,175,55,0.2);
-  position: relative;
-  overflow: hidden;
-}
-.wallet-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, transparent, var(--gold-light), var(--gold), transparent);
-  box-shadow: 0 0 15px rgba(212,175,55,0.8);
-  animation: walletLine 3s ease-in-out infinite;
-}
-@keyframes walletLine {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
-}
-.wallet-input {
-  width: 100%; height: 46px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: rgba(0,0,0,0.55);
-  color: var(--gold-light);
-  padding: 0 14px;
-  font-size: 13px;
-  font-family: var(--mono);
-  margin-top: 8px;
-  transition: all 0.2s;
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.7);
-}
-.wallet-input:focus {
-  outline: none;
-  border-color: var(--gold);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.7), 0 0 0 3px rgba(212,175,55,0.2), 0 0 20px rgba(212,175,55,0.4);
-}
+.task-btn:disabled { background: linear-gradient(180deg, #2a2418, #14110a); color: rgba(212,175,55,0.3); border-color: rgba(212,175,55,0.15); box-shadow: 0 2px 0 #0a0805; cursor: default; }
+.wallet-card { padding: 22px; border-radius: 22px; background: var(--grad-dark-card); border: 1px solid var(--border-strong); box-shadow: 0 10px 35px rgba(0,0,0,0.75), 0 0 50px rgba(212,175,55,0.1), inset 0 1px 0 rgba(212,175,55,0.2); position: relative; overflow: hidden; }
+.wallet-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent, var(--gold-light), var(--gold), transparent); box-shadow: 0 0 15px rgba(212,175,55,0.8); animation: walletLine 3s ease-in-out infinite; }
+@keyframes walletLine { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+.wallet-input { width: 100%; height: 46px; border-radius: 12px; border: 1px solid var(--border); background: rgba(0,0,0,0.55); color: var(--gold-light); padding: 0 14px; font-size: 13px; font-family: var(--mono); margin-top: 8px; transition: all 0.2s; box-shadow: inset 0 2px 8px rgba(0,0,0,0.7); }
+.wallet-input:focus { outline: none; border-color: var(--gold); box-shadow: inset 0 2px 8px rgba(0,0,0,0.7), 0 0 0 3px rgba(212,175,55,0.2), 0 0 20px rgba(212,175,55,0.4); }
 .wallet-input::placeholder { color: rgba(154,143,122,0.5); }
-.btn-primary {
-  width: 100%; height: 48px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,233,168,0.5);
-  background: var(--grad-gold-btn);
-  color: #1a1408;
-  font-weight: 900;
-  font-size: 13px;
-  cursor: pointer;
-  font-family: inherit;
-  margin-top: 12px;
-  box-shadow: 0 4px 0 #5C4610, 0 7px 18px rgba(0,0,0,0.7), 0 0 20px rgba(212,175,55,0.25), inset 0 1px 0 rgba(255,255,255,0.6);
-  transition: all 0.1s;
-  letter-spacing: 0.03em;
-  position: relative;
-  overflow: hidden;
-}
-.btn-primary::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-  animation: claimShine 3.5s ease-in-out infinite;
-}
+.btn-primary { width: 100%; height: 48px; border-radius: 12px; border: 1px solid rgba(255,233,168,0.5); background: var(--grad-gold-btn); color: #1a1408; font-weight: 900; font-size: 13px; cursor: pointer; font-family: inherit; margin-top: 12px; box-shadow: 0 4px 0 #5C4610, 0 7px 18px rgba(0,0,0,0.7), 0 0 20px rgba(212,175,55,0.25), inset 0 1px 0 rgba(255,255,255,0.6); transition: all 0.1s; letter-spacing: 0.03em; position: relative; overflow: hidden; }
+.btn-primary::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); animation: claimShine 3.5s ease-in-out infinite; }
 .btn-primary:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 0 0 #5C4610, 0 3px 8px rgba(0,0,0,0.7); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-
-/* ============ LEADERBOARD ============ */
-.leader-item {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 13px 15px;
-  background: var(--grad-dark-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  margin-bottom: 8px;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.5);
-  transition: all 0.2s;
-}
+.leader-item { display: flex; align-items: center; justify-content: space-between; padding: 13px 15px; background: var(--grad-dark-card); border: 1px solid var(--border); border-radius: 12px; margin-bottom: 8px; box-shadow: 0 3px 8px rgba(0,0,0,0.5); transition: all 0.2s; }
 .leader-item:hover { transform: translateX(2px); }
-.leader-item.you {
-  background: linear-gradient(135deg, rgba(255,215,0,0.18), rgba(184,134,11,0.06));
-  border-color: rgba(255,215,0,0.5);
-  box-shadow: 0 3px 8px rgba(0,0,0,0.5), 0 0 25px rgba(212,175,55,0.3), inset 0 1px 0 rgba(255,215,0,0.2);
-}
-.rank {
-  width: 30px; height: 30px;
-  border-radius: 9px;
-  background: rgba(212,175,55,0.12);
-  border: 1px solid rgba(212,175,55,0.3);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 900;
-  color: var(--gold-light);
-}
-.rank.top {
-  background: var(--grad-gold-btn);
-  color: #1a1408;
-  border-color: rgba(255,233,168,0.7);
-  box-shadow: 0 2px 0 #5C4610, 0 0 15px rgba(255,215,0,0.7), inset 0 1px 0 rgba(255,255,255,0.5);
-  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
-}
-
-/* ============ TOAST ============ */
-.toast {
-  position: fixed;
-  bottom: 90px; left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(180deg, rgba(26,22,16,0.98), rgba(10,8,5,0.98));
-  border: 1px solid var(--border-strong);
-  padding: 14px 24px;
-  border-radius: 13px;
-  font-size: 13px;
-  font-weight: 800;
-  z-index: 100;
-  backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: 0 10px 35px rgba(0,0,0,0.85), 0 0 30px rgba(212,175,55,0.3), inset 0 1px 0 rgba(212,175,55,0.25);
-  max-width: 85%;
-  text-align: center;
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: none;
-  color: var(--gold-light);
-}
+.leader-item.you { background: linear-gradient(135deg, rgba(255,215,0,0.18), rgba(184,134,11,0.06)); border-color: rgba(255,215,0,0.5); box-shadow: 0 3px 8px rgba(0,0,0,0.5), 0 0 25px rgba(212,175,55,0.3), inset 0 1px 0 rgba(255,215,0,0.2); }
+.rank { width: 30px; height: 30px; border-radius: 9px; background: rgba(212,175,55,0.12); border: 1px solid rgba(212,175,55,0.3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: var(--gold-light); }
+.rank.top { background: var(--grad-gold-btn); color: #1a1408; border-color: rgba(255,233,168,0.7); box-shadow: 0 2px 0 #5C4610, 0 0 15px rgba(255,215,0,0.7), inset 0 1px 0 rgba(255,255,255,0.5); text-shadow: 0 1px 0 rgba(255,255,255,0.5); }
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: linear-gradient(180deg, rgba(26,22,16,0.98), rgba(10,8,5,0.98)); border: 1px solid var(--border-strong); padding: 14px 24px; border-radius: 13px; font-size: 13px; font-weight: 800; z-index: 100; backdrop-filter: blur(20px) saturate(180%); box-shadow: 0 10px 35px rgba(0,0,0,0.85), 0 0 30px rgba(212,175,55,0.3), inset 0 1px 0 rgba(212,175,55,0.25); max-width: 85%; text-align: center; opacity: 0; transition: opacity 0.3s; pointer-events: none; color: var(--gold-light); }
 .toast.show { opacity: 1; }
-
-/* ============ FEE PREVIEW ============ */
-.fee-preview {
-  margin-top: 12px;
-  padding: 14px;
-  border-radius: 12px;
-  background: rgba(255,215,0,0.07);
-  border: 1px solid rgba(255,215,0,0.3);
-  font-size: 12px;
-  box-shadow: inset 0 1px 0 rgba(255,215,0,0.12);
-}
+.fee-preview { margin-top: 12px; padding: 14px; border-radius: 12px; background: rgba(255,215,0,0.07); border: 1px solid rgba(255,215,0,0.3); font-size: 12px; box-shadow: inset 0 1px 0 rgba(255,215,0,0.12); }
 .fee-row { display: flex; justify-content: space-between; margin-bottom: 7px; }
 .fee-row:last-child { margin-bottom: 0; padding-top: 8px; border-top: 1px solid rgba(212,175,55,0.25); }
-
-/* ============ PROFILE ============ */
-.profile-card {
-  text-align: center;
-  padding: 28px 16px;
-  border-radius: 22px;
-  background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(184,134,11,0.05));
-  border: 1px solid rgba(255,215,0,0.35);
-  margin-bottom: 12px;
-  box-shadow: 0 10px 35px rgba(0,0,0,0.7), 0 0 50px rgba(212,175,55,0.12), inset 0 1px 0 rgba(255,215,0,0.2);
-  position: relative;
-  overflow: hidden;
-}
-.profile-card::before {
-  content: '';
-  position: absolute;
-  top: -50%; left: 50%;
-  width: 200%; height: 200%;
-  transform: translateX(-50%);
-  background: radial-gradient(circle at 50% 0%, rgba(255,215,0,0.15), transparent 40%);
-  pointer-events: none;
-  animation: royalGlow 5s ease-in-out infinite;
-}
-.profile-avatar {
-  width: 90px; height: 90px;
-  border-radius: 50%;
-  background: var(--grad-gold-btn);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 36px; font-weight: 900; color: #1a1408;
-  margin: 0 auto 16px;
-  box-shadow: 0 0 0 3px rgba(139,105,20,0.6), 0 0 0 7px rgba(92,70,16,0.35), 0 12px 35px rgba(212,175,55,0.6), 0 0 60px rgba(212,175,55,0.3), inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.2);
-  text-shadow: 0 2px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(0,0,0,0.2);
-  position: relative;
-}
-.profile-avatar::after {
-  content: '';
-  position: absolute;
-  top: 8%; left: 22%;
-  width: 45%; height: 30%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(255,255,255,0.7), transparent 70%);
-  filter: blur(5px);
-}
-.profile-name {
-  font-size: 22px; font-weight: 900;
-  margin-bottom: 5px;
-  background: var(--grad-gold);
-  background-size: 200% auto;
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7));
-  animation: goldShimmer 4s linear infinite;
-}
-.profile-username {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-family: var(--mono);
-  letter-spacing: 0.05em;
-}
-
-/* ============ STATS ============ */
+.profile-card { text-align: center; padding: 28px 16px; border-radius: 22px; background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(184,134,11,0.05)); border: 1px solid rgba(255,215,0,0.35); margin-bottom: 12px; box-shadow: 0 10px 35px rgba(0,0,0,0.7), 0 0 50px rgba(212,175,55,0.12), inset 0 1px 0 rgba(255,215,0,0.2); position: relative; overflow: hidden; }
+.profile-card::before { content: ''; position: absolute; top: -50%; left: 50%; width: 200%; height: 200%; transform: translateX(-50%); background: radial-gradient(circle at 50% 0%, rgba(255,215,0,0.15), transparent 40%); pointer-events: none; animation: royalGlow 5s ease-in-out infinite; }
+.profile-avatar { width: 90px; height: 90px; border-radius: 50%; background: var(--grad-gold-btn); display: flex; align-items: center; justify-content: center; font-size: 36px; font-weight: 900; color: #1a1408; margin: 0 auto 16px; box-shadow: 0 0 0 3px rgba(139,105,20,0.6), 0 0 0 7px rgba(92,70,16,0.35), 0 12px 35px rgba(212,175,55,0.6), 0 0 60px rgba(212,175,55,0.3), inset 0 2px 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(0,0,0,0.2); text-shadow: 0 2px 0 rgba(255,255,255,0.6), 0 -1px 0 rgba(0,0,0,0.2); position: relative; }
+.profile-avatar::after { content: ''; position: absolute; top: 8%; left: 22%; width: 45%; height: 30%; border-radius: 50%; background: radial-gradient(ellipse, rgba(255,255,255,0.7), transparent 70%); filter: blur(5px); }
+.profile-name { font-size: 22px; font-weight: 900; margin-bottom: 5px; background: var(--grad-gold); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7)); animation: goldShimmer 4s linear infinite; }
+.profile-username { font-size: 12px; color: var(--text-muted); font-family: var(--mono); letter-spacing: 0.05em; }
 .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
-.stat-box {
-  background: var(--grad-dark-card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-  text-align: center;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.12);
-  position: relative;
-  overflow: hidden;
-  transition: all 0.2s;
-}
-.stat-box:hover {
-  border-color: rgba(255,215,0,0.4);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 20px rgba(212,175,55,0.2), inset 0 1px 0 rgba(212,175,55,0.2);
-}
-.stat-box::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 20%; right: 20%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,215,0,0.6), transparent);
-}
+.stat-box { background: var(--grad-dark-card); border: 1px solid var(--border); border-radius: 14px; padding: 16px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(212,175,55,0.12); position: relative; overflow: hidden; transition: all 0.2s; }
+.stat-box:hover { border-color: rgba(255,215,0,0.4); box-shadow: 0 4px 12px rgba(0,0,0,0.5), 0 0 20px rgba(212,175,55,0.2), inset 0 1px 0 rgba(212,175,55,0.2); }
+.stat-box::before { content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,215,0,0.6), transparent); }
 .stat-box .label { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 7px; font-weight: 600; }
 .stat-box .value { font-size: 19px; font-weight: 900; color: var(--text); text-shadow: 0 2px 4px rgba(0,0,0,0.6); }
 .stat-box .value.accent { color: var(--gold-light); text-shadow: 0 0 15px rgba(212,175,55,0.6), 0 2px 4px rgba(0,0,0,0.6); }
-
-/* ============ REFERRAL ============ */
-.referral-card {
-  padding: 18px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(184,134,11,0.04));
-  border: 1px solid rgba(255,215,0,0.35);
-  box-shadow: 0 6px 22px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,215,0,0.18);
-}
+.referral-card { padding: 18px; border-radius: 16px; background: linear-gradient(135deg, rgba(255,215,0,0.12), rgba(184,134,11,0.04)); border: 1px solid rgba(255,215,0,0.35); box-shadow: 0 6px 22px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,215,0,0.18); }
 .referral-link { display: flex; gap: 8px; margin-top: 12px; }
-.referral-link input {
-  flex: 1;
-  height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: rgba(0,0,0,0.55);
-  color: var(--gold-light);
-  padding: 0 12px;
-  font-size: 11px;
-  font-family: var(--mono);
-  box-shadow: inset 0 2px 8px rgba(0,0,0,0.7);
-}
-.copy-btn {
-  height: 44px;
-  padding: 0 18px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,233,168,0.55);
-  background: var(--grad-gold-btn);
-  color: #1a1408;
-  font-weight: 900;
-  font-size: 12px;
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
-  box-shadow: 0 3px 0 #5C4610, 0 6px 14px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.6);
-  transition: all 0.1s;
-  letter-spacing: 0.03em;
-  position: relative;
-  overflow: hidden;
-}
-.copy-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: -100%;
-  width: 100%; height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-  animation: claimShine 4s ease-in-out infinite;
-}
+.referral-link input { flex: 1; height: 44px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.55); color: var(--gold-light); padding: 0 12px; font-size: 11px; font-family: var(--mono); box-shadow: inset 0 2px 8px rgba(0,0,0,0.7); }
+.copy-btn { height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid rgba(255,233,168,0.55); background: var(--grad-gold-btn); color: #1a1408; font-weight: 900; font-size: 12px; cursor: pointer; font-family: inherit; white-space: nowrap; box-shadow: 0 3px 0 #5C4610, 0 6px 14px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.6); transition: all 0.1s; letter-spacing: 0.03em; position: relative; overflow: hidden; }
+.copy-btn::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent); animation: claimShine 4s ease-in-out infinite; }
 .copy-btn:active { transform: translateY(3px); box-shadow: 0 0 0 #5C4610, 0 2px 6px rgba(0,0,0,0.7); }
-
-/* ============ UTILS ============ */
 .hidden { display: none !important; }
-.spinner {
-  display: inline-block;
-  width: 16px; height: 16px;
-  border: 2px solid rgba(212,175,55,0.25);
-  border-top-color: var(--gold-light);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  box-shadow: 0 0 10px rgba(212,175,55,0.5);
-}
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(212,175,55,0.25); border-top-color: var(--gold-light); border-radius: 50%; animation: spin 0.8s linear infinite; box-shadow: 0 0 10px rgba(212,175,55,0.5); }
 #ton-connect-btn { width: 100%; margin-top: 10px; }
-h2 {
-  font-size: 16px;
-  font-weight: 900;
-  margin-bottom: 12px;
-  background: var(--grad-gold);
-  background-size: 200% auto;
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent;
-  letter-spacing: 0.05em;
-  filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7));
-  animation: goldShimmer 4s linear infinite;
-}
+h2 { font-size: 16px; font-weight: 900; margin-bottom: 12px; background: var(--grad-gold); background-size: 200% auto; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 0.05em; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.7)); animation: goldShimmer 4s linear infinite; }
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #0a0805; }
 ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, var(--gold), var(--gold-deep)); border-radius: 3px; box-shadow: 0 0 6px rgba(212,175,55,0.5); }
 ::-webkit-scrollbar-thumb:hover { background: var(--gold-light); }
+/* BUY FWC - HOLD Feature */
+.buy-fwc-card { margin-top:12px; padding:14px; border-radius:14px; background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(184,134,11,0.08)); border:1px solid rgba(255,215,0,0.4); text-align:center; }
+.buy-fwc-btn { width:100%; height:44px; border-radius:12px; border:1px solid rgba(255,233,168,0.6); background: var(--grad-gold-btn); color:#1a1408; font-weight:900; font-size:13px; cursor:pointer; font-family:inherit; margin-top:8px; box-shadow:0 4px 0 #5C4610, 0 6px 14px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.6); }
+.buy-fwc-btn:active { transform:translateY(4px); box-shadow:0 0 0 #5C4610; }
 </style>
-
 <script>
-// AUTO: In-App Interstitial - 1 ad per 5 min, first after 12 sec
 document.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
     try{
       if(typeof show_12138342 === 'function'){
-        console.log('[Auto] In-App Interstitial');
-        show_12138342({
-          type: 'inApp',
-          inAppSettings: { frequency: 1, capping: 0.083, interval: 30, timeout: 12, everyPage: false }
-        });
+        show_12138342({ type: 'inApp', inAppSettings: { frequency: 1, capping: 0.083, interval: 30, timeout: 12, everyPage: false } });
       }
-    }catch(e){ console.log('Auto err', e); }
+    }catch(e){}
   }, 1000);
 });
 </script>
-
 </head>
 <body>
-
-<!-- ============ SPLASH SCREEN (CALM) ============ -->
-<div id="splash-screen">
-  <div class="splash-ring-1"></div>
-  <div class="splash-logo">FWC</div>
-  <div class="splash-title">FWC FARMING</div>
-  <div class="splash-subtitle">LIVE • SECURE • EARN</div>
-  <div class="splash-loader"></div>
-</div>
-
+<div id="splash-screen"><div class="splash-ring-1"></div><div class="splash-logo">FWC</div><div class="splash-title">FWC FARMING</div><div class="splash-subtitle">LIVE • SECURE • EARN</div><div class="splash-loader"></div></div>
 <div class="container">
-  <header class="header">
-    <div class="logo">
-      <div class="logo-icon">FWC</div>
-      <div>
-        <div class="logo-title">FWC FARMING</div>
-        <div class="logo-sub">LIVE • SECURE</div>
-      </div>
-    </div>
-    <button class="lang-btn" onclick="cycleLanguage()" id="langBtn">EN</button>
-  </header>
-
-  <div class="balance-row">
-    <div class="card balance-card">
-      <div class="label-small" data-i18n="balance">BALANCE</div>
-      <div class="balance-value">
-        <span id="balanceNum">—</span>
-        <span class="currency">FWC</span>
-      </div>
-    </div>
-    <div class="card speed-card">
-      <div class="label-small" data-i18n="speed">SPEED</div>
-      <div class="speed-value"><span id="speedVal">—</span></div>
-    </div>
-  </div>
-
+  <header class="header"><div class="logo"><div class="logo-icon">FWC</div><div><div class="logo-title">FWC FARMING</div><div class="logo-sub">LIVE • SECURE</div></div></div><button class="lang-btn" onclick="cycleLanguage()" id="langBtn">EN</button></header>
+  <div class="balance-row"><div class="card balance-card"><div class="label-small" data-i18n="balance">BALANCE</div><div class="balance-value"><span id="balanceNum">—</span><span class="currency">FWC</span></div></div><div class="card speed-card"><div class="label-small" data-i18n="speed">SPEED</div><div class="speed-value"><span id="speedVal">—</span></div></div></div>
 <div style="margin:12px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center">
   <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD • SUPPORTS FWC</div>
-  <div id="banner-top"><div id="frame" style="width: 320px;margin: auto;z-index: 99998;height: auto">
-          <iframe data-aa='2460258' src='//ad.a-ads.com/2460258/?size=320x50'
-                            style='border:0; padding:0; width:320px; height:50px; overflow:hidden;display: block;margin: auto'></iframe>
-        </div></div>
+  <div id="banner-top"><div style="width: 320px;margin: auto;height: auto"><iframe data-aa='2460258' src='//ad.a-ads.com/2460258/?size=320x50' style='border:0; padding:0; width:320px; height:50px; overflow:hidden;display: block;margin: auto'></iframe></div></div>
 </div>
-
   <div class="content">
-    <div id="tab-mine">
-      <div class="mining-card">
-        <div class="mining-circle">FWC</div>
-        <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:10px;" id="miningStatus">Loading...</div>
-        <button class="claim-btn" id="claimBtn" disabled>
-          <span>⚡</span> <span id="claimText">Loading</span>
-        </button>
-        <button class="bonus-btn hidden" id="bonusBtn" style="display:none" onclick="watchAdForBonus()">
-          <span>🎁</span> <span>Watch Ad for Bonus</span>
-        </button>
-      </div>
-      <div class="card" style="margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-          <div>
-            <div class="label-small" data-i18n="checkin">DAILY CHECK-IN</div>
-            <div style="font-size:14px;font-weight:700;margin-top:4px;">
-              <span data-i18n="streak">Streak</span>: <span id="streakNum">0</span>
-            </div>
-          </div>
-          <button class="task-btn" id="checkinBtn" onclick="doCheckin()" data-i18n="checkin">Check-in</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="tab-tasks" class="hidden">
-      <h2>📋 <span data-i18n="tasks">Tasks</span></h2>
-      <div class="tasks-list" id="tasksList">
-        <div style="text-align:center;color:var(--text-muted);padding:20px;"><span class="spinner"></span></div>
-      </div>
-    </div>
-
+    <div id="tab-mine"><div class="mining-card"><div class="mining-circle">FWC</div><div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:10px;" id="miningStatus">Loading...</div><button class="claim-btn" id="claimBtn" disabled><span>⚡</span> <span id="claimText">Loading</span></button><button class="bonus-btn hidden" id="bonusBtn" style="display:none" onclick="watchAdForBonus()"><span>🎁</span> <span>Watch Ad for Bonus</span></button></div><div class="card" style="margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="label-small" data-i18n="checkin">DAILY CHECK-IN</div><div style="font-size:14px;font-weight:700;margin-top:4px;"><span data-i18n="streak">Streak</span>: <span id="streakNum">0</span></div></div><button class="task-btn" id="checkinBtn" onclick="doCheckin()" data-i18n="checkin">Check-in</button></div></div></div>
+    <div id="tab-tasks" class="hidden"><h2>📋 <span data-i18n="tasks">Tasks</span></h2><div class="tasks-list" id="tasksList"><div style="text-align:center;color:var(--text-muted);padding:20px;"><span class="spinner"></span></div></div></div>
     <div id="tab-wallet" class="hidden">
       <h2>💳 <span data-i18n="wallet">Wallet</span></h2>
       <div class="wallet-card">
@@ -1041,491 +230,66 @@ document.addEventListener('DOMContentLoaded', function(){
           <div class="label-small" data-i18n="withdraw">WITHDRAW</div>
           <div style="font-size:11px;color:var(--text-muted);margin-top:4px;" id="withdrawInfo">Min: 1000 FWC</div>
           <input class="wallet-input" id="withdrawInput" type="number" placeholder="Amount" oninput="estimateWithdraw()" />
-          <div class="fee-preview hidden" id="feePreview">
-            <div class="fee-row">
-              <span style="color:var(--text-muted);" data-i18n="amount">Amount:</span>
-              <span id="feeAmount" style="font-weight:700;">0 FWC</span>
-            </div>
-            <div class="fee-row">
-              <span style="color:var(--text-muted);"><span data-i18n="fee">Fee</span> (<span id="feePercent">5</span>%):</span>
-              <span id="feeValue" style="font-weight:700;color:var(--warn);">0 FWC</span>
-            </div>
-            <div class="fee-row">
-              <span style="color:var(--text-muted);" data-i18n="youReceive">You receive:</span>
-              <span id="feeNet" style="font-weight:800;color:var(--accent-2);">0 FWC</span>
+          <div class="fee-preview hidden" id="feePreview"><div class="fee-row"><span style="color:var(--text-muted);" data-i18n="amount">Amount:</span><span id="feeAmount" style="font-weight:700;">0 FWC</span></div><div class="fee-row"><span style="color:var(--text-muted);"><span data-i18n="fee">Fee</span> (<span id="feePercent">5</span>%):</span><span id="feeValue" style="font-weight:700;color:var(--warn);">0 FWC</span></div><div class="fee-row"><span style="color:var(--text-muted);" data-i18n="youReceive">You receive:</span><span id="feeNet" style="font-weight:800;color:var(--accent-2);">0 FWC</span></div></div>
+          <button class="btn-primary" id="withdrawBtn" onclick="requestWithdraw()" data-i18n="requestWithdraw">Request Withdrawal</button>
+          <div id="holdBuySection" style="display:block;">
+            <div class="buy-fwc-card">
+              <div style="font-size:12px;font-weight:800;color:var(--gold-light);">⚠️ HOLD REQUIRED FOR NEXT WITHDRAWAL</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:6px;" id="holdDetail">You need to hold 1000 FWC in your TON wallet</div>
+              <div style="margin-top:8px;display:flex;gap:6px;">
+                <div style="flex:1;background:rgba(0,0,0,0.4);border-radius:8px;padding:8px;"><div style="font-size:9px;color:var(--text-muted);">YOUR WALLET</div><div style="font-size:12px;font-weight:800;" id="holdCurrent">0 FWC</div></div>
+                <div style="flex:1;background:rgba(0,0,0,0.4);border-radius:8px;padding:8px;"><div style="font-size:9px;color:var(--text-muted);">REQUIRED</div><div style="font-size:12px;font-weight:800;color:var(--gold-light);" id="holdNeed">1000 FWC</div></div>
+              </div>
+              <button class="buy-fwc-btn" onclick="buyFWC()">🛒 BUY FWC ON DEDUST</button>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">Buying increases price for everyone</div>
             </div>
           </div>
-          <button class="btn-primary" id="withdrawBtn" onclick="requestWithdraw()" data-i18n="requestWithdraw">Request Withdrawal</button>
         </div>
       </div>
-      <div class="card" style="margin-top:12px;">
-        <div class="label-small" data-i18n="recentWithdrawals">RECENT WITHDRAWALS</div>
-        <div id="withdrawHistory" style="margin-top:8px;font-size:12px;color:var(--text-muted);">No withdrawals</div>
-      </div>
+      <div class="card" style="margin-top:12px;"><div class="label-small" data-i18n="recentWithdrawals">RECENT WITHDRAWALS</div><div id="withdrawHistory" style="margin-top:8px;font-size:12px;color:var(--text-muted);">No withdrawals</div></div>
     </div>
-
-    <div id="tab-market" class="hidden">
-      <h2>🏆 <span data-i18n="leaderboard">Leaderboard</span></h2>
-      <div id="leaderboard">
-        <div style="text-align:center;color:var(--text-muted);padding:20px;"><span class="spinner"></span></div>
-      </div>
-    </div>
-
-    <div id="tab-account" class="hidden">
-      <h2>👤 <span data-i18n="account">Account</span></h2>
-      <div class="profile-card">
-        <div class="profile-avatar" id="profileAvatar">?</div>
-        <div class="profile-name" id="profileName">Loading...</div>
-        <div class="profile-username" id="profileUsername">@...</div>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="label">Balance</div>
-          <div class="value accent" id="statBalance">0.00</div>
-        </div>
-        <div class="stat-box">
-          <div class="label">Referrals</div>
-          <div class="value" id="statReferrals">0</div>
-        </div>
-        <div class="stat-box">
-          <div class="label">Wallet</div>
-          <div class="value" style="font-size:13px;" id="statWallet">Not linked</div>
-        </div>
-        <div class="stat-box">
-          <div class="label">User ID</div>
-          <div class="value" style="font-size:13px;font-family:var(--mono);" id="statUserId">—</div>
-        </div>
-      </div>
-      <div class="referral-card">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-          <div style="font-size:18px;">🎁</div>
-          <div style="font-weight:800;font-size:14px;">Invite Friends</div>
-        </div>
-        <div style="font-size:11px;color:var(--text-muted);">Share your link and earn 5% from every friend you invite.</div>
-        <div class="referral-link">
-          <input type="text" id="referralLink" readonly value="Loading...">
-          <button class="copy-btn" onclick="copyReferralLink()">Copy</button>
-        </div>
-      </div>
-    </div>
+    <div id="tab-market" class="hidden"><h2>🏆 <span data-i18n="leaderboard">Leaderboard</span></h2><div id="leaderboard"><div style="text-align:center;color:var(--text-muted);padding:20px;"><span class="spinner"></span></div></div></div>
+    <div id="tab-account" class="hidden"><h2>👤 <span data-i18n="account">Account</span></h2><div class="profile-card"><div class="profile-avatar" id="profileAvatar">?</div><div class="profile-name" id="profileName">Loading...</div><div class="profile-username" id="profileUsername">@...</div></div><div class="stats-grid"><div class="stat-box"><div class="label">Balance</div><div class="value accent" id="statBalance">0.00</div></div><div class="stat-box"><div class="label">Referrals</div><div class="value" id="statReferrals">0</div></div><div class="stat-box"><div class="label">Wallet</div><div class="value" style="font-size:13px;" id="statWallet">Not linked</div></div><div class="stat-box"><div class="label">User ID</div><div class="value" style="font-size:13px;font-family:var(--mono);" id="statUserId">—</div></div></div><div class="referral-card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><div style="font-size:18px;">🎁</div><div style="font-weight:800;font-size:14px;">Invite Friends</div></div><div style="font-size:11px;color:var(--text-muted);">Share your link and earn 5% from every friend you invite.</div><div class="referral-link"><input type="text" id="referralLink" readonly value="Loading..."><button class="copy-btn" onclick="copyReferralLink()">Copy</button></div></div></div>
   </div>
-
-<div style="margin:12px 16px 90px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center">
-  <div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD</div>
-  <div id="banner-bottom"><div id="frame" style="width: 320px;margin: auto;z-index: 99998;height: auto">
-          <iframe data-aa='2460258' src='//ad.a-ads.com/2460258/?size=320x50'
-                            style='border:0; padding:0; width:320px; height:50px; overflow:hidden;display: block;margin: auto'></iframe>
-        </div></div>
+<div style="margin:12px 16px 90px 16px;padding:8px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;text-align:center"><div style="font-size:9px;color:var(--text-muted);letter-spacing:1px;margin-bottom:6px">AD</div><div id="banner-bottom"><div style="width: 320px;margin: auto;height: auto"><iframe data-aa='2460258' src='//ad.a-ads.com/2460258/?size=320x50' style='border:0; padding:0; width:320px; height:50px; overflow:hidden;display: block;margin: auto'></iframe></div></div></div>
+  <nav class="tab-bar"><button class="tab-btn active" data-tab="mine" onclick="switchTab('mine')"><span class="icon">🌾</span><span class="label" data-i18n="mine">Farm</span></button><button class="tab-btn" data-tab="tasks" onclick="switchTab('tasks')"><span class="icon">📋</span><span class="label" data-i18n="tasks">Tasks</span></button><button class="tab-btn" data-tab="wallet" onclick="switchTab('wallet')"><span class="icon">💳</span><span class="label" data-i18n="wallet">Wallet</span></button><button class="tab-btn" data-tab="market" onclick="switchTab('market')"><span class="icon">🏆</span><span class="label" data-i18n="leaderboard">Top</span></button><button class="tab-btn" data-tab="account" onclick="switchTab('account')"><span class="icon">👤</span><span class="label" data-i18n="account">Account</span></button></nav>
 </div>
-
-  <nav class="tab-bar">
-    <button class="tab-btn active" data-tab="mine" onclick="switchTab('mine')">
-      <span class="icon">🌾</span><span class="label" data-i18n="mine">Farm</span>
-    </button>
-    <button class="tab-btn" data-tab="tasks" onclick="switchTab('tasks')">
-      <span class="icon">📋</span><span class="label" data-i18n="tasks">Tasks</span>
-    </button>
-    <button class="tab-btn" data-tab="wallet" onclick="switchTab('wallet')">
-      <span class="icon">💳</span><span class="label" data-i18n="wallet">Wallet</span>
-    </button>
-    <button class="tab-btn" data-tab="market" onclick="switchTab('market')">
-      <span class="icon">🏆</span><span class="label" data-i18n="leaderboard">Top</span>
-    </button>
-    <button class="tab-btn" data-tab="account" onclick="switchTab('account')">
-      <span class="icon">👤</span><span class="label" data-i18n="account">Account</span>
-    </button>
-  </nav>
-</div>
-
 <div class="toast" id="toast"></div>
-
 <script>
-// ========== SPLASH SCREEN (CALM) ==========
-(function initSplash() {
-  const splash = document.getElementById('splash-screen');
-  if (!splash) return;
-  
-  const SPLASH_DURATION = 1800;
-  setTimeout(() => {
-    splash.classList.add('hidden-splash');
-    setTimeout(() => splash.remove(), 600);
-  }, SPLASH_DURATION);
-})();
-
-// ========== GLOBALS ==========
-const tg = window.Telegram?.WebApp;
-if (tg) { tg.ready(); tg.expand(); }
-
-const TRANSLATIONS = {
-  en: { balance:'Balance', speed:'Speed', mine:'Farm', tasks:'Tasks', wallet:'Wallet', leaderboard:'Leaderboard', account:'Account', checkin:'Check-in', streak:'Streak', tonWallet:'TON WALLET', saveWallet:'Save Wallet', withdraw:'WITHDRAW', amount:'Amount', fee:'Fee', youReceive:'You receive', requestWithdraw:'Request Withdrawal', recentWithdrawals:'RECENT WITHDRAWALS', claim:'CLAIM', ready:'Ready to mine', wait:'Please wait', addWallet:'Connect Wallet', banned:'Banned', cooldown:'Cooldown' },
-  ar: { balance:'الرصيد', speed:'السرعة', mine:'زراعة', tasks:'مهام', wallet:'محفظة', leaderboard:'المتصدرين', account:'حسابي', checkin:'تسجيل يومي', streak:'سلسلة', tonWallet:'محفظة TON', saveWallet:'حفظ', withdraw:'سحب', amount:'المبلغ', fee:'الرسوم', youReceive:'ستستلم', requestWithdraw:'طلب سحب', recentWithdrawals:'آخر السحوبات', claim:'استلام', ready:'جاهز للتعدين', wait:'انتظر', addWallet:'اربط المحفظة', banned:'محظور', cooldown:'قيد الانتظار' },
-  ru: { balance:'Баланс', speed:'Скорость', mine:'Майнинг', tasks:'Задачи', wallet:'Кошелек', leaderboard:'Топ', account:'Аккаунт', checkin:'Регистрация', streak:'Серия', tonWallet:'TON КОШЕЛЕК', saveWallet:'Сохранить', withdraw:'Вывод', amount:'Сумма', fee:'Комиссия', youReceive:'Вы получите', requestWithdraw:'Запросить вывод', recentWithdrawals:'ПОСЛЕДНИЕ ВЫВОДЫ', claim:'ЗАБРАТЬ', ready:'Готов к майнингу', wait:'Подождите', addWallet:'Подключить', banned:'Забанен', cooldown:'Ожидание' },
-  tr: { balance:'Bakiye', speed:'Hız', mine:'Madencilik', tasks:'Görevler', wallet:'Cüzdan', leaderboard:'Liderlik', account:'Hesap', checkin:'Giriş', streak:'Seri', tonWallet:'TON CÜZDAN', saveWallet:'Kaydet', withdraw:'Çek', amount:'Miktar', fee:'Ücret', youReceive:'Alacaksınız', requestWithdraw:'Çekim Talep Et', recentWithdrawals:'SON ÇEKİMLER', claim:'AL', ready:'Kazımaya hazır', wait:'Bekleyin', addWallet:'Cüzdan Bağla', banned:'Yasaklı', cooldown:'Beklemede' },
-};
-
-const STATE = {
-  telegram_id: null, language: 'en', balance: 0, wallet: null, is_banned: 0,
-  miningAmount: 0, canMine: { ok: false, reason: 'loading' }, canWithdraw: { ok: false },
-  streak: 0, tasks: [], progress: [], activeTab: 'mine', cooldownTimer: null,
-  refreshTimer: null, lastFeeEstimate: null, referralData: null, userInfo: null,
-  adBlockId: null, adAutoBlockId: null,
-};
-
-let tonConnectUI = null;
-
-function getInitData() { return tg?.initData || new URLSearchParams(location.search).get('initData') || ''; }
-
-async function api(path, method = 'GET', body = null) {
-  const headers = { 'Content-Type': 'application/json' };
-  const initData = getInitData();
-  if (initData) headers['X-Telegram-Init-Data'] = initData;
-  try { const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null }); return await res.json(); } catch (e) { return { ok: false, error: 'network' }; }
-}
-
-function t(key) { return TRANSLATIONS[STATE.language]?.[key] || TRANSLATIONS.en[key] || key; }
-function applyTranslations() {
-  document.querySelectorAll('[data-i18n]').forEach(el => { const key = el.getAttribute('data-i18n'); if (el.tagName === 'INPUT') el.placeholder = t(key); else el.textContent = t(key); });
-  document.getElementById('langBtn').textContent = STATE.language.toUpperCase();
-  document.documentElement.dir = STATE.language === 'ar' ? 'rtl' : 'ltr';
-}
-function cycleLanguage() { const langs = ['en', 'ar', 'ru', 'tr']; const idx = langs.indexOf(STATE.language); const next = langs[(idx + 1) % langs.length]; STATE.language = next; applyTranslations(); api('/api/language', 'POST', { lang: next }).catch(() => {}); }
-
-function toast(msg, type = 'info') {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.style.background = type === 'error' ? 'rgba(255,77,77,0.95)' : type === 'success' ? 'rgba(212,175,55,0.95)' : 'rgba(26,22,16,0.98)';
-  el.style.color = type === 'success' ? '#1a1408' : '#F5EEDC';
-  el.classList.add('show'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2500);
-}
-
-async function showAd(blockId) {
-  blockId = blockId || STATE.adBlockId || '12138342';
-  if(blockId && window.Adsgram){
-    try{
-      const c = window.Adsgram.init({blockId: String(blockId), debug: true});
-      const r = await c.show();
-      console.log('[Adsgram]', r);
-      return true;
-    }catch(e){ console.log('Adsgram err', e.message||e); }
-  }
-  try{
-    if(typeof show_12138342 === 'function'){ await show_12138342(); return true; }
-    if(typeof window.show_12138342 === 'function'){ await window.show_12138342(); return true; }
-  }catch(e){ console.log('Monetag err', e); return true; }
-  return true;
-}
-
-function initTonConnect() {
-  tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
-    manifestUrl: window.location.origin + '/tonconnect-manifest.json',
-    buttonRootId: 'ton-connect-btn'
-  });
-  tonConnectUI.onStatusChange(async (wallet) => {
-    if (wallet) {
-      const walletAddress = wallet.account.address;
-      document.getElementById('walletAddress').textContent = walletAddress;
-      const res = await api('/api/wallet/save', 'POST', { address: walletAddress });
-      if (res.ok) {
-        STATE.wallet = res.wallet || walletAddress;
-        toast('Wallet connected ✅', 'success');
-        await loadUser();
-      } else {
-        toast('Failed to save wallet: ' + (res.error || ''), 'error');
-      }
-    } else {
-      document.getElementById('walletAddress').textContent = '';
-      STATE.wallet = null;
-      renderMine();
-    }
-  });
-}
-
-async function loadUser() {
-  const res = await api('/api/me');
-  if (!res.ok) { if (res.error === 'forbidden') return toast('Open from Telegram', 'error'); return toast('Error loading', 'error'); }
-  STATE.telegram_id = res.telegram_id; STATE.language = res.language || 'en'; STATE.balance = res.balance;
-  STATE.wallet = res.wallet; STATE.is_banned = res.is_banned; STATE.miningAmount = res.miningAmount;
-  STATE.canMine = res.canMine; STATE.canWithdraw = res.canWithdraw; STATE.streak = res.streak || 0;
-  STATE.adBlockId = res.adBlockId || null;
-  STATE.adAutoBlockId = res.adAutoBlockId || null;
-  applyTranslations(); renderMine(); renderWallet(); renderAccount();
-}
-
-function renderMine() {
-  document.getElementById('balanceNum').textContent = STATE.balance.toFixed(4);
-  document.getElementById('speedVal').textContent = STATE.miningAmount.toFixed(2);
-  document.getElementById('streakNum').textContent = STATE.streak;
-  const statusEl = document.getElementById('miningStatus');
-  const btn = document.getElementById('claimBtn');
-  const btnText = document.getElementById('claimText');
-  const bonusBtn = document.getElementById('bonusBtn');
-  if (STATE.is_banned) { statusEl.textContent = '⛔ ' + t('banned'); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('banned'); return; }
-  if (!STATE.wallet) { statusEl.textContent = '⚠️ ' + t('addWallet'); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('addWallet'); btn.onclick = () => switchTab('wallet'); return; }
-  if (STATE.canMine.ok) { 
-    statusEl.textContent = '✅ ' + t('ready');
-    btn.disabled = false; 
-    bonusBtn.disabled = false;
-    btnText.textContent = `⚡ ${t('claim')} ${STATE.miningAmount.toFixed(2)} FWC`; 
-    btn.onclick = doMine; 
-  }
-  else if (STATE.canMine.reason === 'cooldown') { 
-    btn.disabled = true; bonusBtn.disabled = true; btn.onclick = null; 
-    startCooldown(STATE.canMine.remaining); 
-  }
-  else { statusEl.textContent = '⏳ ' + (STATE.canMine.reason || t('wait')); btn.disabled = true; bonusBtn.disabled = true; btnText.textContent = t('wait'); }
-}
-
-function startCooldown(remainingMs) {
-  const statusEl = document.getElementById('miningStatus'); 
-  const btn = document.getElementById('claimBtn'); 
-  const btnText = document.getElementById('claimText');
-  const bonusBtn = document.getElementById('bonusBtn');
-  btn.disabled = true; bonusBtn.disabled = true;
-  clearInterval(STATE.cooldownTimer); 
-  let ms = remainingMs;
-  const tick = () => { 
-    if (ms <= 0) { clearInterval(STATE.cooldownTimer); loadUser(); return; } 
-    const h = Math.floor(ms / 3600000); 
-    const m = Math.floor((ms % 3600000) / 60000); 
-    const s = Math.floor((ms % 60000) / 1000); 
-    statusEl.textContent = `⏳ ${h}h ${m}m ${s}s - انتظر`; 
-    btnText.textContent = t('cooldown'); 
-    ms -= 1000; 
-  };
-  tick(); 
-  STATE.cooldownTimer = setInterval(tick, 1000);
-}
-
-async function doMine() {
-  const btn = document.getElementById('claimBtn');
-  const bonusBtn = document.getElementById('bonusBtn');
-  const origHTML = btn ? btn.innerHTML : '';
-  if(btn){ btn.innerHTML = '<span class="spinner"></span> Loading Ad...'; btn.disabled = true; }
-  if(bonusBtn) bonusBtn.disabled = true;
-  const watched = await showAd(STATE.adBlockId);
-  if(!watched){
-    toast('لازم تشوف الإعلان عشان تطالب','error');
-    if(btn){ btn.innerHTML = origHTML; btn.disabled = false; }
-    if(bonusBtn) bonusBtn.disabled = false;
-    return;
-  }
-  if(btn) btn.innerHTML = '<span class="spinner"></span> Mining...';
-  const res = await api('/api/mine', 'POST', {});
-  if(res.ok){
-    STATE.balance = res.newBalance;
-    toast(`+${res.amount} FWC ✅`, 'success');
-    if(tg) tg.HapticFeedback?.notificationOccurred('success');
-    await loadUser();
-  } else {
-    if(res.error === 'cooldown'){ startCooldown(res.remaining); toast('انتظر انتهاء الوقت','error'); }
-    else { toast('Error: '+(res.error||''),'error'); await loadUser(); }
-  }
-  if(btn){ btn.innerHTML = origHTML; }
-}
-
-async function watchAdForBonus() {
-  const btn = document.getElementById('bonusBtn');
-  const claimBtn = document.getElementById('claimBtn');
-  if(btn) btn.disabled = true;
-  if(claimBtn) claimBtn.disabled = true;
-  const watched = await showAd(STATE.adBlockId);
-  if(!watched){
-    toast('لازم تشوف الإعلان كامل','error');
-    if(btn) btn.disabled = false;
-    if(claimBtn) claimBtn.disabled = false;
-    return;
-  }
-  const res = await api('/api/bonus', 'POST');
-  if(res.ok){
-    STATE.balance = res.newBalance;
-    toast(`+${res.amount} FWC 🎁`,'success');
-    if(tg) tg.HapticFeedback?.notificationOccurred('success');
-    await loadUser();
-  } else {
-    if(res.error === 'cooldown'){ startCooldown(res.remaining); toast('انتظر انتهاء الوقت','error'); }
-    else { toast('Error: '+(res.error||''),'error'); if(btn) btn.disabled = false; if(claimBtn) claimBtn.disabled = false; }
-  }
-}
-
-async function doCheckin() { const res = await api('/api/checkin', 'POST'); if (res.ok) { toast(`+${res.reward} FWC • Streak ${res.streak} 🔥`, 'success'); await loadUser(); } else if (res.error === 'already_checked_in') { toast('Already checked in today ✅'); } else { toast('Error: ' + res.error, 'error'); } }
-
-async function loadTasks() { 
-  const res = await api('/api/tasks'); 
-  if (!res.ok) return; 
-  STATE.tasks = res.tasks; 
-  STATE.progress = res.progress; 
-  STATE.progressList = res.progressList || [];
-  if (STATE.progress && typeof STATE.progress === 'object' && !Array.isArray(STATE.progress)) {
-    STATE.progressList = Object.keys(STATE.progress);
-  }
-  renderTasks(); 
-}
-
-function renderTasks() {
-  const el = document.getElementById('tasksList');
-  if (!STATE.tasks.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No tasks</div>'; return; }
-  const icons = { checkin: '📅', ads: '📺', join: '🔗', youtube: '▶️', x: '𝕏', invite: '👥' };
-  el.innerHTML = STATE.tasks.map(task => { 
-    const progressMap = STATE.progress && typeof STATE.progress === 'object' && !Array.isArray(STATE.progress) ? STATE.progress : {};
-    const progressList = Array.isArray(STATE.progress) ? STATE.progress : (STATE.progressList || []);
-    const count = progressMap[task.id] || 0;
-    const max = task.max_per_day || 1;
-    const isDone = task.once ? progressList.includes(task.id) || count > 0 : count >= max;
-    const icon = icons[task.type] || '📌'; 
-    const title = STATE.language === 'ar' && task.title_ar ? task.title_ar : task.title; 
-    let statusText = '';
-    if (task.type === 'ads' && max > 1) { statusText = ` (${count}/${max})`; }
-    return `<div class="task-item ${isDone ? 'done' : ''}"><div class="task-info"><div class="task-icon">${icon}</div><div><div class="task-name">${title}${statusText}</div><div class="task-reward">+${task.reward} FWC${max > 1 ? ` x${max}` : ''}</div></div></div>${isDone ? '<span style="color:var(--accent-2);font-size:11px;font-weight:700;">✓ Done</span>' : `<button class="task-btn" onclick="completeTask('${task.id}')">${task.type === 'checkin' ? t('checkin') : (task.type === 'ads' ? 'Watch' : 'Start')}</button>`}</div>`; 
-  }).join('');
-}
-
-async function completeTask(id) {
-  if (id === 'checkin') return doCheckin();
-  const task = STATE.tasks.find(t => t.id === id);
-  if (!task) return toast('Task not found', 'error');
-  if (task.type === 'invite') {
-    await renderAccount();
-    switchTab('account');
-    toast('Share your referral link with friends!', 'success');
-    return;
-  }
-  if (task.type === 'ads') {
-    const watched = await showAd(STATE.adBlockId);
-    if (!watched) { toast('You must watch the full ad', 'error'); return; }
-  }
-  if (['join', 'youtube', 'x', 'custom'].includes(task.type) && task.url) {
-    window.open(task.url, '_blank');
-  }
-  const res = await api('/api/tasks/' + id, 'POST');
-  if (res.ok) {
-    toast(`+${res.reward} FWC ✅`, 'success');
-    await loadUser();
-    await loadTasks();
-  } else {
-    const msgs = { not_subscribed: 'You must join the channel first', limit: 'Daily limit reached', already_done: 'Already done', verification_error: 'Verification error' };
-    toast(msgs[res.error] || ('Error: ' + res.error), 'error');
-  }
-}
-
-function renderWallet() {
-  document.getElementById('walletAddress').textContent = STATE.wallet || '';
-  const info = document.getElementById('withdrawInfo');
-  if (STATE.canWithdraw?.ok) { info.textContent = `✅ ${t('ready')} (${STATE.balance.toFixed(2)} FWC)`; info.style.color = 'var(--accent-2)'; }
-  else if (STATE.canWithdraw?.reason === 'min_balance') { info.textContent = `Min: ${STATE.canWithdraw.need} FWC (you have ${STATE.balance.toFixed(2)})`; info.style.color = 'var(--text-muted)'; }
-  else if (STATE.canWithdraw?.reason === '24h') { info.textContent = `⏳ Wait ${STATE.canWithdraw.remaining.toFixed(1)}h`; info.style.color = 'var(--text-muted)'; }
-  else if (STATE.canWithdraw?.reason === 'hold_required') { info.textContent = `⚠️ Hold ${STATE.canWithdraw.need} FWC in wallet (you have ${STATE.canWithdraw.current.toFixed(2)})`; info.style.color = 'var(--warn)'; }
-  else if (!STATE.wallet) { info.textContent = t('addWallet'); }
-}
-
-async function renderAccount() {
-  const nameEl = document.getElementById('profileName');
-  const userEl = document.getElementById('profileUsername');
-  const avatarEl = document.getElementById('profileAvatar');
-  const balEl = document.getElementById('statBalance');
-  const refEl = document.getElementById('statReferrals');
-  const walletEl = document.getElementById('statWallet');
-  const idEl = document.getElementById('statUserId');
-  const firstName = STATE.userInfo?.first_name || tg?.initDataUnsafe?.user?.first_name || 'User';
-  const username = STATE.userInfo?.username || tg?.initDataUnsafe?.user?.username || '';
-  avatarEl.textContent = firstName.charAt(0).toUpperCase();
-  nameEl.textContent = firstName;
-  userEl.textContent = username ? '@' + username : '—';
-  balEl.textContent = STATE.balance.toFixed(2);
-  walletEl.textContent = STATE.wallet ? 'Linked ✅' : 'Not linked';
-  walletEl.style.color = STATE.wallet ? 'var(--accent-2)' : 'var(--text-muted)';
-  idEl.textContent = STATE.telegram_id || '—';
-  const refRes = await api('/api/referral');
-  if (refRes.ok) {
-    STATE.referralData = refRes;
-    refEl.textContent = refRes.referral_count;
-    document.getElementById('referralLink').value = refRes.referral_link;
-  }
-}
-
-function copyReferralLink() {
-  const input = document.getElementById('referralLink');
-  input.select();
-  input.setSelectionRange(0, 99999);
-  navigator.clipboard.writeText(input.value).then(() => {
-    toast('Referral link copied ✅', 'success');
-  }).catch(() => {
-    toast('Copy manually: ' + input.value, 'info');
-  });
-}
-
-let estimateTimeout = null;
-function estimateWithdraw() {
-  clearTimeout(estimateTimeout); estimateTimeout = setTimeout(async () => {
-    const amount = parseFloat(document.getElementById('withdrawInput').value); const preview = document.getElementById('feePreview');
-    if (!amount || amount <= 0) { preview.classList.add('hidden'); STATE.lastFeeEstimate = null; return; }
-    const res = await api(`/api/withdraw/estimate?amount=${amount}`);
-    if (!res.ok) { preview.classList.add('hidden'); STATE.lastFeeEstimate = null; return; }
-    STATE.lastFeeEstimate = res; preview.classList.remove('hidden');
-    document.getElementById('feeAmount').textContent = res.amount + ' FWC';
-    document.getElementById('feePercent').textContent = res.percent;
-    document.getElementById('feeValue').textContent = res.fee + ' FWC';
-    document.getElementById('feeNet').textContent = res.netAmount + ' FWC';
-  }, 400);
-}
-
-async function requestWithdraw() {
-  const amount = parseFloat(document.getElementById('withdrawInput').value);
-  if (!amount || amount <= 0) return toast('Enter valid amount', 'error');
-  if (STATE.lastFeeEstimate) { const msg = `You will be charged ${STATE.lastFeeEstimate.fee} FWC fee.\nYou will receive: ${STATE.lastFeeEstimate.netAmount} FWC\n\nContinue?`; if (!confirm(msg)) return; }
-  const btn = document.getElementById('withdrawBtn'); btn.disabled = true;
-  const res = await api('/api/withdraw', 'POST', { amount }); btn.disabled = false;
-  if (res.ok) { toast(`✅ Request sent\nYou'll receive ${res.amount} FWC`, 'success'); document.getElementById('withdrawInput').value = ''; document.getElementById('feePreview').classList.add('hidden'); STATE.lastFeeEstimate = null; await loadUser(); await loadWithdrawalHistory(); }
-  else {
-    const msgs = { min_balance: `Minimum ${STATE.canWithdraw?.need || 1000} FWC`, '24h': 'Wait 24h after first mine', no_wallet: 'Add your wallet first', pending_exists: 'You have a pending withdrawal', insufficient_balance: `Insufficient balance (need ${res.required || amount})`, hold_required: `You must hold ${STATE.canWithdraw?.need || 1000} FWC in your wallet to withdraw` };
-    toast(msgs[res.error] || ('Error: ' + res.error), 'error');
-  }
-}
-
-async function loadWithdrawalHistory() {
-  const res = await api('/api/withdrawals'); if (!res.ok) return;
-  const el = document.getElementById('withdrawHistory');
-  if (!res.withdrawals.length) { el.textContent = 'No withdrawals'; return; }
-  const statusMap = { pending: '⏳ Pending', approved: '✅ Approved', rejected: '❌ Rejected', processing: '🔄 Processing' };
-  el.innerHTML = res.withdrawals.slice(0, 5).map(w => `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span>${w.net_amount || w.amount} FWC</span><span style="font-size:11px;">${statusMap[w.status] || w.status}</span></div>`).join('');
-}
-
-async function loadLeaderboard() {
-  const res = await api('/api/leaderboard'); if (!res.ok) return;
-  const el = document.getElementById('leaderboard');
-  if (!res.leaders.length) { el.innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:20px;">No data</div>'; return; }
-  el.innerHTML = res.leaders.map((l, i) => { const isYou = l.telegram_id === STATE.telegram_id; return `<div class="leader-item ${isYou ? 'you' : ''}"><div style="display:flex;align-items:center;gap:10px;"><div class="rank ${i < 3 ? 'top' : ''}">${i + 1}</div><div style="font-size:13px;font-weight:${isYou ? 800 : 600};">${l.first_name || l.username || 'User'}${isYou ? ' (You)' : ''}</div></div><div style="font-size:12px;font-weight:700;">${l.balance.toFixed(2)} FWC</div></div>`; }).join('');
-}
-
-function switchTab(tab) {
-  STATE.activeTab = tab;
-  document.querySelectorAll('[id^="tab-"]').forEach(el => el.classList.add('hidden'));
-  document.getElementById('tab-' + tab).classList.remove('hidden');
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (tab === 'tasks') loadTasks();
-  if (tab === 'wallet') { renderWallet(); loadWithdrawalHistory(); }
-  if (tab === 'market') loadLeaderboard();
-  if (tab === 'account') renderAccount();
-}
-
-async function init() {
-  if (!getInitData()) { toast('Open from Telegram', 'error'); document.getElementById('miningStatus').textContent = '⚠️ Open from Telegram'; return; }
-  STATE.userInfo = tg?.initDataUnsafe?.user || null;
-  await loadUser();
-  initTonConnect();
-  STATE.refreshTimer = setInterval(loadUser, 30000);
-}
-
-if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-else init();
-
-window.switchTab = switchTab;
-window.doCheckin = doCheckin;
-window.requestWithdraw = requestWithdraw;
-window.estimateWithdraw = estimateWithdraw;
-window.completeTask = completeTask;
-window.cycleLanguage = cycleLanguage;
-window.copyReferralLink = copyReferralLink;
-window.watchAdForBonus = watchAdForBonus;
+(function initSplash(){const splash=document.getElementById('splash-screen');if(!splash)return;const SPLASH_DURATION=1800;setTimeout(()=>{splash.classList.add('hidden-splash');setTimeout(()=>splash.remove(),600);},SPLASH_DURATION);})();
+const tg=window.Telegram?.WebApp;if(tg){tg.ready();tg.expand();}
+const TRANSLATIONS={en:{balance:'Balance',speed:'Speed',mine:'Farm',tasks:'Tasks',wallet:'Wallet',leaderboard:'Leaderboard',account:'Account',checkin:'Check-in',streak:'Streak',tonWallet:'TON WALLET',saveWallet:'Save Wallet',withdraw:'WITHDRAW',amount:'Amount',fee:'Fee',youReceive:'You receive',requestWithdraw:'Request Withdrawal',recentWithdrawals:'RECENT WITHDRAWALS',claim:'CLAIM',ready:'Ready to mine',wait:'Please wait',addWallet:'Connect Wallet',banned:'Banned',cooldown:'Cooldown'},ar:{balance:'الرصيد',speed:'السرعة',mine:'زراعة',tasks:'مهام',wallet:'محفظة',leaderboard:'المتصدرين',account:'حسابي',checkin:'تسجيل يومي',streak:'سلسلة',tonWallet:'محفظة TON',saveWallet:'حفظ',withdraw:'سحب',amount:'المبلغ',fee:'الرسوم',youReceive:'ستستلم',requestWithdraw:'طلب سحب',recentWithdrawals:'آخر السحوبات',claim:'استلام',ready:'جاهز للتعدين',wait:'انتظر',addWallet:'اربط المحفظة',banned:'محظور',cooldown:'قيد الانتظار'},ru:{balance:'Баланс',speed:'Скорость',mine:'Майнинг',tasks:'Задачи',wallet:'Кошелек',leaderboard:'Топ',account:'Аккаунт',checkin:'Регистрация',streak:'Серия',tonWallet:'TON КОШЕЛЕК',saveWallet:'Сохранить',withdraw:'Вывод',amount:'Сумма',fee:'Комиссия',youReceive:'Вы получите',requestWithdraw:'Запросить вывод',recentWithdrawals:'ПОСЛЕДНИЕ ВЫВОДЫ',claim:'ЗАБРАТЬ',ready:'Готов к майнингу',wait:'Подождите',addWallet:'Подключить',banned:'Забанен',cooldown:'Ожидание'},tr:{balance:'Bakiye',speed:'Hız',mine:'Madencilik',tasks:'Görevler',wallet:'Cüzdan',leaderboard:'Liderlik',account:'Hesap',checkin:'Giriş',streak:'Seri',tonWallet:'TON CÜZDAN',saveWallet:'Kaydet',withdraw:'Çek',amount:'Miktar',fee:'Ücret',youReceive:'Alacaksınız',requestWithdraw:'Çekim Talep Et',recentWithdrawals:'SON ÇEKİMLER',claim:'AL',ready:'Kazımaya hazır',wait:'Bekleyin',addWallet:'Cüzdan Bağla',banned:'Yasaklı',cooldown:'Beklemede'}};
+const STATE={telegram_id:null,language:'en',balance:0,wallet:null,is_banned:0,miningAmount:0,canMine:{ok:false,reason:'loading'},canWithdraw:{ok:false},streak:0,tasks:[],progress:[],activeTab:'mine',cooldownTimer:null,refreshTimer:null,lastFeeEstimate:null,referralData:null,userInfo:null,adBlockId:null,adAutoBlockId:null};
+let tonConnectUI=null;
+function getInitData(){return tg?.initData||new URLSearchParams(location.search).get('initData')||'';}
+async function api(path,method='GET',body=null){const headers={'Content-Type':'application/json'};const initData=getInitData();if(initData)headers['X-Telegram-Init-Data']=initData;try{const res=await fetch(path,{method,headers,body:body?JSON.stringify(body):null});return await res.json();}catch(e){return{ok:false,error:'network'};}}
+function t(key){return TRANSLATIONS[STATE.language]?.[key]||TRANSLATIONS.en[key]||key;}
+function applyTranslations(){document.querySelectorAll('[data-i18n]').forEach(el=>{const key=el.getAttribute('data-i18n');if(el.tagName==='INPUT')el.placeholder=t(key);else el.textContent=t(key);});document.getElementById('langBtn').textContent=STATE.language.toUpperCase();document.documentElement.dir=STATE.language==='ar'?'rtl':'ltr';}
+function cycleLanguage(){const langs=['en','ar','ru','tr'];const idx=langs.indexOf(STATE.language);const next=langs[(idx+1)%langs.length];STATE.language=next;applyTranslations();api('/api/language','POST',{lang:next}).catch(()=>{});}
+function toast(msg,type='info'){const el=document.getElementById('toast');el.textContent=msg;el.style.background=type==='error'?'rgba(255,77,77,0.95)':type==='success'?'rgba(212,175,55,0.95)':'rgba(26,22,16,0.98)';el.style.color=type==='success'?'#1a1408':'#F5EEDC';el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),2500);}
+function buyFWC(){const jetton='EQC0bkbZmjWW82AIwb0oAQHvdj4JPbwrmYpmjnB2FJSAUh76';const url=`https://dedust.io/swap/TON/${jetton}`;window.open(url,'_blank');toast('Opening DeDust - Buy FWC to unlock withdrawal 🛒','success');}
+async function showAd(blockId){blockId=blockId||STATE.adBlockId||'12138342';if(blockId&&window.Adsgram){try{const c=window.Adsgram.init({blockId:String(blockId),debug:true});const r=await c.show();return true;}catch(e){}}try{if(typeof show_12138342==='function'){await show_12138342();return true;}if(typeof window.show_12138342==='function'){await window.show_12138342();return true;}}catch(e){return true;}return true;}
+function initTonConnect(){tonConnectUI=new TON_CONNECT_UI.TonConnectUI({manifestUrl:window.location.origin+'/tonconnect-manifest.json',buttonRootId:'ton-connect-btn'});tonConnectUI.onStatusChange(async(wallet)=>{if(wallet){const walletAddress=wallet.account.address;document.getElementById('walletAddress').textContent=walletAddress;const res=await api('/api/wallet/save','POST',{address:walletAddress});if(res.ok){STATE.wallet=res.wallet||walletAddress;toast('Wallet connected ✅','success');await loadUser();}else{toast('Failed to save wallet: '+(res.error||''),'error');}}else{document.getElementById('walletAddress').textContent='';STATE.wallet=null;renderMine();}});}
+async function loadUser(){const res=await api('/api/me');if(!res.ok){if(res.error==='forbidden')return toast('Open from Telegram','error');return toast('Error loading','error');}STATE.telegram_id=res.telegram_id;STATE.language=res.language||'en';STATE.balance=res.balance;STATE.wallet=res.wallet;STATE.is_banned=res.is_banned;STATE.miningAmount=res.miningAmount;STATE.canMine=res.canMine;STATE.canWithdraw=res.canWithdraw;STATE.streak=res.streak||0;STATE.adBlockId=res.adBlockId||null;STATE.adAutoBlockId=res.adAutoBlockId||null;applyTranslations();renderMine();renderWallet();renderAccount();}
+function renderMine(){document.getElementById('balanceNum').textContent=STATE.balance.toFixed(4);document.getElementById('speedVal').textContent=STATE.miningAmount.toFixed(2);document.getElementById('streakNum').textContent=STATE.streak;const statusEl=document.getElementById('miningStatus');const btn=document.getElementById('claimBtn');const btnText=document.getElementById('claimText');const bonusBtn=document.getElementById('bonusBtn');if(STATE.is_banned){statusEl.textContent='⛔ '+t('banned');btn.disabled=true;bonusBtn.disabled=true;btnText.textContent=t('banned');return;}if(!STATE.wallet){statusEl.textContent='⚠️ '+t('addWallet');btn.disabled=true;bonusBtn.disabled=true;btnText.textContent=t('addWallet');btn.onclick=()=>switchTab('wallet');return;}if(STATE.canMine.ok){statusEl.textContent='✅ '+t('ready');btn.disabled=false;bonusBtn.disabled=false;btnText.textContent=`⚡ ${t('claim')} ${STATE.miningAmount.toFixed(2)} FWC`;btn.onclick=doMine;}else if(STATE.canMine.reason==='cooldown'){btn.disabled=true;bonusBtn.disabled=true;btn.onclick=null;startCooldown(STATE.canMine.remaining);}else{statusEl.textContent='⏳ '+(STATE.canMine.reason||t('wait'));btn.disabled=true;bonusBtn.disabled=true;btnText.textContent=t('wait');}}
+function startCooldown(remainingMs){const statusEl=document.getElementById('miningStatus');const btn=document.getElementById('claimBtn');const btnText=document.getElementById('claimText');const bonusBtn=document.getElementById('bonusBtn');btn.disabled=true;bonusBtn.disabled=true;clearInterval(STATE.cooldownTimer);let ms=remainingMs;const tick=()=>{if(ms<=0){clearInterval(STATE.cooldownTimer);loadUser();return;}const h=Math.floor(ms/3600000);const m=Math.floor((ms%3600000)/60000);const s=Math.floor((ms%60000)/1000);statusEl.textContent=`⏳ ${h}h ${m}m ${s}s - انتظر`;btnText.textContent=t('cooldown');ms-=1000;};tick();STATE.cooldownTimer=setInterval(tick,1000);}
+async function doMine(){const btn=document.getElementById('claimBtn');const bonusBtn=document.getElementById('bonusBtn');const origHTML=btn?btn.innerHTML:'';if(btn){btn.innerHTML='<span class="spinner"></span> Loading Ad...';btn.disabled=true;}if(bonusBtn)bonusBtn.disabled=true;const watched=await showAd(STATE.adBlockId);if(!watched){toast('لازم تشوف الإعلان عشان تطالب','error');if(btn){btn.innerHTML=origHTML;btn.disabled=false;}if(bonusBtn)bonusBtn.disabled=false;return;}if(btn)btn.innerHTML='<span class="spinner"></span> Mining...';const res=await api('/api/mine','POST',{});if(res.ok){STATE.balance=res.newBalance;toast(`+${res.amount} FWC ✅`,'success');if(tg)tg.HapticFeedback?.notificationOccurred('success');await loadUser();}else{if(res.error==='cooldown'){startCooldown(res.remaining);toast('انتظر انتهاء الوقت','error');}else{toast('Error: '+(res.error||''),'error');await loadUser();}}if(btn){btn.innerHTML=origHTML;}}
+async function watchAdForBonus(){const btn=document.getElementById('bonusBtn');const claimBtn=document.getElementById('claimBtn');if(btn)btn.disabled=true;if(claimBtn)claimBtn.disabled=true;const watched=await showAd(STATE.adBlockId);if(!watched){toast('لازم تشوف الإعلان كامل','error');if(btn)btn.disabled=false;if(claimBtn)claimBtn.disabled=false;return;}const res=await api('/api/bonus','POST');if(res.ok){STATE.balance=res.newBalance;toast(`+${res.amount} FWC 🎁`,'success');if(tg)tg.HapticFeedback?.notificationOccurred('success');await loadUser();}else{if(res.error==='cooldown'){startCooldown(res.remaining);toast('انتظر انتهاء الوقت','error');}else{toast('Error: '+(res.error||''),'error');if(btn)btn.disabled=false;if(claimBtn)claimBtn.disabled=false;}}}
+async function doCheckin(){const res=await api('/api/checkin','POST');if(res.ok){toast(`+${res.reward} FWC • Streak ${res.streak} 🔥`,'success');await loadUser();}else if(res.error==='already_checked_in'){toast('Already checked in today ✅');}else{toast('Error: '+res.error,'error');}}
+async function loadTasks(){const res=await api('/api/tasks');if(!res.ok)return;STATE.tasks=res.tasks;STATE.progress=res.progress;STATE.progressList=res.progressList||[];if(STATE.progress&&typeof STATE.progress==='object'&&!Array.isArray(STATE.progress)){STATE.progressList=Object.keys(STATE.progress);}renderTasks();}
+function renderTasks(){const el=document.getElementById('tasksList');if(!STATE.tasks.length){el.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:20px;">No tasks</div>';return;}const icons={checkin:'📅',ads:'📺',join:'🔗',youtube:'▶️',x:'𝕏',invite:'👥'};el.innerHTML=STATE.tasks.map(task=>{const progressMap=STATE.progress&&typeof STATE.progress==='object'&&!Array.isArray(STATE.progress)?STATE.progress:{};const progressList=Array.isArray(STATE.progress)?STATE.progress:(STATE.progressList||[]);const count=progressMap[task.id]||0;const max=task.max_per_day||1;const isDone=task.once?progressList.includes(task.id)||count>0:count>=max;const icon=icons[task.type]||'📌';const title=STATE.language==='ar'&&task.title_ar?task.title_ar:task.title;let statusText='';if(task.type==='ads'&&max>1){statusText=` (${count}/${max})`;}return `<div class="task-item ${isDone?'done':''}"><div class="task-info"><div class="task-icon">${icon}</div><div><div class="task-name">${title}${statusText}</div><div class="task-reward">+${task.reward} FWC${max>1?` x${max}`:''}</div></div></div>${isDone?'<span style="color:var(--accent-2);font-size:11px;font-weight:700;">✓ Done</span>':`<button class="task-btn" onclick="completeTask('${task.id}')">${task.type==='checkin'?t('checkin'):(task.type==='ads'?'Watch':'Start')}</button>`}</div>`;}).join('');}
+async function completeTask(id){if(id==='checkin')return doCheckin();const task=STATE.tasks.find(t=>t.id===id);if(!task)return toast('Task not found','error');if(task.type==='invite'){await renderAccount();switchTab('account');toast('Share your referral link with friends!','success');return;}if(task.type==='ads'){const watched=await showAd(STATE.adBlockId);if(!watched){toast('You must watch the full ad','error');return;}}if(['join','youtube','x','custom'].includes(task.type)&&task.url){window.open(task.url,'_blank');}const res=await api('/api/tasks/'+id,'POST');if(res.ok){toast(`+${res.reward} FWC ✅`,'success');await loadUser();await loadTasks();}else{const msgs={not_subscribed:'You must join the channel first',limit:'Daily limit reached',already_done:'Already done',verification_error:'Verification error'};toast(msgs[res.error]||('Error: '+res.error),'error');}}
+function renderWallet(){document.getElementById('walletAddress').textContent=STATE.wallet||'';const info=document.getElementById('withdrawInfo');const holdSection=document.getElementById('holdBuySection');if(STATE.canWithdraw?.ok){info.textContent=`✅ ${t('ready')} (${STATE.balance.toFixed(2)} FWC)`;info.style.color='var(--accent-2)';/* hold always visible */}else if(STATE.canWithdraw?.reason==='min_balance'){info.textContent=`Min: ${STATE.canWithdraw.need} FWC (you have ${STATE.balance.toFixed(2)})`;info.style.color='var(--text-muted)';/* hold always visible */}else if(STATE.canWithdraw?.reason==='24h'){info.textContent=`⏳ Wait ${STATE.canWithdraw.remaining.toFixed(1)}h`;info.style.color='var(--text-muted)';/* hold always visible */}else if(STATE.canWithdraw?.reason==='hold_required'){info.textContent=`⚠️ Hold ${STATE.canWithdraw.need} FWC required`;info.style.color='var(--warn)';if(holdSection){holdSection.classList.remove('hidden');document.getElementById('holdCurrent').textContent=`${(STATE.canWithdraw.current||0).toFixed(2)} FWC`;document.getElementById('holdNeed').textContent=`${STATE.canWithdraw.need} FWC`;document.getElementById('holdDetail').textContent=`You need to hold ${STATE.canWithdraw.need} FWC in your TON wallet to withdraw. Current: ${(STATE.canWithdraw.current||0).toFixed(2)} FWC`;} }else if(!STATE.wallet){info.textContent=t('addWallet');/* hold always visible */}}
+async function renderAccount(){const nameEl=document.getElementById('profileName');const userEl=document.getElementById('profileUsername');const avatarEl=document.getElementById('profileAvatar');const balEl=document.getElementById('statBalance');const refEl=document.getElementById('statReferrals');const walletEl=document.getElementById('statWallet');const idEl=document.getElementById('statUserId');const firstName=STATE.userInfo?.first_name||tg?.initDataUnsafe?.user?.first_name||'User';const username=STATE.userInfo?.username||tg?.initDataUnsafe?.user?.username||'';avatarEl.textContent=firstName.charAt(0).toUpperCase();nameEl.textContent=firstName;userEl.textContent=username?'@'+username:'—';balEl.textContent=STATE.balance.toFixed(2);walletEl.textContent=STATE.wallet?'Linked ✅':'Not linked';walletEl.style.color=STATE.wallet?'var(--accent-2)':'var(--text-muted)';idEl.textContent=STATE.telegram_id||'—';const refRes=await api('/api/referral');if(refRes.ok){STATE.referralData=refRes;refEl.textContent=refRes.referral_count;document.getElementById('referralLink').value=refRes.referral_link;}}
+function copyReferralLink(){const input=document.getElementById('referralLink');input.select();input.setSelectionRange(0,99999);navigator.clipboard.writeText(input.value).then(()=>{toast('Referral link copied ✅','success');}).catch(()=>{toast('Copy manually: '+input.value,'info');});}
+let estimateTimeout=null;function estimateWithdraw(){clearTimeout(estimateTimeout);estimateTimeout=setTimeout(async()=>{const amount=parseFloat(document.getElementById('withdrawInput').value);const preview=document.getElementById('feePreview');if(!amount||amount<=0){preview.classList.add('hidden');STATE.lastFeeEstimate=null;return;}const res=await api(`/api/withdraw/estimate?amount=${amount}`);if(!res.ok){preview.classList.add('hidden');STATE.lastFeeEstimate=null;return;}STATE.lastFeeEstimate=res;preview.classList.remove('hidden');document.getElementById('feeAmount').textContent=res.amount+' FWC';document.getElementById('feePercent').textContent=res.percent;document.getElementById('feeValue').textContent=res.fee+' FWC';document.getElementById('feeNet').textContent=res.netAmount+' FWC';},400);}
+async function requestWithdraw(){const amount=parseFloat(document.getElementById('withdrawInput').value);if(!amount||amount<=0)return toast('Enter valid amount','error');if(STATE.lastFeeEstimate){const msg=`You will be charged ${STATE.lastFeeEstimate.fee} FWC fee.\nYou will receive: ${STATE.lastFeeEstimate.netAmount} FWC\n\nContinue?`;if(!confirm(msg))return;}const btn=document.getElementById('withdrawBtn');btn.disabled=true;const res=await api('/api/withdraw','POST',{amount});btn.disabled=false;if(res.ok){toast(`✅ Request sent\nYou'll receive ${res.amount} FWC`,'success');document.getElementById('withdrawInput').value='';document.getElementById('feePreview').classList.add('hidden');STATE.lastFeeEstimate=null;await loadUser();await loadWithdrawalHistory();}else{if(res.error==='hold_required'){STATE.canWithdraw={ok:false,reason:'hold_required',need:res.detail?.need||STATE.canWithdraw?.need||1000,current:res.detail?.current||0};renderWallet();toast(`Hold ${STATE.canWithdraw.need} FWC required - Buy on DeDust 🛒`,'error');}else{const msgs={min_balance:`Minimum ${STATE.canWithdraw?.need||1000} FWC`,'24h':'Wait 24h after first mine',no_wallet:'Add your wallet first',pending_exists:'You have a pending withdrawal',insufficient_balance:`Insufficient balance (need ${res.required||amount})`,hold_required:`You must hold ${STATE.canWithdraw?.need||1000} FWC in your wallet to withdraw`};toast(msgs[res.error]||('Error: '+res.error),'error');}}}
+async function loadWithdrawalHistory(){const res=await api('/api/withdrawals');if(!res.ok)return;const el=document.getElementById('withdrawHistory');if(!res.withdrawals.length){el.textContent='No withdrawals';return;}const statusMap={pending:'⏳ Pending',approved:'✅ Approved',rejected:'❌ Rejected',processing:'🔄 Processing'};el.innerHTML=res.withdrawals.slice(0,5).map(w=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);"><span>${w.net_amount||w.amount} FWC</span><span style="font-size:11px;">${statusMap[w.status]||w.status}</span></div>`).join('');}
+async function loadLeaderboard(){const res=await api('/api/leaderboard');if(!res.ok)return;const el=document.getElementById('leaderboard');if(!res.leaders.length){el.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:20px;">No data</div>';return;}el.innerHTML=res.leaders.map((l,i)=>{const isYou=l.telegram_id===STATE.telegram_id;return `<div class="leader-item ${isYou?'you':''}"><div style="display:flex;align-items:center;gap:10px;"><div class="rank ${i<3?'top':''}">${i+1}</div><div style="font-size:13px;font-weight:${isYou?800:600};">${l.first_name||l.username||'User'}${isYou?' (You)':''}</div></div><div style="font-size:12px;font-weight:700;">${l.balance.toFixed(2)} FWC</div></div>`;}).join('');}
+function switchTab(tab){STATE.activeTab=tab;document.querySelectorAll('[id^="tab-"]').forEach(el=>el.classList.add('hidden'));document.getElementById('tab-'+tab).classList.remove('hidden');document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));if(tab==='tasks')loadTasks();if(tab==='wallet'){renderWallet();loadWithdrawalHistory();}if(tab==='market')loadLeaderboard();if(tab==='account')renderAccount();}
+async function init(){if(!getInitData()){toast('Open from Telegram','error');document.getElementById('miningStatus').textContent='⚠️ Open from Telegram';return;}STATE.userInfo=tg?.initDataUnsafe?.user||null;await loadUser();initTonConnect();STATE.refreshTimer=setInterval(loadUser,30000);}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+window.switchTab=switchTab;window.doCheckin=doCheckin;window.requestWithdraw=requestWithdraw;window.estimateWithdraw=estimateWithdraw;window.completeTask=completeTask;window.cycleLanguage=cycleLanguage;window.copyReferralLink=copyReferralLink;window.watchAdForBonus=watchAdForBonus;window.buyFWC=buyFWC;
 </script>
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
