@@ -142,7 +142,6 @@ body::before {
   pointer-events: none;
 }
 
-/* حلقة واحدة بس، دوّارة ببطء */
 .splash-ring-1 {
   position: absolute;
   top: 50%; left: 50%;
@@ -938,7 +937,7 @@ h2 {
 </style>
 
 <script>
-// AUTO: In-App Interstitial - 2 ads per 6 min, first after 5 sec
+// AUTO: In-App Interstitial - 1 ad per 5 min, first after 12 sec
 document.addEventListener('DOMContentLoaded', function(){
   setTimeout(function(){
     try{
@@ -946,7 +945,7 @@ document.addEventListener('DOMContentLoaded', function(){
         console.log('[Auto] In-App Interstitial');
         show_12138342({
           type: 'inApp',
-          inAppSettings: { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false }
+          inAppSettings: { frequency: 1, capping: 0.083, interval: 30, timeout: 12, everyPage: false }
         });
       }
     }catch(e){ console.log('Auto err', e); }
@@ -1146,7 +1145,6 @@ document.addEventListener('DOMContentLoaded', function(){
   const splash = document.getElementById('splash-screen');
   if (!splash) return;
   
-  // مدة قصيرة وبسيطة - 1.8 ثانية بس
   const SPLASH_DURATION = 1800;
   setTimeout(() => {
     splash.classList.add('hidden-splash');
