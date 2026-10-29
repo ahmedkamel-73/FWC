@@ -3,7 +3,7 @@
 
 export const CONFIG = {
   jetton: "EQC0bkbZmjWW82AIwb0oAQHvdj4JPbwrmYpmjnB2FJSAUh76",
-  treasury: "UQD35kO80vaNpOcUk7fNuRvLds4TgzE6MDAvpHcFZnP3jOtw",
+  treasury: "UQDoMZ-PRZGOqa1uyTZd7znXHR93zceemATkPOdUEAQyAjw1",
   pool: "EQA_FhrVf_wjOAvg-Ubzqive8-9riRc0KX_NdEmh-uyynZRM",
   channels: {
     main: "@fwc_coin",
