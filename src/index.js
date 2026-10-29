@@ -51,11 +51,52 @@ function htmlResponse(html) {
   });
 }
 
-function getTelegramUser(request) {
+async function verifyTelegramInitData(initData, botToken) {
+  try {
+    const params = new URLSearchParams(initData);
+    const hash = params.get('hash');
+    if (!hash) return false;
+    params.delete('hash');
+    const dataCheckString = [...params.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n');
+    const encoder = new TextEncoder();
+    const secretKeyData = encoder.encode('WebAppData' + botToken);
+    const secretHash = await crypto.subtle.digest('SHA-256', secretKeyData);
+    const key = await crypto.subtle.importKey('raw', secretHash, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(dataCheckString));
+    const calculatedHash = [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, '0')).join('');
+    return calculatedHash === hash;
+  } catch {
+    return false;
+  }
+}
+
+async function getTelegramUser(request, env) {
   try {
     const initData = request.headers.get('X-Telegram-Init-Data')
       || new URL(request.url).searchParams.get('initData');
     if (!initData) return null;
+    
+    // Verify signature
+    const botToken = env.BOT_TOKEN;
+    if (botToken) {
+      const isValid = await verifyTelegramInitData(initData, botToken);
+      if (!isValid) {
+        // Allow in development if no token? No, reject
+        console.warn('Invalid Telegram initData hash');
+        return null;
+      }
+      // Check auth_date not older than 24h
+      const params = new URLSearchParams(initData);
+      const authDate = parseInt(params.get('auth_date') || '0');
+      if (authDate && (Date.now()/1000 - authDate) > 86400) {
+        console.warn('Telegram initData expired');
+        return null;
+      }
+    }
+    
     const params = new URLSearchParams(initData);
     const userStr = params.get('user');
     if (!userStr) return null;
@@ -64,6 +105,7 @@ function getTelegramUser(request) {
     return null;
   }
 }
+
 
 function getClientIP(request) {
   return request.headers.get('CF-Connecting-IP')
@@ -174,7 +216,7 @@ export default {
 
     // ========== API ROUTES ==========
     if (path.startsWith('/api/')) {
-      const tgUser = getTelegramUser(request);
+      const tgUser = await getTelegramUser(request, env);
       const clientIP = getClientIP(request);
 
       // ============ PUBLIC USER APIs ============
@@ -191,27 +233,19 @@ export default {
 
         // 👇 تسجيل الإحالة + مكافأة المُحيل (2 FWC)
         const refParam = url.searchParams.get('ref');
-        if (refParam && !user.referral_by) {
+        if (refParam && !user.referral_by && !user.referred_bonus_paid) {
           const refId = parseInt(refParam);
-          if (refId && refId !== tgUser.id && !isNaN(refId)) {
+          if (refId && refId !== tgUser.id) {
+            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ?`)
+              .bind(refId, tgUser.id).run();
+            
             const refUser = await getUser(env.DB, refId);
-            if (refUser && !refUser.is_banned) {
-              // منع الإحالة الذاتية بنفس المحفظة
-              const sameWallet = user.wallet && refUser.wallet && user.wallet === refUser.wallet;
-              if (!sameWallet) {
-                const result = await env.DB.prepare(
-                  `UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ? AND referral_by IS NULL AND (referred_bonus_paid IS NULL OR referred_bonus_paid = 0)`
-                ).bind(refId, tgUser.id).run();
-                if (result.meta.changes > 0) {
-                  const bonus = 2;
-                  await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
-                    .bind(bonus, refId).run();
-                  await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, unixepoch())`)
-                    .bind(refId, bonus).run();
-                  await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, ?, ?)`)
-                    .bind(refId, tgUser.id, bonus, Date.now()).run();
-                }
-              }
+            if (refUser) {
+              const bonus = 2;
+              await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+                .bind(bonus, refId).run();
+              await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, unixepoch())`)
+                .bind(refId, bonus).run();
             }
           }
         }
@@ -698,8 +732,15 @@ export default {
 
             const parts = text.split(' ');
             const payload = parts[1];
-            // تم نقل منطق الإحالة بالكامل إلى /api/me لضمان إعطاء البونص بشكل صحيح
-            // هنا نترك فقط تسجيل البداية بدون إحالة
+            if (payload) {
+              let refId = null;
+              if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
+              else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
+              if (refId && refId !== fromId) {
+                await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
+                  .bind(refId, fromId).run();
+              }
+            }
 
             const workerUrl = env.WORKER_URL || url.origin;
             const isAdmin = await isAdminDB(env.DB, fromId);
