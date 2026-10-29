@@ -22,7 +22,7 @@ export async function getPendingWithdrawalsBatch(db, limit = BATCH_MAX) {
   const res = await db.prepare(`
     SELECT id, telegram_id, amount, net_amount, wallet, created_at 
     FROM withdrawals 
-    WHERE status = 'pending' AND wallet IS NOT NULL
+    WHERE status = 'approved' AND wallet IS NOT NULL
     ORDER BY created_at ASC 
     LIMIT ?
   `).bind(limit).all();
@@ -80,7 +80,7 @@ export async function confirmBatch(db, txHash) {
 }
 
 export async function getPayoutStats(db) {
-  const pending = await db.prepare(`SELECT COUNT(*) as c, COALESCE(SUM(net_amount),0) as total FROM withdrawals WHERE status='pending'`).first();
+  const pending = await db.prepare(`SELECT COUNT(*) as c, COALESCE(SUM(net_amount),0) as total FROM withdrawals WHERE status='approved'`).first();
   const processing = await db.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE status='processing'`).first();
   const batches = await db.prepare(`SELECT COUNT(*) as c FROM payout_batches`).first();
   const pendingCount = pending?.c || 0;
