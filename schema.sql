@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS withdrawals (
   fee REAL DEFAULT 0,
   net_amount REAL,
   wallet TEXT,
-  status TEXT DEFAULT 'pending' CHECK(status IN ('pending','processing','approved','rejected')),
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending','processing','approved','rejected','completed')),
   tx_hash TEXT,
   reject_reason TEXT,
   created_at INTEGER,
