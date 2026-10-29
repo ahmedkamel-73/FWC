@@ -1,4 +1,3 @@
-
 import { CONFIG } from './config.js';
 
 export const TON_CONFIG = {
@@ -71,7 +70,7 @@ export async function executeBatchOnChain(env, batchTx) {
       });
     });
 
-    const queryId = HighloadQueryId.fromSeqno(BigInt(Date.now() % 8380416));
+    const queryId = HighloadQueryId.fromSeqno(BigInt(Date.now() % 8380416) + BigInt(Math.floor(Math.random() * 1000)));
     const createdAt = Math.floor(Date.now() / 1000) - 30;
 
     // Build actions dictionary
