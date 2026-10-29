@@ -418,3 +418,20 @@ export async function dismissAlert(db, id, adminId) {
   return await db.prepare(`UPDATE anticheat_alerts SET status = 'dismissed', resolved_by = ?, resolved_at = unixepoch() WHERE id = ?`)
     .bind(adminId, id).run();
 }
+
+
+// ========== REFERRAL VALIDATION (NEW) ==========
+export async function checkReferralEligibility(db, newUserId, refId, newWallet = null) {
+  if (!refId || refId === newUserId) return { ok: false, reason: 'self_referral' };
+  const refUser = await db.prepare(`SELECT telegram_id, wallet, is_banned FROM users WHERE telegram_id = ?`).bind(refId).first();
+  if (!refUser) return { ok: false, reason: 'invalid_referrer' };
+  if (refUser.is_banned) return { ok: false, reason: 'referrer_banned' };
+  const newUser = await db.prepare(`SELECT referral_by, referred_bonus_paid, wallet FROM users WHERE telegram_id = ?`).bind(newUserId).first();
+  if (newUser?.referral_by) return { ok: false, reason: 'already_referred' };
+  if (newUser?.referred_bonus_paid) return { ok: false, reason: 'bonus_already_paid' };
+  const walletToCheck = newWallet || newUser?.wallet;
+  if (walletToCheck && refUser.wallet && walletToCheck === refUser.wallet) {
+    return { ok: false, reason: 'same_wallet' };
+  }
+  return { ok: true, refUser };
+}
