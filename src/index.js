@@ -51,52 +51,11 @@ function htmlResponse(html) {
   });
 }
 
-async function verifyTelegramInitData(initData, botToken) {
-  try {
-    const params = new URLSearchParams(initData);
-    const hash = params.get('hash');
-    if (!hash) return false;
-    params.delete('hash');
-    const dataCheckString = [...params.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([k, v]) => `${k}=${v}`)
-      .join('\n');
-    const encoder = new TextEncoder();
-    const secretKeyData = encoder.encode('WebAppData' + botToken);
-    const secretHash = await crypto.subtle.digest('SHA-256', secretKeyData);
-    const key = await crypto.subtle.importKey('raw', secretHash, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(dataCheckString));
-    const calculatedHash = [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, '0')).join('');
-    return calculatedHash === hash;
-  } catch {
-    return false;
-  }
-}
-
-async function getTelegramUser(request, env) {
+function getTelegramUser(request) {
   try {
     const initData = request.headers.get('X-Telegram-Init-Data')
       || new URL(request.url).searchParams.get('initData');
     if (!initData) return null;
-    
-    // Verify signature
-    const botToken = env.BOT_TOKEN;
-    if (botToken) {
-      const isValid = await verifyTelegramInitData(initData, botToken);
-      if (!isValid) {
-        // Allow in development if no token? No, reject
-        console.warn('Invalid Telegram initData hash');
-        return null;
-      }
-      // Check auth_date not older than 24h
-      const params = new URLSearchParams(initData);
-      const authDate = parseInt(params.get('auth_date') || '0');
-      if (authDate && (Date.now()/1000 - authDate) > 86400) {
-        console.warn('Telegram initData expired');
-        return null;
-      }
-    }
-    
     const params = new URLSearchParams(initData);
     const userStr = params.get('user');
     if (!userStr) return null;
@@ -105,7 +64,6 @@ async function getTelegramUser(request, env) {
     return null;
   }
 }
-
 
 function getClientIP(request) {
   return request.headers.get('CF-Connecting-IP')
@@ -216,7 +174,7 @@ export default {
 
     // ========== API ROUTES ==========
     if (path.startsWith('/api/')) {
-      const tgUser = await getTelegramUser(request, env);
+      const tgUser = getTelegramUser(request);
       const clientIP = getClientIP(request);
 
       // ============ PUBLIC USER APIs ============
