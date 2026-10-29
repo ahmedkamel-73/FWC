@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users (
   wallet TEXT,
   balance REAL DEFAULT 0,
   referral_by INTEGER,
+  referred_bonus_paid INTEGER DEFAULT 0,
   first_mine_at INTEGER,
   last_mine INTEGER,
   is_banned INTEGER DEFAULT 0,
