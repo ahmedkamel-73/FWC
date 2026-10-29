@@ -1,4 +1,4 @@
-// src/tasks.js - FWC 4.0.0 PRODUCTION FIXED 7X
+// src/tasks.js - FWC 4.0.0 PRODUCTION FIXED ATOMIC
 // Daily tasks + streak system + subscription verification
 
 export const STREAK_REWARDS = { 1: 1, 2: 2, 3: 3, 4: 5, 5: 7, 6: 10, 7: 15 };
@@ -24,25 +24,21 @@ export async function getUserDailyProgress(db, telegram_id, date) {
     }
     return map;
   } catch(e) {
-    // Fallback for old schema
-    try {
-      const res = await db.prepare(`SELECT task_id FROM user_daily_tasks WHERE telegram_id = ? AND date = ?`)
-        .bind(telegram_id, date).all();
-      const map = {};
-      for (const r of res.results || []) {
-        map[r.task_id] = (map[r.task_id] || 0) + 1;
-      }
-      return map;
-    } catch(e2) {
-      return {};
-    }
+    return {};
   }
 }
 
 export async function getCheckinStreak(db, telegram_id) {
   try {
-    const row = await db.prepare(`SELECT streak FROM daily_checkins WHERE telegram_id = ? ORDER BY date DESC LIMIT 1`)
+    const row = await db.prepare(`SELECT streak, date FROM daily_checkins WHERE telegram_id = ? ORDER BY date DESC LIMIT 1`)
       .bind(telegram_id).first();
+    if (!row) return 0;
+    // Check if streak is continuous
+    const today = new Date().toISOString().slice(0,10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0,10);
+    if (row.date !== today && row.date !== yesterday) {
+      return 0; // Streak broken
+    }
     return row?.streak || 0;
   } catch(e) { return 0; }
 }
@@ -56,25 +52,34 @@ export async function hasCheckedInToday(db, telegram_id, date) {
 }
 
 export async function doCheckin(db, telegram_id, date) {
+  // Prevent double checkin - atomic check
+  const already = await hasCheckedInToday(db, telegram_id, date);
+  if (already) {
+    return { ok: false, reason: 'already_checked_in' };
+  }
+
   const streak = await getCheckinStreak(db, telegram_id);
   const newStreak = streak >= 7 ? 1 : streak + 1;
   let reward = STREAK_REWARDS[newStreak] || 1;
   if (newStreak === 7) reward += BONUS_WEEK;
 
-  await db.prepare(`INSERT OR REPLACE INTO daily_checkins(telegram_id, date, streak, created_at) VALUES (?, ?, ?, unixepoch())`)
+  // Atomic insert - prevent race condition
+  const insertResult = await db.prepare(`INSERT OR IGNORE INTO daily_checkins(telegram_id, date, streak, created_at) VALUES (?, ?, ?, unixepoch())`)
     .bind(telegram_id, date, newStreak).run();
 
-  try {
-    await db.prepare(`INSERT INTO user_daily_tasks(telegram_id, task_id, date, created_at) VALUES (?, 'checkin', ?, unixepoch())`)
-      .bind(telegram_id, date).run();
-  } catch(e) {
-    // Ignore duplicate if old schema
+  if (insertResult.meta.changes === 0) {
+    return { ok: false, reason: 'already_checked_in' };
   }
+
+  try {
+    await db.prepare(`INSERT OR IGNORE INTO user_daily_tasks(telegram_id, task_id, date, created_at) VALUES (?, 'checkin', ?, unixepoch())`)
+      .bind(telegram_id, date).run();
+  } catch(e) {}
 
   await db.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
     .bind(reward, telegram_id).run();
 
-  return { streak: newStreak, reward };
+  return { streak: newStreak, reward, ok: true };
 }
 
 export async function doTask(db, telegram_id, task_id, date, env) {
@@ -89,7 +94,7 @@ export async function doTask(db, telegram_id, task_id, date, env) {
       if (done) return { ok: false, reason: 'already_done' };
     }
 
-    // Check max_per_day
+    // Check max_per_day - atomic check
     const todayCount = await db.prepare(`SELECT COUNT(*) as c FROM user_daily_tasks WHERE telegram_id = ? AND task_id = ? AND date = ?`)
       .bind(telegram_id, task_id, date).first();
     const count = todayCount?.c || 0;
@@ -109,20 +114,34 @@ export async function doTask(db, telegram_id, task_id, date, env) {
       }
     }
 
-    // Insert progress - allow multiple per day
-    try {
-      await db.prepare(`INSERT INTO user_daily_tasks(telegram_id, task_id, date, created_at) VALUES (?, ?, ?, unixepoch())`)
-        .bind(telegram_id, task_id, date).run();
-    } catch(e) {
-      // If old schema with PK (telegram_id, task_id, date) prevents second insert, try update or return limit
-      if (e.message && e.message.includes('UNIQUE') || e.message.includes('PRIMARY')) {
-        // Old table - can't insert second time, treat as limit
-        if (count >= 1) {
-          return { ok: false, reason: 'limit', detail: 'old_schema_needs_migration' };
+    // Atomic insert with race condition protection
+    // Use INSERT OR IGNORE and check if count increased
+    const insertResult = await db.prepare(`INSERT INTO user_daily_tasks(telegram_id, task_id, date, created_at) VALUES (?, ?, ?, unixepoch())`)
+      .bind(telegram_id, task_id, date).run().catch(async (e) => {
+        // If duplicate due to race, check again
+        if (e.message && (e.message.includes('UNIQUE') || e.message.includes('PRIMARY'))) {
+          const newCount = await db.prepare(`SELECT COUNT(*) as c FROM user_daily_tasks WHERE telegram_id = ? AND task_id = ? AND date = ?`)
+            .bind(telegram_id, task_id, date).first();
+          if ((newCount?.c || 0) > count) {
+            return { meta: { changes: 0 }, duplicate: true };
+          }
         }
-      }
-      console.error('Insert user_daily_tasks failed', e.message);
-      return { ok: false, reason: 'db_error', detail: e.message };
+        throw e;
+      });
+
+    // If it was a duplicate race, return limit error
+    if (insertResult.duplicate || insertResult.meta.changes === 0) {
+      return { ok: false, reason: 'limit', detail: 'already_claimed' };
+    }
+
+    // Double-check after insert that we didn't exceed max (race protection)
+    const afterCount = await db.prepare(`SELECT COUNT(*) as c FROM user_daily_tasks WHERE telegram_id = ? AND task_id = ? AND date = ?`)
+      .bind(telegram_id, task_id, date).first();
+    if ((afterCount?.c || 0) > task.max_per_day) {
+      // Rollback - delete the extra
+      await db.prepare(`DELETE FROM user_daily_tasks WHERE rowid = (SELECT MAX(rowid) FROM user_daily_tasks WHERE telegram_id = ? AND task_id = ? AND date = ?)`)
+        .bind(telegram_id, task_id, date).run();
+      return { ok: false, reason: 'limit', count: afterCount?.c, max: task.max_per_day };
     }
 
     if (task.reward > 0) {
