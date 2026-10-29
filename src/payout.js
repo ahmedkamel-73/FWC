@@ -73,9 +73,9 @@ export async function markBatchAsSent(db, batchTx, txHash) {
 }
 
 export async function confirmBatch(db, txHash) {
-  await db.prepare(`UPDATE withdrawals SET status = 'approved', updated_at = unixepoch() WHERE tx_hash = ?`)
+  await db.prepare(`UPDATE withdrawals SET status = 'completed', updated_at = unixepoch() WHERE tx_hash = ?`)
     .bind(txHash).run();
-  await db.prepare(`UPDATE payout_batches SET status = 'approved' WHERE tx_hash = ?`)
+  await db.prepare(`UPDATE payout_batches SET status = 'completed' WHERE tx_hash = ?`)
     .bind(txHash).run();
 }
 
