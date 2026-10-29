@@ -191,19 +191,27 @@ export default {
 
         // 👇 تسجيل الإحالة + مكافأة المُحيل (2 FWC)
         const refParam = url.searchParams.get('ref');
-        if (refParam && !user.referral_by && !user.referred_bonus_paid) {
+        if (refParam && !user.referral_by) {
           const refId = parseInt(refParam);
-          if (refId && refId !== tgUser.id) {
-            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ?`)
-              .bind(refId, tgUser.id).run();
-            
+          if (refId && refId !== tgUser.id && !isNaN(refId)) {
             const refUser = await getUser(env.DB, refId);
-            if (refUser) {
-              const bonus = 2;
-              await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
-                .bind(bonus, refId).run();
-              await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, unixepoch())`)
-                .bind(refId, bonus).run();
+            if (refUser && !refUser.is_banned) {
+              // منع الإحالة الذاتية بنفس المحفظة
+              const sameWallet = user.wallet && refUser.wallet && user.wallet === refUser.wallet;
+              if (!sameWallet) {
+                const result = await env.DB.prepare(
+                  `UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ? AND referral_by IS NULL AND (referred_bonus_paid IS NULL OR referred_bonus_paid = 0)`
+                ).bind(refId, tgUser.id).run();
+                if (result.meta.changes > 0) {
+                  const bonus = 2;
+                  await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+                    .bind(bonus, refId).run();
+                  await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, unixepoch())`)
+                    .bind(refId, bonus).run();
+                  await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, ?, ?)`)
+                    .bind(refId, tgUser.id, bonus, Date.now()).run();
+                }
+              }
             }
           }
         }
@@ -690,15 +698,8 @@ export default {
 
             const parts = text.split(' ');
             const payload = parts[1];
-            if (payload) {
-              let refId = null;
-              if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
-              else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
-              if (refId && refId !== fromId) {
-                await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
-                  .bind(refId, fromId).run();
-              }
-            }
+            // تم نقل منطق الإحالة بالكامل إلى /api/me لضمان إعطاء البونص بشكل صحيح
+            // هنا نترك فقط تسجيل البداية بدون إحالة
 
             const workerUrl = env.WORKER_URL || url.origin;
             const isAdmin = await isAdminDB(env.DB, fromId);
