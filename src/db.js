@@ -61,7 +61,7 @@ export async function initDB(db) {
     fee REAL DEFAULT 0,
     net_amount REAL,
     wallet TEXT,
-    status TEXT DEFAULT 'pending' CHECK(status IN ('pending','processing','approved','rejected')),
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending','processing','approved','rejected','completed')),
     tx_hash TEXT,
     reject_reason TEXT,
     created_at INTEGER,
@@ -354,12 +354,16 @@ export async function approveWithdrawal(db, id) {
 }
 
 export async function rejectWithdrawal(db, id, reason = null) {
+  const wd = await db.prepare(`SELECT * FROM withdrawals WHERE id = ?`).bind(id).first();
+  if (!wd) return null;
+  if (wd.status !== 'pending') return null;
+  await db.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`).bind(wd.amount, wd.telegram_id).run();
   return await db.prepare(`UPDATE withdrawals SET status = 'rejected', reject_reason = ?, updated_at = unixepoch() WHERE id = ? AND status = 'pending'`)
     .bind(reason, id).run();
 }
 
 export async function getUserPendingWithdrawal(db, telegram_id) {
-  return await db.prepare(`SELECT * FROM withdrawals WHERE telegram_id = ? AND status = 'pending' LIMIT 1`).bind(telegram_id).first();
+  return await db.prepare(`SELECT * FROM withdrawals WHERE telegram_id = ? AND status IN ('pending','approved','processing') LIMIT 1`).bind(telegram_id).first();
 }
 
 // ========== FEE LOG ==========
@@ -417,21 +421,4 @@ export async function resolveAlert(db, id, adminId) {
 export async function dismissAlert(db, id, adminId) {
   return await db.prepare(`UPDATE anticheat_alerts SET status = 'dismissed', resolved_by = ?, resolved_at = unixepoch() WHERE id = ?`)
     .bind(adminId, id).run();
-}
-
-
-// ========== REFERRAL VALIDATION (NEW) ==========
-export async function checkReferralEligibility(db, newUserId, refId, newWallet = null) {
-  if (!refId || refId === newUserId) return { ok: false, reason: 'self_referral' };
-  const refUser = await db.prepare(`SELECT telegram_id, wallet, is_banned FROM users WHERE telegram_id = ?`).bind(refId).first();
-  if (!refUser) return { ok: false, reason: 'invalid_referrer' };
-  if (refUser.is_banned) return { ok: false, reason: 'referrer_banned' };
-  const newUser = await db.prepare(`SELECT referral_by, referred_bonus_paid, wallet FROM users WHERE telegram_id = ?`).bind(newUserId).first();
-  if (newUser?.referral_by) return { ok: false, reason: 'already_referred' };
-  if (newUser?.referred_bonus_paid) return { ok: false, reason: 'bonus_already_paid' };
-  const walletToCheck = newWallet || newUser?.wallet;
-  if (walletToCheck && refUser.wallet && walletToCheck === refUser.wallet) {
-    return { ok: false, reason: 'same_wallet' };
-  }
-  return { ok: true, refUser };
 }
