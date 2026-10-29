@@ -62,12 +62,16 @@ export async function doMine(db, telegram_id) {
 
   let referralBonus = 0;
   if (user.referral_by) {
-    const refPercent = await getEconomyConfig(db, 'referral_percent') || CONFIG.referral_percent;
-    referralBonus = amount * (refPercent / 100);
-    await db.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
-      .bind(referralBonus, user.referral_by).run();
-    await db.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, ?, ?)`)
-      .bind(user.referral_by, telegram_id, referralBonus, now).run();
+    const refUser = await db.prepare(`SELECT wallet, is_banned FROM users WHERE telegram_id = ?`).bind(user.referral_by).first();
+    const sameWallet = refUser?.wallet && user.wallet && refUser.wallet === user.wallet;
+    if (refUser && !refUser.is_banned && !sameWallet) {
+      const refPercent = await getEconomyConfig(db, 'referral_percent') || CONFIG.referral_percent;
+      referralBonus = amount * (refPercent / 100);
+      await db.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+        .bind(referralBonus, user.referral_by).run();
+      await db.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, ?, ?)`)
+        .bind(user.referral_by, telegram_id, referralBonus, now).run();
+    }
   }
 
   const newUser = await db.prepare(`SELECT balance FROM users WHERE telegram_id = ?`).bind(telegram_id).first();
