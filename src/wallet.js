@@ -24,6 +24,20 @@ export async function saveWallet(db, telegram_id, wallet, opts = {}) {
 
   const { verified = false } = opts;
 
+  // Check duplicate before saving
+  const dupe = await db.prepare(`SELECT telegram_id, referral_by FROM users WHERE wallet = ? AND telegram_id != ? LIMIT 1`)
+    .bind(normalized, telegram_id).first();
+  if (dupe) {
+    // إذا نفس المحفظة مستخدمة من المُحيل نفسه، الغي الإحالة
+    if (dupe.telegram_id && dupe.telegram_id !== telegram_id) {
+      const currentUser = await db.prepare(`SELECT referral_by FROM users WHERE telegram_id = ?`).bind(telegram_id).first();
+      if (currentUser?.referral_by === dupe.telegram_id) {
+        await db.prepare(`UPDATE users SET referral_by = NULL, referred_bonus_paid = 0 WHERE telegram_id = ?`)
+          .bind(telegram_id).run();
+      }
+    }
+  }
+
   try {
     await db.prepare(
       `UPDATE users SET wallet = ?, wallet_verified = ?, wallet_saved_at = CURRENT_TIMESTAMP WHERE telegram_id = ?`
@@ -33,5 +47,5 @@ export async function saveWallet(db, telegram_id, wallet, opts = {}) {
       .bind(normalized, telegram_id).run();
   }
 
-  return { ok: true, wallet: normalized, verified };
+  return { ok: true, wallet: normalized, verified, duplicate: !!dupe };
 }
