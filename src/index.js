@@ -205,7 +205,7 @@ export default {
         if (refParam && !user.referral_by) {
           let refId = parseInt(refParam.toString().replace('ref_', ''));
           if (refId && refId !== tgUser.id) {
-            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ? AND referral_by IS NULL`)
+            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0 OR referral_by = '')`)
               .bind(refId, tgUser.id).run();
             const refUser = await getUser(env.DB, refId);
             if (refUser) {
