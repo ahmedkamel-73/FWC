@@ -96,9 +96,9 @@ export async function doMine(db, telegram_id) {
 }
 
 async function getJettonBalanceFromChain(env, walletAddress) {
-  if (!walletAddress) return 0;
+  if (!walletAddress) return null;
   const apiKey = env.TONCENTER_API_KEY || '';
-  if (!apiKey) return 0;
+  if (!apiKey) return null;
   try {
     const res = await fetch(`https://toncenter.com/api/v3/jetton/wallets?owner_address=${walletAddress}&jetton_address=${CONFIG.jetton}&limit=1`, {
       headers: { 'X-API-Key': apiKey }
@@ -109,7 +109,7 @@ async function getJettonBalanceFromChain(env, walletAddress) {
     }
     return 0;
   } catch (e) {
-    return 0;
+    return null;
   }
 }
 
@@ -139,7 +139,8 @@ export async function canWithdraw(db, env, telegram_id) {
     const isFirstWithdraw = (wdCount?.c || 0) === 0;
     if (!isFirstWithdraw) {
       const onChainBalance = await getJettonBalanceFromChain(env, user.wallet);
-      if (onChainBalance < holdAmount) {
+      // If API fails (null), don't block user - allow withdrawal
+      if (onChainBalance !== null && onChainBalance < holdAmount) {
         return { ok: false, reason: 'hold_required', need: holdAmount, current: onChainBalance };
       }
     }
