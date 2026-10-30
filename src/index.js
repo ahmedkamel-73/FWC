@@ -59,7 +59,13 @@ function getTelegramUser(request) {
     const params = new URLSearchParams(initData);
     const userStr = params.get('user');
     if (!userStr) return null;
-    return JSON.parse(userStr);
+    const user = JSON.parse(userStr);
+    // Extract start_param for referral (Mini App flow)
+    const startParam = params.get('start_param') || params.get('startParam') || null;
+    if (startParam) {
+      user._start_param = startParam;
+    }
+    return user;
   } catch {
     return null;
   }
@@ -190,7 +196,12 @@ export default {
         const user = await getUser(env.DB, tgUser.id);
 
         // 👇 تسجيل الإحالة + مكافأة المُحيل (2 FWC)
-        const refParam = url.searchParams.get('ref') || url.searchParams.get('start') || url.searchParams.get('start_param');
+        // Check referral from multiple sources: URL ref, start, start_param, and Telegram Mini App start_param
+        const initDataHeader = request.headers.get('X-Telegram-Init-Data') || '';
+        const initParams = new URLSearchParams(initDataHeader);
+        const startParamFromInit = initParams.get('start_param') || initParams.get('startParam') || tgUser._start_param || null;
+        
+        const refParam = url.searchParams.get('ref') || url.searchParams.get('start') || url.searchParams.get('start_param') || url.searchParams.get('startapp') || startParamFromInit;
         if (refParam && !user.referral_by) {
           let refId = parseInt(refParam.toString().replace('ref_', ''));
           if (refId && refId !== tgUser.id) {
