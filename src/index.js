@@ -51,52 +51,11 @@ function htmlResponse(html) {
   });
 }
 
-async function verifyTelegramInitData(initData, botToken) {
-  try {
-    const params = new URLSearchParams(initData);
-    const hash = params.get('hash');
-    if (!hash) return false;
-    params.delete('hash');
-    const dataCheckString = [...params.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([k, v]) => `${k}=${v}`)
-      .join('\n');
-    const encoder = new TextEncoder();
-    const secretKeyData = encoder.encode('WebAppData' + botToken);
-    const secretHash = await crypto.subtle.digest('SHA-256', secretKeyData);
-    const key = await crypto.subtle.importKey('raw', secretHash, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(dataCheckString));
-    const calculatedHash = [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, '0')).join('');
-    return calculatedHash === hash;
-  } catch {
-    return false;
-  }
-}
-
-async function getTelegramUser(request, env) {
+function getTelegramUser(request) {
   try {
     const initData = request.headers.get('X-Telegram-Init-Data')
       || new URL(request.url).searchParams.get('initData');
     if (!initData) return null;
-    
-    // Verify signature
-    const botToken = env.BOT_TOKEN;
-    if (botToken) {
-      const isValid = await verifyTelegramInitData(initData, botToken);
-      if (!isValid) {
-        // Allow in development if no token? No, reject
-        console.warn('Invalid Telegram initData hash');
-        return null;
-      }
-      // Check auth_date not older than 24h
-      const params = new URLSearchParams(initData);
-      const authDate = parseInt(params.get('auth_date') || '0');
-      if (authDate && (Date.now()/1000 - authDate) > 86400) {
-        console.warn('Telegram initData expired');
-        return null;
-      }
-    }
-    
     const params = new URLSearchParams(initData);
     const userStr = params.get('user');
     if (!userStr) return null;
@@ -105,7 +64,6 @@ async function getTelegramUser(request, env) {
     return null;
   }
 }
-
 
 function getClientIP(request) {
   return request.headers.get('CF-Connecting-IP')
@@ -216,7 +174,7 @@ export default {
 
     // ========== API ROUTES ==========
     if (path.startsWith('/api/')) {
-      const tgUser = await getTelegramUser(request, env);
+      const tgUser = getTelegramUser(request);
       const clientIP = getClientIP(request);
 
       // ============ PUBLIC USER APIs ============
@@ -238,19 +196,13 @@ export default {
           if (refId && refId !== tgUser.id) {
             await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ? AND referral_by IS NULL`)
               .bind(refId, tgUser.id).run();
-            
             const refUser = await getUser(env.DB, refId);
             if (refUser) {
-              const bonus = 2;
-              // Check if bonus already given to avoid double
-              const alreadyBonus = await env.DB.prepare(`SELECT 1 FROM referrals_log WHERE from_id = ? AND to_id = ? LIMIT 1`).bind(refId, tgUser.id).first();
-              if (!alreadyBonus) {
-                await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
-                  .bind(bonus, refId).run();
-                await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, unixepoch())`)
-                  .bind(refId, bonus).run();
-                await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, ?, ?)`)
-                  .bind(refId, tgUser.id, bonus, Math.floor(Date.now()/1000)).run();
+              const already = await env.DB.prepare(`SELECT 1 FROM referrals_log WHERE from_id = ? AND to_id = ? LIMIT 1`).bind(refId, tgUser.id).first();
+              if (!already) {
+                await env.DB.prepare(`UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`).bind(refId).run();
+                await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, 2, unixepoch())`).bind(refId).run();
+                await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`).bind(refId, tgUser.id).run();
               }
             }
           }
@@ -451,19 +403,23 @@ export default {
         const pending = await getUserPendingWithdrawal(env.DB, tgUser.id);
         if (pending) return json({ ok: false, error: 'pending_exists' }, 400);
 
-        await env.DB.prepare(`UPDATE users SET balance = balance - ? WHERE telegram_id = ?`)
-          .bind(amount, tgUser.id).run();
-
-        const wdResult = await createWithdrawal(env.DB, tgUser.id, amount, user.wallet, feeInfo.fee, feeInfo.netAmount);
-
         try {
-          const wdId = wdResult?.meta?.last_row_id;
-          if (wdId && feeInfo.fee > 0) {
-            await logFee(env.DB, tgUser.id, wdId, feeInfo.fee);
+          const batch = await env.DB.batch([
+            env.DB.prepare(`UPDATE users SET balance = balance - ? WHERE telegram_id = ? AND balance >= ?`).bind(amount, tgUser.id, amount),
+            env.DB.prepare(`INSERT INTO withdrawals(telegram_id, amount, fee, net_amount, wallet, status, created_at) VALUES (?, ?, ?, ?, ?, 'pending', unixepoch())`).bind(tgUser.id, amount, feeInfo.fee, feeInfo.netAmount, user.wallet)
+          ]);
+          if (batch[0].meta.changes === 0) {
+            return json({ ok: false, error: 'insufficient_balance' }, 400);
           }
-        } catch {}
-
-        return json({ ok: true, amount: feeInfo.netAmount, fee: feeInfo.fee, totalDeducted: amount, newBalance: user.balance - amount });
+          const wdId = batch[1]?.meta?.last_row_id;
+          if (wdId && feeInfo.fee > 0) {
+            try { await logFee(env.DB, tgUser.id, wdId, feeInfo.fee); } catch {}
+          }
+          return json({ ok: true, amount: feeInfo.netAmount, fee: feeInfo.fee, totalDeducted: amount, newBalance: user.balance - amount });
+        } catch (e) {
+          try { await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`).bind(amount, tgUser.id).run(); } catch {}
+          return json({ ok: false, error: 'db_error', detail: e.message }, 500);
+        }
       }
 
       if (path === '/api/withdrawals' && tgUser) {
@@ -743,16 +699,15 @@ export default {
               if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
               else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
               if (refId && refId !== fromId) {
-                const existing = await env.DB.prepare(`SELECT referral_by, referred_bonus_paid FROM users WHERE telegram_id = ?`).bind(fromId).first();
+                const existing = await env.DB.prepare(`SELECT referral_by FROM users WHERE telegram_id = ?`).bind(fromId).first();
                 if (!existing?.referral_by) {
                   await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ?`)
                     .bind(refId, fromId).run();
-                  // Give immediate 2 FWC bonus to referrer
                   const refUser = await env.DB.prepare(`SELECT telegram_id FROM users WHERE telegram_id = ?`).bind(refId).first();
                   if (refUser) {
                     await env.DB.prepare(`UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`).bind(refId).run();
                     await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, 2, unixepoch())`).bind(refId).run();
-                    await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`).bind(refId, fromId, refId).run();
+                    await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`).bind(refId, fromId).run();
                   }
                 }
               }
