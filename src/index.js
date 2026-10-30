@@ -51,11 +51,52 @@ function htmlResponse(html) {
   });
 }
 
-function getTelegramUser(request) {
+async function verifyTelegramInitData(initData, botToken) {
+  try {
+    const params = new URLSearchParams(initData);
+    const hash = params.get('hash');
+    if (!hash) return false;
+    params.delete('hash');
+    const dataCheckString = [...params.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n');
+    const encoder = new TextEncoder();
+    const secretKeyData = encoder.encode('WebAppData' + botToken);
+    const secretHash = await crypto.subtle.digest('SHA-256', secretKeyData);
+    const key = await crypto.subtle.importKey('raw', secretHash, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(dataCheckString));
+    const calculatedHash = [...new Uint8Array(signature)].map(b => b.toString(16).padStart(2, '0')).join('');
+    return calculatedHash === hash;
+  } catch {
+    return false;
+  }
+}
+
+async function getTelegramUser(request, env) {
   try {
     const initData = request.headers.get('X-Telegram-Init-Data')
       || new URL(request.url).searchParams.get('initData');
     if (!initData) return null;
+    
+    // Verify signature
+    const botToken = env.BOT_TOKEN;
+    if (botToken) {
+      const isValid = await verifyTelegramInitData(initData, botToken);
+      if (!isValid) {
+        // Allow in development if no token? No, reject
+        console.warn('Invalid Telegram initData hash');
+        return null;
+      }
+      // Check auth_date not older than 24h
+      const params = new URLSearchParams(initData);
+      const authDate = parseInt(params.get('auth_date') || '0');
+      if (authDate && (Date.now()/1000 - authDate) > 86400) {
+        console.warn('Telegram initData expired');
+        return null;
+      }
+    }
+    
     const params = new URLSearchParams(initData);
     const userStr = params.get('user');
     if (!userStr) return null;
@@ -64,6 +105,7 @@ function getTelegramUser(request) {
     return null;
   }
 }
+
 
 function getClientIP(request) {
   return request.headers.get('CF-Connecting-IP')
@@ -174,7 +216,7 @@ export default {
 
     // ========== API ROUTES ==========
     if (path.startsWith('/api/')) {
-      const tgUser = getTelegramUser(request);
+      const tgUser = await getTelegramUser(request, env);
       const clientIP = getClientIP(request);
 
       // ============ PUBLIC USER APIs ============
@@ -190,20 +232,26 @@ export default {
         const user = await getUser(env.DB, tgUser.id);
 
         // 👇 تسجيل الإحالة + مكافأة المُحيل (2 FWC)
-        const refParam = url.searchParams.get('ref');
-        if (refParam && !user.referral_by && !user.referred_bonus_paid) {
-          const refId = parseInt(refParam);
+        const refParam = url.searchParams.get('ref') || url.searchParams.get('start') || url.searchParams.get('start_param');
+        if (refParam && !user.referral_by) {
+          let refId = parseInt(refParam.toString().replace('ref_', ''));
           if (refId && refId !== tgUser.id) {
-            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ?`)
+            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ? AND referral_by IS NULL`)
               .bind(refId, tgUser.id).run();
             
             const refUser = await getUser(env.DB, refId);
             if (refUser) {
               const bonus = 2;
-              await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
-                .bind(bonus, refId).run();
-              await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, unixepoch())`)
-                .bind(refId, bonus).run();
+              // Check if bonus already given to avoid double
+              const alreadyBonus = await env.DB.prepare(`SELECT 1 FROM referrals_log WHERE from_id = ? AND to_id = ? LIMIT 1`).bind(refId, tgUser.id).first();
+              if (!alreadyBonus) {
+                await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+                  .bind(bonus, refId).run();
+                await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, ?, unixepoch())`)
+                  .bind(refId, bonus).run();
+                await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, ?, ?)`)
+                  .bind(refId, tgUser.id, bonus, Math.floor(Date.now()/1000)).run();
+              }
             }
           }
         }
@@ -695,8 +743,18 @@ export default {
               if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
               else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
               if (refId && refId !== fromId) {
-                await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
-                  .bind(refId, fromId).run();
+                const existing = await env.DB.prepare(`SELECT referral_by, referred_bonus_paid FROM users WHERE telegram_id = ?`).bind(fromId).first();
+                if (!existing?.referral_by) {
+                  await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ?`)
+                    .bind(refId, fromId).run();
+                  // Give immediate 2 FWC bonus to referrer
+                  const refUser = await env.DB.prepare(`SELECT telegram_id FROM users WHERE telegram_id = ?`).bind(refId).first();
+                  if (refUser) {
+                    await env.DB.prepare(`UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`).bind(refId).run();
+                    await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, 2, unixepoch())`).bind(refId).run();
+                    await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`).bind(refId, fromId, refId).run();
+                  }
+                }
               }
             }
 
