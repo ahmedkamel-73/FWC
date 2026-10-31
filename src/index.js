@@ -205,8 +205,8 @@ export default {
         if (refParam && !user.referral_by) {
           let refId = parseInt(refParam.toString().replace('ref_', ''));
           if (refId && refId !== tgUser.id) {
-            await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0 OR referral_by = '')`).bind(refId, tgUser.id).run();
-            try { await env.DB.prepare(`UPDATE users SET referred_bonus_paid = 1 WHERE telegram_id = ?`).bind(tgUser.id).run(); } catch {}
+            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0 OR referral_by = '')`)
+              .bind(refId, tgUser.id).run();
             const refUser = await getUser(env.DB, refId);
             if (refUser) {
               const already = await env.DB.prepare(`SELECT 1 FROM referrals_log WHERE from_id = ? AND to_id = ? LIMIT 1`).bind(refId, tgUser.id).first();
@@ -685,7 +685,10 @@ export default {
 
     // ========== TELEGRAM WEBHOOK ==========
     if (path === '/webhook' && request.method === 'POST') {
-      if (!botToken) return new Response('BOT_TOKEN missing', { status: 500 });
+      if (!botToken) {
+        console.error('BOT_TOKEN missing');
+        return new Response('ok');
+      }
 
       try {
         const update = await request.json();
@@ -699,46 +702,69 @@ export default {
           const fromLang = message.from.language_code || 'en';
 
           if (text.startsWith('/start')) {
-            await createOrUpdateUser(env.DB, {
-              telegram_id: fromId, username: fromUsername, first_name: fromFirstName, language: fromLang,
-            });
+            try {
+              await createOrUpdateUser(env.DB, {
+                telegram_id: fromId, username: fromUsername, first_name: fromFirstName, language: fromLang,
+              });
+            } catch (e) {
+              console.error('createOrUpdateUser error', e.message);
+            }
 
-            const parts = text.split(' ');
-            const payload = parts[1];
-            if (payload) {
-              let refId = null;
-              if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
-              else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
-              if (refId && refId !== fromId) {
-                const existing = await env.DB.prepare(`SELECT referral_by FROM users WHERE telegram_id = ?`).bind(fromId).first();
-                if (!existing?.referral_by) {
-                  await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ?`)
-                    .bind(refId, fromId).run();
-                  const refUser = await env.DB.prepare(`SELECT telegram_id FROM users WHERE telegram_id = ?`).bind(refId).first();
-                  if (refUser) {
-                    await env.DB.prepare(`UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`).bind(refId).run();
-                    await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, 2, unixepoch())`).bind(refId).run();
-                    await env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`).bind(refId, fromId).run();
+            // Referral handling - separate try/catch so it never breaks webhook
+            try {
+              const parts = text.split(' ');
+              const payload = parts[1];
+              if (payload) {
+                let refId = null;
+                if (payload.startsWith('ref_')) {
+                  refId = parseInt(payload.replace('ref_', ''));
+                } else {
+                  const parsed = parseInt(payload);
+                  if (!isNaN(parsed)) refId = parsed;
+                }
+                if (refId && refId !== fromId) {
+                  const existing = await env.DB.prepare(`SELECT referral_by FROM users WHERE telegram_id = ?`).bind(fromId).first();
+                  if (!existing || !existing.referral_by) {
+                    await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0)`).bind(refId, fromId).run();
+                    try {
+                      const refUser = await env.DB.prepare(`SELECT telegram_id FROM users WHERE telegram_id = ?`).bind(refId).first();
+                      if (refUser) {
+                        await env.DB.prepare(`UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`).bind(refId).run();
+                        await env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, 2, unixepoch())`).bind(refId).run();
+                        await env.DB.prepare(`INSERT OR IGNORE INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`).bind(refId, fromId).run();
+                      }
+                    } catch (e) {
+                      console.error('Referral bonus error', e.message);
+                    }
                   }
                 }
               }
+            } catch (e) {
+              console.error('Referral parse error', e.message, e.stack);
             }
 
-            const workerUrl = env.WORKER_URL || url.origin;
-            const isAdmin = await isAdminDB(env.DB, fromId);
-            const buttons = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
-            if (isAdmin) buttons.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
+            try {
+              const workerUrl = env.WORKER_URL || url.origin;
+              const isAdmin = await isAdminDB(env.DB, fromId);
+              const buttons = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
+              if (isAdmin) buttons.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
 
-            await sendTelegramMessage(botToken, fromId,
-              `⛏️ *FWC Mining*\n\nWelcome ${fromFirstName}! Start mining FWC now.`,
-              { inline_keyboard: buttons }
-            );
+              await sendTelegramMessage(botToken, fromId,
+                `⛏️ *FWC Mining*
+
+Welcome ${fromFirstName}! Start mining FWC now.`,
+                { inline_keyboard: buttons }
+              );
+            } catch (e) {
+              console.error('sendMessage error', e.message);
+            }
           }
         }
       } catch (e) {
         console.error('Webhook error:', e.message, e.stack);
       }
 
+      // Always return ok to Telegram, even if error
       return new Response('ok');
     }
 
