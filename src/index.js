@@ -108,6 +108,16 @@ function getClientIP(request) {
     || null;
 }
 
+function generateReferralCode() {
+  try {
+    const arr = new Uint8Array(8);
+    crypto.getRandomValues(arr);
+    return [...arr].map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+  } catch {
+    return Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 10);
+  }
+}
+
 // ========== TELEGRAM BOT API ==========
 async function sendTelegramMessage(botToken, chatId, text, replyMarkup = null) {
   const body = { chat_id: chatId, text, parse_mode: 'Markdown' };
@@ -225,6 +235,16 @@ export default {
         });
 
         const user = await getUser(env.DB, tgUser.id);
+        // === ENSURE REFERRAL CODE (HASHED LIKE DiggoMiner) ===
+        try {
+          if (!user.referral_code) {
+            const newCode = generateReferralCode();
+            await env.DB.prepare(`UPDATE users SET referral_code = ? WHERE telegram_id = ?`).bind(newCode, tgUser.id).run();
+            user.referral_code = newCode;
+          }
+        } catch (e) {
+          // Column may not exist yet, ignore
+        }
 
         // === CORRECT REFERRAL LOGIC FOR MINI APP ===
         try {
@@ -254,13 +274,31 @@ export default {
             let refId = null;
             const rawRef = refParam.toString().trim();
             
+            // === HASHED CODE SUPPORT (like DiggoMiner) - try code first ===
+            let codeStr = rawRef;
             if (rawRef.toLowerCase().startsWith('ref_')) {
-              const idStr = rawRef.substring(4);
-              const parsed = parseInt(idStr);
-              if (!isNaN(parsed) && parsed > 0) refId = parsed;
-            } else {
-              const parsed = parseInt(rawRef);
-              if (!isNaN(parsed) && parsed > 0) refId = parsed;
+              codeStr = rawRef.substring(4);
+            }
+            codeStr = codeStr.trim();
+            // Try referral_code lookup first
+            }
+            try {
+              const byCode = await env.DB.prepare(`SELECT telegram_id FROM users WHERE lower(referral_code) = lower(?) OR referral_code = ?`).bind(codeStr, codeStr).first();
+              if (byCode && byCode.telegram_id) {
+                refId = byCode.telegram_id;
+              }
+            } catch {}
+            // Fallback to numeric ID (old system)
+            if (!refId) {
+              if (rawRef.toLowerCase().startsWith('ref_')) {
+                const idStr = rawRef.substring(4);
+                const parsed = parseInt(idStr);
+                if (!isNaN(parsed) && parsed > 0) refId = parsed;
+              } else {
+                const parsed = parseInt(rawRef);
+                if (!isNaN(parsed) && parsed > 0) refId = parsed;
+              }
+            }
             }
             
             if (refId && refId !== tgUser.id) {
@@ -343,13 +381,23 @@ export default {
       if (path === '/api/referral' && tgUser) {
         const count = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE referral_by = ?`).bind(tgUser.id).first();
         const botUsername = (await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'bot_username'`).first())?.value || 'fwcoinbot';
+        let refCode = user?.referral_code || tgUser.referral_code;
+        if (!refCode) {
+          try {
+            const r = await env.DB.prepare(`SELECT referral_code FROM users WHERE telegram_id = ?`).bind(tgUser.id).first();
+            refCode = r?.referral_code;
+          } catch {}
+        }
+        if (!refCode) {
+          refCode = generateReferralCode();
+          try { await env.DB.prepare(`UPDATE users SET referral_code = ? WHERE telegram_id = ?`).bind(refCode, tgUser.id).run(); } catch {}
+        }
         return json({
           ok: true,
           referral_count: count?.c || 0,
-          referral_link: `https://t.me/${botUsername}?startapp=ref_${tgUser.id}`,
+          referral_link: `https://t.me/${botUsername}?startapp=ref_${refCode}`,
+          referral_code: refCode,
         });
-      }
-
       if (path === '/api/language' && request.method === 'POST' && tgUser) {
         const body = await request.json();
         const lang = ['en', 'ar', 'ru', 'tr'].includes(body.lang) ? body.lang : 'en';
@@ -796,7 +844,20 @@ export default {
             const payload = parts[1];
             if (payload) {
               let refId = null;
-              if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
+              let codePart = payload;
+              if (payload.toLowerCase().startsWith('ref_')) codePart = payload.substring(4);
+              codePart = codePart.trim();
+              // Try referral_code first
+              try {
+                const byCode = await env.DB.prepare(`SELECT telegram_id FROM users WHERE lower(referral_code) = lower(?) OR referral_code = ?`).bind(codePart, codePart).first();
+                if (byCode) refId = byCode.telegram_id;
+              } catch {}
+              // Fallback to numeric
+              if (!refId) {
+                if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
+                else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
+              }
+              if (refId && refId !== fromId) {
               else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
               if (refId && refId !== fromId) {
                 await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
@@ -810,7 +871,7 @@ export default {
             if (isAdmin) buttons.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
 
             await sendTelegramMessage(botToken, fromId,
-              `⛏️ *FWC Mining*\n\nWelcome ${fromFirstName}! Start mining FWC now.`,
+              `⛏️ *FWC Mining*\\n\\nWelcome ${fromFirstName}! Start mining FWC now.`,
               { inline_keyboard: buttons }
             );
           }
