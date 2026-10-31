@@ -60,8 +60,20 @@ export async function doCheckin(db, telegram_id, date) {
 
   const streak = await getCheckinStreak(db, telegram_id);
   const newStreak = streak >= 7 ? 1 : streak + 1;
+  
+  // Respect admin value from daily_tasks table (fix for 0.5 issue)
   let reward = STREAK_REWARDS[newStreak] || 1;
-  if (newStreak === 7) reward += BONUS_WEEK;
+  let useAdminReward = false;
+  try {
+    const taskRow = await db.prepare(`SELECT reward FROM daily_tasks WHERE id = 'checkin'`).first();
+    if (taskRow && taskRow.reward !== null && taskRow.reward !== 0) {
+      // Use admin-set reward as fixed value (0.5)
+      reward = taskRow.reward;
+      useAdminReward = true;
+    }
+  } catch {}
+  
+  if (!useAdminReward && newStreak === 7) reward += BONUS_WEEK;
 
   // Atomic insert - prevent race condition
   const insertResult = await db.prepare(`INSERT OR IGNORE INTO daily_checkins(telegram_id, date, streak, created_at) VALUES (?, ?, ?, unixepoch())`)
