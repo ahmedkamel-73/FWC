@@ -233,7 +233,8 @@ export default {
 
         // === CORRECT REFERRAL LOGIC FOR MINI APP ===
         try {
-          // Get start_param from Telegram initData (Mini App referral)
+        // === FIXED REFERRAL LOGIC FOR @fwcoinbot - ATOMIC & SECURE ===
+        try {
           const initDataHeader = request.headers.get('X-Telegram-Init-Data') || '';
           let startParamFromInit = null;
           try {
@@ -242,79 +243,56 @@ export default {
               startParamFromInit = initParams.get('start_param') || initParams.get('startParam') || null;
             }
           } catch {}
-          
-          // Also check tgUser._start_param if getTelegramUser extracts it
+
           if (!startParamFromInit && tgUser._start_param) {
             startParamFromInit = tgUser._start_param;
           }
-          
-          // Check all possible referral param sources
+
           const refParam = url.searchParams.get('ref') 
             || url.searchParams.get('start') 
             || url.searchParams.get('start_param') 
             || url.searchParams.get('startapp') 
             || startParamFromInit;
-          
-          if (refParam && !user.referral_by) {
+
+          if (refParam) {
             let refId = null;
             const rawRef = refParam.toString().trim();
-            
+            let idStr = rawRef;
             if (rawRef.toLowerCase().startsWith('ref_')) {
-              const idStr = rawRef.substring(4);
-              const parsed = parseInt(idStr);
-              if (!isNaN(parsed) && parsed > 0) refId = parsed;
-            } else {
-              const parsed = parseInt(rawRef);
-              if (!isNaN(parsed) && parsed > 0) refId = parsed;
+              idStr = rawRef.substring(4);
             }
-            
-            if (refId && refId !== tgUser.id) {
-              // Double-check no existing referral
-              const existingCheck = await env.DB.prepare(
-                `SELECT referral_by FROM users WHERE telegram_id = ?`
-              ).bind(tgUser.id).first();
-              
-              if (!existingCheck || !existingCheck.referral_by) {
-                await env.DB.prepare(
-                  `UPDATE users SET referral_by = ? WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0)`
-                ).bind(refId, tgUser.id).run();
-                
-                try {
-                  await env.DB.prepare(
-                    `UPDATE users SET referred_bonus_paid = 1 WHERE telegram_id = ?`
-                  ).bind(tgUser.id).run();
-                } catch {}
-                
-                // Give bonus to referrer
-                try {
-                  const alreadyLogged = await env.DB.prepare(
-                    `SELECT 1 FROM referrals_log WHERE to_id = ? LIMIT 1`
-                  ).bind(tgUser.id).first();
-                  
-                  if (!alreadyLogged) {
-                    const refUser = await getUser(env.DB, refId);
-                    if (refUser) {
-                      await env.DB.prepare(
-                        `UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`
-                      ).bind(refId).run();
-                      
-                      await env.DB.prepare(
-                        `INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, 2, unixepoch())`
-                      ).bind(refId).run();
-                      
-                      await env.DB.prepare(
-                        `INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`
-                      ).bind(refId, tgUser.id).run();
-                    }
+            if (/^\d+$/.test(idStr)) {
+              const parsed = parseInt(idStr, 10);
+              if (parsed > 0 && parsed !== tgUser.id) {
+                refId = parsed;
+              }
+            }
+
+            if (refId) {
+              const refUserExists = await env.DB.prepare(`SELECT telegram_id FROM users WHERE telegram_id = ?`).bind(refId).first();
+              if (refUserExists) {
+                const existingUser = await env.DB.prepare(`SELECT referral_by FROM users WHERE telegram_id = ?`).bind(tgUser.id).first();
+                const alreadyLogged = await env.DB.prepare(`SELECT 1 FROM referrals_log WHERE to_id = ? LIMIT 1`).bind(tgUser.id).first();
+
+                if (!existingUser?.referral_by && !alreadyLogged) {
+                  try {
+                    await env.DB.batch([
+                      env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0)`).bind(refId, tgUser.id),
+                      env.DB.prepare(`UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`).bind(refId),
+                      env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, 2, unixepoch())`).bind(refId),
+                      env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`).bind(refId, tgUser.id),
+                      env.DB.prepare(`UPDATE users SET referred_bonus_paid = 1 WHERE telegram_id = ?`).bind(tgUser.id)
+                    ]);
+                    console.log(`Referral success: ${tgUser.id} -> ${refId}`);
+                  } catch (e) {
+                    console.error('Referral batch failed:', e.message);
                   }
-                } catch (e) {
-                  console.error('Referral bonus error in /api/me:', e.message);
                 }
               }
             }
           }
         } catch (e) {
-          console.error('Referral error in /api/me:', e.message);
+          console.error('Referral error:', e.message);
         }
 
         const miningAmount = await getCurrentMiningAmount(env.DB);
@@ -347,12 +325,16 @@ export default {
 
       if (path === '/api/referral' && tgUser) {
         const count = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE referral_by = ?`).bind(tgUser.id).first();
-        const botUsername = (await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'bot_username'`).first())?.value || 'fwcoinbot';
+        // FIXED for @fwcoinbot - always use startapp for Mini App
+        const botUsername = 'fwcoinbot';
         return json({
           ok: true,
           referral_count: count?.c || 0,
-          referral_link: `https://t.me/${botUsername}?start=ref_${tgUser.id}`,
+          referral_link: `https://t.me/${botUsername}?startapp=ref_${tgUser.id}`,
+          referral_link_bot: `https://t.me/${botUsername}?start=ref_${tgUser.id}`,
+          referral_link_direct: `https://t.me/${botUsername}/app?startapp=ref_${tgUser.id}`,
         });
+      }
       }
 
       if (path === '/api/language' && request.method === 'POST' && tgUser) {
@@ -801,11 +783,35 @@ export default {
             const payload = parts[1];
             if (payload) {
               let refId = null;
-              if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
-              else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
-              if (refId && refId !== fromId) {
-                await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
-                  .bind(refId, fromId).run();
+              let idStr = payload.trim();
+              if (idStr.toLowerCase().startsWith('ref_')) {
+                idStr = idStr.substring(4);
+              }
+              if (/^\d+$/.test(idStr)) {
+                const parsed = parseInt(idStr, 10);
+                if (parsed > 0 && parsed !== fromId) {
+                  refId = parsed;
+                }
+              }
+              if (refId) {
+                try {
+                  const existing = await env.DB.prepare(`SELECT referral_by FROM users WHERE telegram_id = ?`).bind(fromId).first();
+                  const logged = await env.DB.prepare(`SELECT 1 FROM referrals_log WHERE to_id = ? LIMIT 1`).bind(fromId).first();
+                  if (!existing?.referral_by && !logged) {
+                    const refExists = await env.DB.prepare(`SELECT telegram_id FROM users WHERE telegram_id = ?`).bind(refId).first();
+                    if (refExists) {
+                      await env.DB.batch([
+                        env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0)`).bind(refId, fromId),
+                        env.DB.prepare(`UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`).bind(refId),
+                        env.DB.prepare(`INSERT INTO mining_log(telegram_id, amount, created_at) VALUES (?, 2, unixepoch())`).bind(refId),
+                        env.DB.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, 2, unixepoch())`).bind(refId, fromId),
+                        env.DB.prepare(`UPDATE users SET referred_bonus_paid = 1 WHERE telegram_id = ?`).bind(fromId)
+                      ]);
+                    }
+                  }
+                } catch (e) {
+                  console.error('Webhook referral failed:', e.message);
+                }
               }
             }
 
