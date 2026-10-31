@@ -1,214 +1,223 @@
 // src/db.js - FWC 4.0.0 PRODUCTION
 // Database schema + all CRUD operations
 
+let _dbReady = false;
+let _dbReadyPromise = null;
+
 export async function initDB(db) {
-  // ========== USERS ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS users (
-    telegram_id INTEGER PRIMARY KEY,
-    username TEXT,
-    first_name TEXT,
-    language TEXT DEFAULT 'en',
-    wallet TEXT,
-    balance REAL DEFAULT 0,
-    referral_by INTEGER,
-    first_mine_at INTEGER,
-    last_mine INTEGER,
-    is_banned INTEGER DEFAULT 0,
-    ban_reason TEXT,
-    created_at INTEGER,
-    wallet_verified INTEGER DEFAULT 0,
-    wallet_saved_at TEXT,
-    referred_bonus_paid INTEGER DEFAULT 0
-  );`).run();
-
-  try { await db.prepare(`ALTER TABLE users ADD COLUMN referred_bonus_paid INTEGER DEFAULT 0`).run(); } catch (e) {}
-  try { await db.prepare(`ALTER TABLE users ADD COLUMN last_bonus_at INTEGER`).run(); } catch (e) {}
-  try { await db.prepare(`ALTER TABLE users ADD COLUMN last_mine INTEGER`).run(); } catch (e) {}
-
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC);`).run();
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet);`).run();
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_referral ON users(referral_by);`).run();
-
-  // ========== ADMINS ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS admins (
-    telegram_id INTEGER PRIMARY KEY,
-    username TEXT,
-    first_name TEXT,
-    role TEXT DEFAULT 'admin' CHECK(role IN ('admin','superadmin')),
-    added_by INTEGER,
-    created_at INTEGER NOT NULL
-  );`).run();
-
-  await db.prepare(`INSERT OR IGNORE INTO admins(telegram_id, username, first_name, role, created_at)
-    VALUES (921627899, 'root', 'superadmin', 'superadmin', unixepoch())`).run();
-
-  // ========== MINING LOG ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS mining_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    telegram_id INTEGER,
-    amount REAL,
-    created_at INTEGER
-  );`).run();
-
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_mining_user ON mining_log(telegram_id);`).run();
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_mining_created ON mining_log(created_at DESC);`).run();
-
-  // ========== WITHDRAWALS ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS withdrawals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    telegram_id INTEGER,
-    amount REAL,
-    fee REAL DEFAULT 0,
-    net_amount REAL,
-    wallet TEXT,
-    status TEXT DEFAULT 'pending' CHECK(status IN ('pending','processing','approved','rejected','completed')),
-    tx_hash TEXT,
-    reject_reason TEXT,
-    created_at INTEGER,
-    updated_at INTEGER
-  );`).run();
-
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_wd_status ON withdrawals(status);`).run();
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_wd_user ON withdrawals(telegram_id);`).run();
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_wd_created ON withdrawals(created_at DESC);`).run();
-
-  // ========== DAILY TASKS ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS daily_tasks (
-    id TEXT PRIMARY KEY,
-    title TEXT,
-    title_ar TEXT,
-    type TEXT,
-    reward REAL,
-    channel TEXT,
-    url TEXT,
-    max_per_day INTEGER DEFAULT 1,
-    once INTEGER DEFAULT 0,
-    active INTEGER DEFAULT 1
-  );`).run();
-
-  try { await db.prepare(`ALTER TABLE daily_tasks ADD COLUMN channel TEXT`).run(); } catch (e) {}
-
-  // ========== USER DAILY TASKS ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS user_daily_tasks (
-    telegram_id INTEGER,
-    task_id TEXT,
-    date TEXT,
-    created_at INTEGER,
-    PRIMARY KEY (telegram_id, task_id, date)
-  );`).run();
-
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_udt_user_date ON user_daily_tasks(telegram_id, date);`).run();
-
-  // ========== DAILY CHECKINS ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS daily_checkins (
-    telegram_id INTEGER,
-    date TEXT,
-    streak INTEGER,
-    created_at INTEGER,
-    PRIMARY KEY (telegram_id, date)
-  );`).run();
-
-  // ========== CONFIG OVERRIDES ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS config_overrides (
-    key TEXT PRIMARY KEY,
-    value TEXT
-  );`).run();
-
-  // ========== REFERRALS LOG ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS referrals_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    from_id INTEGER,
-    to_id INTEGER,
-    amount REAL,
-    created_at INTEGER
-  );`).run();
-
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_ref_from ON referrals_log(from_id);`).run();
-
-  // ========== PAYOUT BATCHES ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS payout_batches (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tx_hash TEXT,
-    count INTEGER,
-    total_amount REAL,
-    status TEXT DEFAULT 'processing',
-    created_at INTEGER
-  );`).run();
-
-  // ========== FEES LOG ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS fees_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    telegram_id INTEGER,
-    withdrawal_id INTEGER,
-    amount REAL,
-    created_at INTEGER
-  );`).run();
-
-  // ========== ANTI-CHEAT ALERTS ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS anticheat_alerts (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    type TEXT CHECK(type IN ('wallet_duplicate','ip_duplicate','suspicious_pattern')),
-    telegram_ids TEXT,
-    details TEXT,
-    status TEXT DEFAULT 'open' CHECK(status IN ('open','reviewing','resolved','dismissed')),
-    resolved_by INTEGER,
-    resolved_at INTEGER,
-    created_at INTEGER
-  );`).run();
-
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_alerts_status ON anticheat_alerts(status);`).run();
-
-  // ========== USER IP TRACKING ==========
-  await db.prepare(`CREATE TABLE IF NOT EXISTS user_ips (
-    telegram_id INTEGER,
-    ip TEXT,
-    last_seen INTEGER,
-    PRIMARY KEY (telegram_id, ip)
-  );`).run();
-
-  await db.prepare(`CREATE INDEX IF NOT EXISTS idx_ips_ip ON user_ips(ip);`).run();
-
-  // ========== SEED DEFAULT TASKS ==========
-  const count = await db.prepare(`SELECT COUNT(*) as c FROM daily_tasks`).first();
-  if (count.c === 0) {
-    const defaults = [
-      ['checkin', 'Daily Check-in', 'تسجيل دخول يومي', 'checkin', 0, null, null, 1, 0, 1],
-      ['ads', 'Watch Ads', 'مشاهدة إعلانات', 'ads', 0.5, null, null, 7, 0, 1],
-      ['join_main', 'Join Main Channel', 'انضم للقناة الرئيسية', 'join', 5, '@fwc_coin', 'https://t.me/fwc_coin', 1, 1, 1],
-      ['join_group', 'Join Group', 'انضم للجروب', 'join', 5, '@fwc_coin1', 'https://t.me/fwc_coin1', 1, 1, 1],
-      ['youtube', 'Subscribe YouTube', 'اشترك يوتيوب', 'youtube', 5, null, 'https://youtube.com/@fwc_coin', 1, 1, 1],
-      ['x_twitter', 'Follow on X', 'تابع على X', 'x', 5, null, 'https://x.com/fwc_coin', 1, 1, 1],
-      ['invite_friend', 'Invite Friend', 'دعوة صديق', 'invite', 2, null, null, 100, 0, 1],
-    ];
-    for (const t of defaults) {
-      await db.prepare(`INSERT OR IGNORE INTO daily_tasks(id,title,title_ar,type,reward,channel,url,max_per_day,once,active) VALUES (?,?,?,?,?,?,?,?,?,?)`).bind(...t).run();
+  if (_dbReady) return;
+  if (_dbReadyPromise) { await _dbReadyPromise; return; }
+  _dbReadyPromise = (async () => {
+    // ========== USERS ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS users (
+      telegram_id INTEGER PRIMARY KEY,
+      username TEXT,
+      first_name TEXT,
+      language TEXT DEFAULT 'en',
+      wallet TEXT,
+      balance REAL DEFAULT 0,
+      referral_by INTEGER,
+      first_mine_at INTEGER,
+      last_mine INTEGER,
+      is_banned INTEGER DEFAULT 0,
+      ban_reason TEXT,
+      created_at INTEGER,
+      wallet_verified INTEGER DEFAULT 0,
+      wallet_saved_at TEXT,
+      referred_bonus_paid INTEGER DEFAULT 0
+    );`).run();
+  
+    try { await db.prepare(`ALTER TABLE users ADD COLUMN referred_bonus_paid INTEGER DEFAULT 0`).run(); } catch (e) {}
+    try { await db.prepare(`ALTER TABLE users ADD COLUMN last_bonus_at INTEGER`).run(); } catch (e) {}
+    try { await db.prepare(`ALTER TABLE users ADD COLUMN last_mine INTEGER`).run(); } catch (e) {}
+  
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_balance ON users(balance DESC);`).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_wallet ON users(wallet);`).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_users_referral ON users(referral_by);`).run();
+  
+    // ========== ADMINS ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS admins (
+      telegram_id INTEGER PRIMARY KEY,
+      username TEXT,
+      first_name TEXT,
+      role TEXT DEFAULT 'admin' CHECK(role IN ('admin','superadmin')),
+      added_by INTEGER,
+      created_at INTEGER NOT NULL
+    );`).run();
+  
+    await db.prepare(`INSERT OR IGNORE INTO admins(telegram_id, username, first_name, role, created_at)
+      VALUES (921627899, 'root', 'superadmin', 'superadmin', unixepoch())`).run();
+  
+    // ========== MINING LOG ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS mining_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      telegram_id INTEGER,
+      amount REAL,
+      created_at INTEGER
+    );`).run();
+  
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_mining_user ON mining_log(telegram_id);`).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_mining_created ON mining_log(created_at DESC);`).run();
+  
+    // ========== WITHDRAWALS ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS withdrawals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      telegram_id INTEGER,
+      amount REAL,
+      fee REAL DEFAULT 0,
+      net_amount REAL,
+      wallet TEXT,
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','processing','approved','rejected','completed')),
+      tx_hash TEXT,
+      reject_reason TEXT,
+      created_at INTEGER,
+      updated_at INTEGER
+    );`).run();
+  
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_wd_status ON withdrawals(status);`).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_wd_user ON withdrawals(telegram_id);`).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_wd_created ON withdrawals(created_at DESC);`).run();
+  
+    // ========== DAILY TASKS ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS daily_tasks (
+      id TEXT PRIMARY KEY,
+      title TEXT,
+      title_ar TEXT,
+      type TEXT,
+      reward REAL,
+      channel TEXT,
+      url TEXT,
+      max_per_day INTEGER DEFAULT 1,
+      once INTEGER DEFAULT 0,
+      active INTEGER DEFAULT 1
+    );`).run();
+  
+    try { await db.prepare(`ALTER TABLE daily_tasks ADD COLUMN channel TEXT`).run(); } catch (e) {}
+  
+    // ========== USER DAILY TASKS ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS user_daily_tasks (
+      telegram_id INTEGER,
+      task_id TEXT,
+      date TEXT,
+      created_at INTEGER,
+      PRIMARY KEY (telegram_id, task_id, date)
+    );`).run();
+  
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_udt_user_date ON user_daily_tasks(telegram_id, date);`).run();
+  
+    // ========== DAILY CHECKINS ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS daily_checkins (
+      telegram_id INTEGER,
+      date TEXT,
+      streak INTEGER,
+      created_at INTEGER,
+      PRIMARY KEY (telegram_id, date)
+    );`).run();
+  
+    // ========== CONFIG OVERRIDES ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS config_overrides (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );`).run();
+  
+    // ========== REFERRALS LOG ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS referrals_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_id INTEGER,
+      to_id INTEGER,
+      amount REAL,
+      created_at INTEGER
+    );`).run();
+  
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_ref_from ON referrals_log(from_id);`).run();
+  
+    // ========== PAYOUT BATCHES ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS payout_batches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tx_hash TEXT,
+      count INTEGER,
+      total_amount REAL,
+      status TEXT DEFAULT 'processing',
+      created_at INTEGER
+    );`).run();
+  
+    // ========== FEES LOG ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS fees_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      telegram_id INTEGER,
+      withdrawal_id INTEGER,
+      amount REAL,
+      created_at INTEGER
+    );`).run();
+  
+    // ========== ANTI-CHEAT ALERTS ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS anticheat_alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      type TEXT CHECK(type IN ('wallet_duplicate','ip_duplicate','suspicious_pattern')),
+      telegram_ids TEXT,
+      details TEXT,
+      status TEXT DEFAULT 'open' CHECK(status IN ('open','reviewing','resolved','dismissed')),
+      resolved_by INTEGER,
+      resolved_at INTEGER,
+      created_at INTEGER
+    );`).run();
+  
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_alerts_status ON anticheat_alerts(status);`).run();
+  
+    // ========== USER IP TRACKING ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS user_ips (
+      telegram_id INTEGER,
+      ip TEXT,
+      last_seen INTEGER,
+      PRIMARY KEY (telegram_id, ip)
+    );`).run();
+  
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_ips_ip ON user_ips(ip);`).run();
+  
+    // ========== SEED DEFAULT TASKS ==========
+    const count = await db.prepare(`SELECT COUNT(*) as c FROM daily_tasks`).first();
+    if (count.c === 0) {
+      const defaults = [
+        ['checkin', 'Daily Check-in', 'تسجيل دخول يومي', 'checkin', 0, null, null, 1, 0, 1],
+        ['ads', 'Watch Ads', 'مشاهدة إعلانات', 'ads', 0.5, null, null, 7, 0, 1],
+        ['join_main', 'Join Main Channel', 'انضم للقناة الرئيسية', 'join', 5, '@fwc_coin', 'https://t.me/fwc_coin', 1, 1, 1],
+        ['join_group', 'Join Group', 'انضم للجروب', 'join', 5, '@fwc_coin1', 'https://t.me/fwc_coin1', 1, 1, 1],
+        ['youtube', 'Subscribe YouTube', 'اشترك يوتيوب', 'youtube', 5, null, 'https://youtube.com/@fwc_coin', 1, 1, 1],
+        ['x_twitter', 'Follow on X', 'تابع على X', 'x', 5, null, 'https://x.com/fwc_coin', 1, 1, 1],
+        ['invite_friend', 'Invite Friend', 'دعوة صديق', 'invite', 2, null, null, 100, 0, 1],
+      ];
+      for (const t of defaults) {
+        await db.prepare(`INSERT OR IGNORE INTO daily_tasks(id,title,title_ar,type,reward,channel,url,max_per_day,once,active) VALUES (?,?,?,?,?,?,?,?,?,?)`).bind(...t).run();
+      }
     }
-  }
-
-  // ========== SEED ECONOMY DEFAULTS ==========
-  const ecoCount = await db.prepare(`SELECT COUNT(*) as c FROM config_overrides`).first();
-  if (ecoCount.c === 0) {
-    const defaults = [
-      ['mining_amount', '6'],
-      ['mining_interval_ms', '14400000'],
-      ['withdraw_min', '1000'],
-      ['withdraw_delay_hours', '24'],
-      ['withdraw_fee_percent', '5'],
-      ['withdraw_hold_amount', '1000'],
-      ['referral_percent', '5'],
-      ['ad_enabled', '1'],
-      ['ad_auto_enabled', '1'],
-      ['ad_auto_block_id', ''],
-      ['ad_auto_on_mine', '1'],
-      ['ad_auto_on_tasks', '0'],
-      ['ad_free_block_id', ''],
-      ['ad_free_mult', '2'],
-      ['ad_free_duration_sec', '7200'],
-    ];
-    for (const [k, v] of defaults) {
-      await db.prepare(`INSERT OR IGNORE INTO config_overrides(key, value) VALUES (?, ?)`).bind(k, v).run();
+  
+    // ========== SEED ECONOMY DEFAULTS ==========
+    const ecoCount = await db.prepare(`SELECT COUNT(*) as c FROM config_overrides`).first();
+    if (ecoCount.c === 0) {
+      const defaults = [
+        ['mining_amount', '6'],
+        ['mining_interval_ms', '14400000'],
+        ['withdraw_min', '1000'],
+        ['withdraw_delay_hours', '24'],
+        ['withdraw_fee_percent', '5'],
+        ['withdraw_hold_amount', '1000'],
+        ['referral_percent', '5'],
+        ['ad_enabled', '1'],
+        ['ad_auto_enabled', '1'],
+        ['ad_auto_block_id', ''],
+        ['ad_auto_on_mine', '1'],
+        ['ad_auto_on_tasks', '0'],
+        ['ad_free_block_id', ''],
+        ['ad_free_mult', '2'],
+        ['ad_free_duration_sec', '7200'],
+      ];
+      for (const [k, v] of defaults) {
+        await db.prepare(`INSERT OR IGNORE INTO config_overrides(key, value) VALUES (?, ?)`).bind(k, v).run();
+      }
     }
-  }
+  })();
+  await _dbReadyPromise;
+  _dbReady = true;
 }
 
 // ========== ADMIN SYSTEM ==========
