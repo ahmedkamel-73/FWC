@@ -351,7 +351,7 @@ export default {
         return json({
           ok: true,
           referral_count: count?.c || 0,
-          referral_link: `https://t.me/${botUsername}?startapp=ref_${tgUser.id}`,
+          referral_link: `https://t.me/${botUsername}?start=ref_${tgUser.id}`,
         });
       }
 
