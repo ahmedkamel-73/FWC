@@ -23,7 +23,7 @@ async function getJettonWalletAddress(env, ownerAddress) {
 export async function executeBatchOnChain(env, batchTx) {
   try {
     if (!env.TON_MNEMONIC_TREASURY) {
-      return { ok: false, error: 'TON_MNEMONIC_TREASURY missing', mock: true };
+      return { ok: false, error: 'TON_MNEMONIC_TREASURY missing - withdrawals NOT sent' };
     }
     if (!batchTx || !batchTx.messages || batchTx.messages.length === 0) {
       return { ok: false, error: 'Empty batch' };
@@ -84,21 +84,9 @@ export async function executeBatchOnChain(env, batchTx) {
       actionsDict.set(i, actionCell);
     }
 
-    await walletContract.sendExternalMessage(wallet, keyPair.secretKey, {
-      message: null,
-      mode: 0,
-      query_id: queryId,
-      createdAt: createdAt,
-      subwalletId: 0x10ad,
-      timeout: 86400,
-    });
-
-    // Actually use sendTransfer with our custom logic
-    // Fallback to simple loop using sendExternalMessage for batch
-    // For Workers compatibility, we send as one external with all actions
+    // Build final payload (single external, no empty message)
     const payloadDict = actionsDict;
 
-    // Rebuild final external
     const payload = beginCell()
       .storeUint(0x10ad, 32)
       .storeUint(createdAt, 32)
