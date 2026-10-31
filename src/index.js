@@ -114,6 +114,32 @@ function getClientIP(request) {
     || null;
 }
 
+// ========== RATE LIMIT (D1, no KV, non-blocking) ==========
+async function checkRateLimit(db, key, limit = 8, windowMs = 60000) {
+  if (!key) return false;
+  try {
+    await db.prepare(`CREATE TABLE IF NOT EXISTS rate_limits (
+      key TEXT PRIMARY KEY,
+      count INTEGER,
+      window_start INTEGER
+    )`).run();
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    const row = await db.prepare(`SELECT count, window_start FROM rate_limits WHERE key = ?`).bind(key).first();
+    if (!row || row.window_start < windowStart) {
+      await db.prepare(`INSERT OR REPLACE INTO rate_limits(key, count, window_start) VALUES (?, 1, ?)`).bind(key, now).run();
+      return false;
+    }
+    if (row.count >= limit) return true;
+    await db.prepare(`UPDATE rate_limits SET count = count + 1 WHERE key = ?`).bind(key).run();
+    return false;
+  } catch (e) {
+    // If rate limit fails, don't block user
+    console.warn('Rate limit error:', e.message);
+    return false;
+  }
+}
+
 // ========== TELEGRAM BOT API ==========
 async function sendTelegramMessage(botToken, chatId, text, replyMarkup = null) {
   const body = { chat_id: chatId, text, parse_mode: 'Markdown' };
@@ -388,6 +414,10 @@ export default {
       }
 
       if (path === '/api/mine' && request.method === 'POST' && tgUser) {
+        const rlKey = `mine:${tgUser.id}`;
+        if (await checkRateLimit(env.DB, rlKey, 6, 60000)) {
+          return json({ ok: false, error: 'rate_limited', retry_after: 60 }, 429);
+        }
         const check = await canMine(env.DB, tgUser.id);
         if (!check.ok) return json({ ok: false, error: check.reason, detail: check }, 400);
         const res = await doMine(env.DB, tgUser.id);
@@ -395,6 +425,11 @@ export default {
       }
 
       if (path === '/api/bonus' && request.method === 'POST' && tgUser) {
+        const rlKey = `bonus:${tgUser.id}`;
+        if (await checkRateLimit(env.DB, rlKey, 6, 60000)) {
+          return json({ ok: false, error: 'rate_limited', retry_after: 60 }, 429);
+        }
+
         // === FIXED: Either-Or 4h - Bonus cancels normal claim ===
         const check = await canMine(env.DB, tgUser.id);
         if (!check.ok) return json({ ok: false, error: check.reason, remaining: check.remaining, detail: check }, 400);
