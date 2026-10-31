@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS withdrawals (
   fee REAL DEFAULT 0,
   net_amount REAL,
   wallet TEXT,
-  status TEXT DEFAULT 'pending' CHECK(status IN ('pending','processing','approved','rejected','completed')),
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending','processing','approved','completed','rejected')),
   tx_hash TEXT,
   reject_reason TEXT,
   created_at INTEGER,
@@ -79,12 +79,13 @@ CREATE TABLE IF NOT EXISTS daily_tasks (
 
 -- ==================== USER DAILY TASKS ====================
 CREATE TABLE IF NOT EXISTS user_daily_tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   telegram_id INTEGER,
   task_id TEXT,
   date TEXT,
-  created_at INTEGER,
-  PRIMARY KEY (telegram_id, task_id, date)
+  created_at INTEGER
 );
+CREATE INDEX IF NOT EXISTS idx_udt_telegram_task_date ON user_daily_tasks(telegram_id, task_id, date);
 CREATE INDEX IF NOT EXISTS idx_udt_user_date ON user_daily_tasks(telegram_id, date);
 
 -- ==================== DAILY CHECKINS ====================
@@ -118,7 +119,7 @@ CREATE TABLE IF NOT EXISTS payout_batches (
   tx_hash TEXT,
   count INTEGER,
   total_amount REAL,
-  status TEXT DEFAULT 'processing',
+  status TEXT DEFAULT 'processing' CHECK(status IN ('processing','approved','completed','failed')),
   created_at INTEGER
 );
 
