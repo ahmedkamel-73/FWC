@@ -345,22 +345,13 @@ export default {
         });
       }
 
-            if (path === '/api/referral' && tgUser) {
+      if (path === '/api/referral' && tgUser) {
         const count = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE referral_by = ?`).bind(tgUser.id).first();
-        const list = await env.DB.prepare(
-          `SELECT telegram_id, username, first_name, balance, created_at FROM users WHERE referral_by = ? ORDER BY created_at DESC LIMIT 100`
-        ).bind(tgUser.id).all();
-        const totalBonus = await env.DB.prepare(
-          `SELECT COUNT(*) as c, COALESCE(SUM(amount),0) as total FROM referrals_log WHERE from_id = ?`
-        ).bind(tgUser.id).first();
         const botUsername = (await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'bot_username'`).first())?.value || 'fwcoinbot';
         return json({
           ok: true,
           referral_count: count?.c || 0,
           referral_link: `https://t.me/${botUsername}?start=ref_${tgUser.id}`,
-          referrals: list.results || [],
-          total_bonus: totalBonus?.total || 0,
-          total_bonus_count: totalBonus?.c || 0,
         });
       }
 
