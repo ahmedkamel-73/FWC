@@ -261,7 +261,6 @@ export default {
             
             if (rawRef.toLowerCase().startsWith('ref_')) {
               const idStr = rawRef.substring(4);
-            if (/^\d+$/.test(idStr)) {
               const parsed = parseInt(idStr);
               if (!isNaN(parsed) && parsed > 0) refId = parsed;
             } else {
@@ -802,8 +801,8 @@ export default {
             const payload = parts[1];
             if (payload) {
               let refId = null;
-              let idStr = payload.trim(); if (idStr.toLowerCase().startsWith('ref_')) idStr = idStr.substring(4); if (/^\d+$/.test(idStr)) { refId = parseInt(idStr,10); } else { refId = null; } // FIXED strict
-              // FIXED: removed loose parseInt
+              if (payload.startsWith('ref_')) refId = parseInt(payload.replace('ref_', ''));
+              else if (!isNaN(parseInt(payload))) refId = parseInt(payload);
               if (refId && refId !== fromId) {
                 await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND referral_by IS NULL`)
                   .bind(refId, fromId).run();
