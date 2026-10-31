@@ -205,8 +205,8 @@ export default {
         if (refParam && !user.referral_by) {
           let refId = parseInt(refParam.toString().replace('ref_', ''));
           if (refId && refId !== tgUser.id) {
-            await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0 OR referral_by = '')`)
-              .bind(refId, tgUser.id).run();
+            await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ? AND (referral_by IS NULL OR referral_by = 0 OR referral_by = '')`).bind(refId, tgUser.id).run();
+            try { await env.DB.prepare(`UPDATE users SET referred_bonus_paid = 1 WHERE telegram_id = ?`).bind(tgUser.id).run(); } catch {}
             const refUser = await getUser(env.DB, refId);
             if (refUser) {
               const already = await env.DB.prepare(`SELECT 1 FROM referrals_log WHERE from_id = ? AND to_id = ? LIMIT 1`).bind(refId, tgUser.id).first();
@@ -712,7 +712,7 @@ export default {
               if (refId && refId !== fromId) {
                 const existing = await env.DB.prepare(`SELECT referral_by FROM users WHERE telegram_id = ?`).bind(fromId).first();
                 if (!existing?.referral_by) {
-                  await env.DB.prepare(`UPDATE users SET referral_by = ?, referred_bonus_paid = 1 WHERE telegram_id = ?`)
+                  await env.DB.prepare(`UPDATE users SET referral_by = ? WHERE telegram_id = ?`)
                     .bind(refId, fromId).run();
                   const refUser = await env.DB.prepare(`SELECT telegram_id FROM users WHERE telegram_id = ?`).bind(refId).first();
                   if (refUser) {
