@@ -398,6 +398,7 @@ export default {
           referral_link: `https://t.me/${botUsername}?startapp=ref_${refCode}`,
           referral_code: refCode,
         });
+      }
       if (path === '/api/language' && request.method === 'POST' && tgUser) {
         const body = await request.json();
         const lang = ['en', 'ar', 'ru', 'tr'].includes(body.lang) ? body.lang : 'en';
