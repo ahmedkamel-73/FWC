@@ -494,29 +494,26 @@ function initSlider(){
     container.classList.add('success');
     if(text) text.textContent = '✓ CLAIMING...';
     thumb.textContent = '✓';
-    // Slider itself is the claim - ad then direct mine
     setTimeout(async () => {
       try{
-        if(typeof watchAdForBonus === 'function'){
-          await watchAdForBonus();
+        let watched = false;
+        if(typeof showAd === 'function' && STATE && STATE.adBlockId){
+          watched = await showAd(STATE.adBlockId);
+        } else if(typeof window.show_12138342 === 'function'){
+          try{ await window.show_12138342(); watched = true; }catch(e){}
+        } else {
+          watched = true;
         }
+        if(!watched) throw new Error('Ad not watched');
       }catch(e){console.log('Ad error', e)}
-      // Directly call mine API - no button needed
       try{
-        if(typeof api === 'function'){
-          const res = await api('/api/mine', {method:'POST'});
-          if(res && res.ok){
-            if(text) text.textContent = '✓ CLAIMED!';
-            setTimeout(()=>location.reload(), 1000);
-            return;
-          }
-        }
-        // Fallback to original claim function if api fails
-        if(typeof doClaim === 'function'){
-          doClaim();
+        const res = await api('/api/mine', {method:'POST'});
+        if(res && res.ok){
+          if(text) text.textContent = '✓ CLAIMED '+ (res.amount||'') +' FWC!';
+          setTimeout(()=>location.reload(), 1200);
+          return;
         }
       }catch(e){console.log('Mine error', e)}
-      // Reset slider after 2s
       setTimeout(()=>{
         currentX = 0;
         thumb.style.transition = 'transform 0.3s';
@@ -526,7 +523,6 @@ function initSlider(){
         container.classList.remove('success');
         thumb.textContent = '→';
         if(text) text.textContent = 'CHARGING...';
-        cellProgress = 0;
       }, 2000);
     }, 300);
   }
