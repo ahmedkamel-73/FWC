@@ -375,24 +375,38 @@ window.switchTab=switchTab;window.doCheckin=doCheckin;window.requestWithdraw=req
 <script>
 let cellProgress = 0;
 let sliderDragging = false;
+let miningStartTime = Date.now();
+let initialRemaining = null;
+let animationInterval = null;
 let startX = 0;
 let currentX = 0;
 
 function updateCellsFromMining(){
   let progress = 0;
   let isReady = false;
+  const total = 4*3600; // 14400s
   
-  // Correct logic based on backend STATE.canMine
   if(STATE && STATE.canMine){
     if(STATE.canMine.ok){
       progress = 100;
       isReady = true;
     } else if(STATE.canMine.reason === 'cooldown' && STATE.canMine.remaining){
-      const total = 4*3600; // 4 hours = 14400s
-      const remaining = STATE.canMine.remaining;
-      const elapsed = Math.max(0, total - remaining);
+      // Initialize remaining on first call
+      if(initialRemaining === null){
+        initialRemaining = STATE.canMine.remaining;
+        miningStartTime = Date.now();
+      }
+      // Calculate live remaining based on elapsed time since page load (animation)
+      const elapsedSinceLoad = (Date.now() - miningStartTime) / 1000;
+      const currentRemaining = Math.max(0, initialRemaining - elapsedSinceLoad);
+      const elapsed = Math.max(0, total - currentRemaining);
       progress = Math.min(100, Math.max(0, (elapsed/total)*100));
       isReady = false;
+      // If remaining reaches 0, mark ready
+      if(currentRemaining <= 1){
+        progress = 100;
+        isReady = true;
+      }
     } else {
       progress = 0;
       isReady = false;
@@ -404,10 +418,12 @@ function updateCellsFromMining(){
   
   cellProgress = progress;
   
+  // Animate fills smoothly
   for(let i=0;i<3;i++){
     const el = document.getElementById('fill'+i);
     const pow = document.getElementById('power'+i);
     if(el){
+      el.style.transition = 'height 1s linear';
       el.style.height = progress+'%';
       if(pow) pow.textContent = Math.floor(progress)+'%';
     }
@@ -538,7 +554,7 @@ function initSlider(){
 // Init after load
 setTimeout(()=>{
   initSlider();
-  setInterval(updateCellsFromMining, 1000);
+  if(animationInterval) clearInterval(animationInterval); animationInterval = setInterval(updateCellsFromMining, 1000);
   updateCellsFromMining();
 }, 1000);
 </script>
