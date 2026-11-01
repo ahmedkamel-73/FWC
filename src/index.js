@@ -336,7 +336,7 @@ export default {
                     const refUser = await getUser(env.DB, refId);
                     if (refUser) {
                       await env.DB.prepare(
-                        `UPDATE users SET balance = balance + 2 WHERE telegram_id = ?`
+                        `UPDATE users SET balance = ROUND(balance + 2, 8) WHERE telegram_id = ?`
                       ).bind(refId).run();
                       
                       await env.DB.prepare(
@@ -759,7 +759,7 @@ export default {
           } else {
             const body = await request.json().catch(() => ({}));
             await rejectWithdrawal(env.DB, wdId, body.reason || null);
-            await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`).bind(wd.amount, wd.telegram_id).run();
+            await env.DB.prepare(`UPDATE users SET balance = ROUND(balance + ?, 8) WHERE telegram_id = ?`).bind(wd.amount, wd.telegram_id).run();
           }
           return json({ ok: true });
         }
@@ -810,6 +810,17 @@ export default {
 
           const txHash = result.txHash || ('batch_' + Date.now());
           await markBatchAsSent(env.DB, batchTx, txHash);
+
+          // Log fees for each withdrawal in batch
+          try {
+            for (const wd of pending) {
+              if (wd.fee && wd.fee > 0) {
+                await logFee(env.DB, wd.telegram_id, wd.id, wd.fee);
+              }
+            }
+          } catch (e) {
+            console.warn('Fee log error:', e.message);
+          }
 
           return json({ ok: true, result, batch: batchTx, marked: pending.length, txHash });
         }
