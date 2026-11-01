@@ -398,11 +398,34 @@ export default {
           refCode = generateReferralCode();
           try { await env.DB.prepare(`UPDATE users SET referral_code = ? WHERE telegram_id = ?`).bind(refCode, tgUser.id).run(); } catch {}
         }
+        // Get referral list with details
+        let referrals = [];
+        try {
+          const list = await env.DB.prepare(`SELECT telegram_id, username, first_name, balance, created_at, first_mine_at FROM users WHERE referral_by = ? ORDER BY created_at DESC LIMIT 100`).bind(tgUser.id).all();
+          referrals = (list.results || []).map(u => ({
+            id: u.telegram_id,
+            username: u.username || null,
+            name: u.first_name || 'User',
+            balance: u.balance || 0,
+            joined: u.created_at,
+            active: !!u.first_mine_at
+          }));
+        } catch (e) {
+          console.warn('Referral list error:', e.message);
+        }
+        // Calculate total referral earnings
+        let totalEarnings = 0;
+        try {
+          const earn = await env.DB.prepare(`SELECT COALESCE(SUM(amount),0) as total FROM referrals_log WHERE from_id = ?`).bind(tgUser.id).first();
+          totalEarnings = earn?.total || 0;
+        } catch {}
         return json({
           ok: true,
           referral_count: count?.c || 0,
           referral_link: `https://t.me/${botUsername}?startapp=ref_${refCode}`,
           referral_code: refCode,
+          referrals,
+          total_earnings: totalEarnings
         });
       }
 
