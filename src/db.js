@@ -366,7 +366,7 @@ export async function rejectWithdrawal(db, id, reason = null) {
   const wd = await db.prepare(`SELECT * FROM withdrawals WHERE id = ?`).bind(id).first();
   if (!wd) return null;
   if (wd.status !== 'pending') return null;
-  await db.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`).bind(wd.amount, wd.telegram_id).run();
+  await db.prepare(`UPDATE users SET balance = ROUND(balance + ?, 8) WHERE telegram_id = ?`).bind(wd.amount, wd.telegram_id).run();
   return await db.prepare(`UPDATE withdrawals SET status = 'rejected', reject_reason = ?, updated_at = unixepoch() WHERE id = ? AND status = 'pending'`)
     .bind(reason, id).run();
 }
