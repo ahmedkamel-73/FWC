@@ -349,7 +349,7 @@ async function loadUser(){
       if(clean&&!isNaN(parseInt(clean))) refQuery=`?ref=${clean}`;
     }
   }catch(e){}
-  const res=await api('/api/me'+refQuery);if(!res.ok){if(res.error==='forbidden')return toast('Open from Telegram','error');return toast('Error loading','error');}STATE.telegram_id=res.telegram_id;STATE.language=res.language||'en';STATE.balance=res.balance;STATE.wallet=res.wallet;STATE.is_banned=res.is_banned;STATE.miningAmount=res.miningAmount;STATE.canMine=res.canMine;STATE.canWithdraw=res.canWithdraw;STATE.streak=res.streak||0;STATE.adBlockId=res.adBlockId||null;STATE.adAutoBlockId=res.adAutoBlockId||null;applyTranslations();renderMine();renderWallet();renderAccount();}
+  const res=await api('/api/me'+refQuery);if(!res.ok){if(res.error==='forbidden')return toast('Open from Telegram','error');return toast('Error loading','error');}STATE.telegram_id=res.telegram_id;STATE.language=res.language||'en';STATE.balance=res.balance;STATE.wallet=res.wallet;STATE.is_banned=res.is_banned;STATE.miningAmount=res.miningAmount;STATE.canMine=res.canMine;STATE.canWithdraw=res.canWithdraw;STATE.streak=res.streak||0;STATE.adBlockId=res.adBlockId||null;STATE.adAutoBlockId=res.adAutoBlockId||null;applyTranslations();renderMine();renderWallet();renderAccount();if(typeof updateCellsFromMining==="function") updateCellsFromMining();}
 function renderMine(){document.getElementById('balanceNum').textContent=STATE.balance.toFixed(4);document.getElementById('speedVal').textContent=STATE.miningAmount.toFixed(2);document.getElementById('streakNum').textContent=STATE.streak;const statusEl=document.getElementById('miningStatus');const btn=document.getElementById('claimBtn');const btnText=document.getElementById('claimText');const bonusBtn=document.getElementById('bonusBtn');if(STATE.is_banned){statusEl.textContent='⛔ '+t('banned');btn.disabled=true;bonusBtn.disabled=true;btnText.textContent=t('banned');return;}if(!STATE.wallet){statusEl.textContent='⚠️ '+t('addWallet');btn.disabled=true;bonusBtn.disabled=true;btnText.textContent=t('addWallet');btn.onclick=()=>switchTab('wallet');return;}if(STATE.canMine.ok){statusEl.textContent='✅ '+t('ready');btn.disabled=false;bonusBtn.disabled=false;btnText.textContent=`⚡ ${t('claim')} ${STATE.miningAmount.toFixed(2)} FWC`;btn.onclick=doMine;}else if(STATE.canMine.reason==='cooldown'){btn.disabled=true;bonusBtn.disabled=true;btn.onclick=null;startCooldown(STATE.canMine.remaining);}else{statusEl.textContent='⏳ '+(STATE.canMine.reason||t('wait'));btn.disabled=true;bonusBtn.disabled=true;btnText.textContent=t('wait');}}
 function startCooldown(remainingMs){const statusEl=document.getElementById('miningStatus');const btn=document.getElementById('claimBtn');const btnText=document.getElementById('claimText');const bonusBtn=document.getElementById('bonusBtn');btn.disabled=true;bonusBtn.disabled=true;clearInterval(STATE.cooldownTimer);let ms=remainingMs;const tick=()=>{if(ms<=0){clearInterval(STATE.cooldownTimer);loadUser();return;}const h=Math.floor(ms/3600000);const m=Math.floor((ms%3600000)/60000);const s=Math.floor((ms%60000)/1000);statusEl.textContent=`⏳ ${h}h ${m}m ${s}s - انتظر`;btnText.textContent=t('cooldown');ms-=1000;};tick();STATE.cooldownTimer=setInterval(tick,1000);}
 async function doMine(){const btn=document.getElementById('claimBtn');const bonusBtn=document.getElementById('bonusBtn');const origHTML=btn?btn.innerHTML:'';if(btn){btn.innerHTML='<span class="spinner"></span> Loading Ad...';btn.disabled=true;}if(bonusBtn)bonusBtn.disabled=true;const watched=await showAd(STATE.adBlockId);if(!watched){toast('لازم تشوف الإعلان عشان تطالب','error');if(btn){btn.innerHTML=origHTML;btn.disabled=false;}if(bonusBtn)bonusBtn.disabled=false;return;}if(btn)btn.innerHTML='<span class="spinner"></span> Mining...';const res=await api('/api/mine','POST',{});if(res.ok){STATE.balance=res.newBalance;toast(`+${res.amount} FWC ✅`,'success');if(tg)tg.HapticFeedback?.notificationOccurred('success');await loadUser();}else{if(res.error==='cooldown'){startCooldown(res.remaining);toast('انتظر انتهاء الوقت','error');}else{toast('Error: '+(res.error||''),'error');await loadUser();}}if(btn){btn.innerHTML=origHTML;}}
@@ -379,18 +379,31 @@ let startX = 0;
 let currentX = 0;
 
 function updateCellsFromMining(){
-  // Use STATE.mining if available, or calculate from 4h
   let progress = 0;
-  if(STATE && STATE.nextMineAt){
-    const now = Date.now()/1000;
-    const total = 4*3600; // 4 hours
-    const elapsed = Math.max(0, total - (STATE.nextMineAt - now));
-    progress = Math.min(100, (elapsed/total)*100);
+  let isReady = false;
+  
+  // Correct logic based on backend STATE.canMine
+  if(STATE && STATE.canMine){
+    if(STATE.canMine.ok){
+      progress = 100;
+      isReady = true;
+    } else if(STATE.canMine.reason === 'cooldown' && STATE.canMine.remaining){
+      const total = 4*3600; // 4 hours = 14400s
+      const remaining = STATE.canMine.remaining;
+      const elapsed = Math.max(0, total - remaining);
+      progress = Math.min(100, Math.max(0, (elapsed/total)*100));
+      isReady = false;
+    } else {
+      progress = 0;
+      isReady = false;
+    }
   } else {
-    // Demo mode - slowly fill
-    progress = Math.min(100, cellProgress + 0.1);
+    progress = 0;
+    isReady = false;
   }
+  
   cellProgress = progress;
+  
   for(let i=0;i<3;i++){
     const el = document.getElementById('fill'+i);
     const pow = document.getElementById('power'+i);
@@ -399,19 +412,28 @@ function updateCellsFromMining(){
       if(pow) pow.textContent = Math.floor(progress)+'%';
     }
   }
+  
   const status = document.getElementById('cellsStatus');
   const slider = document.getElementById('sliderContainer');
   const sliderText = document.getElementById('sliderText');
-  if(progress >= 95){
-    if(status) status.textContent = '● CELLS CHARGED - SLIDE TO CLAIM';
-    if(status) status.style.color = '#00FF88';
+  
+  if(isReady && progress >= 99){
+    if(status){
+      status.textContent = '● CELLS CHARGED - SLIDE TO CLAIM';
+      status.style.color = '#00FF88';
+      status.style.borderColor = 'rgba(0,255,136,0.4)';
+    }
     if(slider){
       slider.classList.remove('disabled');
       slider.classList.add('ready');
       if(sliderText) sliderText.textContent = 'SLIDE TO CLAIM →';
     }
   } else {
-    if(status) status.textContent = '● CHARGING AUTOMATICALLY '+Math.floor(progress)+'%';
+    if(status){
+      status.textContent = '● CHARGING AUTOMATICALLY '+Math.floor(progress)+'%';
+      status.style.color = 'var(--gold)';
+      status.style.borderColor = 'rgba(212,175,55,0.2)';
+    }
     if(slider){
       slider.classList.add('disabled');
       slider.classList.remove('ready');
