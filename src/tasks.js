@@ -88,7 +88,7 @@ export async function doCheckin(db, telegram_id, date) {
       .bind(telegram_id, date).run();
   } catch(e) {}
 
-  await db.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+  await db.prepare(`UPDATE users SET balance = ROUND(balance + ?, 8) WHERE telegram_id = ?`)
     .bind(reward, telegram_id).run();
 
   return { streak: newStreak, reward, ok: true };
@@ -157,7 +157,7 @@ export async function doTask(db, telegram_id, task_id, date, env) {
     }
 
     if (task.reward > 0) {
-      await db.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+      await db.prepare(`UPDATE users SET balance = ROUND(balance + ?, 8) WHERE telegram_id = ?`)
         .bind(task.reward, telegram_id).run();
     }
 
