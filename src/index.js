@@ -398,20 +398,43 @@ export default {
           refCode = generateReferralCode();
           try { await env.DB.prepare(`UPDATE users SET referral_code = ? WHERE telegram_id = ?`).bind(refCode, tgUser.id).run(); } catch {}
         }
-        // Get referral list with details
+        // Get referral list with details + actual earnings per referral
         let referrals = [];
         try {
-          const list = await env.DB.prepare(`SELECT telegram_id, username, first_name, balance, created_at, first_mine_at FROM users WHERE referral_by = ? ORDER BY created_at DESC LIMIT 100`).bind(tgUser.id).all();
+          const list = await env.DB.prepare(`
+            SELECT u.telegram_id, u.username, u.first_name, u.balance, u.created_at, u.first_mine_at,
+                   COALESCE(SUM(r.amount),0) as earned
+            FROM users u
+            LEFT JOIN referrals_log r ON r.to_id = u.telegram_id AND r.from_id = ?
+            WHERE u.referral_by = ?
+            GROUP BY u.telegram_id
+            ORDER BY u.created_at DESC
+            LIMIT 100
+          `).bind(tgUser.id, tgUser.id).all();
           referrals = (list.results || []).map(u => ({
             id: u.telegram_id,
             username: u.username || null,
             name: u.first_name || 'User',
             balance: u.balance || 0,
             joined: u.created_at,
-            active: !!u.first_mine_at
+            active: !!u.first_mine_at,
+            earned: u.earned || 0
           }));
         } catch (e) {
           console.warn('Referral list error:', e.message);
+          // Fallback simple query
+          try {
+            const list2 = await env.DB.prepare(`SELECT telegram_id, username, first_name, balance, created_at, first_mine_at FROM users WHERE referral_by = ? ORDER BY created_at DESC LIMIT 100`).bind(tgUser.id).all();
+            referrals = (list2.results || []).map(u => ({
+              id: u.telegram_id,
+              username: u.username || null,
+              name: u.first_name || 'User',
+              balance: u.balance || 0,
+              joined: u.created_at,
+              active: !!u.first_mine_at,
+              earned: 0
+            }));
+          } catch {}
         }
         // Calculate total referral earnings
         let totalEarnings = 0;
