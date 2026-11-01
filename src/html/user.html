@@ -253,7 +253,10 @@ document.addEventListener('DOMContentLoaded', function(){
 /* FWC Cells Auto + Slider - No Circle */
 .cells-container{position:relative;width:300px;height:190px;margin:25px auto;display:flex;gap:10px;justify-content:center;align-items:flex-end;padding:15px 15px 10px;background:linear-gradient(180deg, rgba(26,22,16,0.6) 0%, rgba(13,11,7,0.8) 100%);border:1px solid rgba(212,175,55,0.15);border-radius:20px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.05)}
 .cell{flex:1;height:130px;background:rgba(0,0,0,0.6);border:1px solid rgba(212,175,55,0.2);border-radius:14px;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:8px 5px;transition:all 0.3s}
-.cell-fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg, #B8860B 0%, #D4AF37 50%, #FFE9A8 100%);border-radius:0 0 13px 13px;transition:height 1s ease-out;box-shadow:0 0 15px rgba(212,175,55,0.3);height:5%}
+.cell-fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg, #B8860B 0%, #D4AF37 30%, #FFE9A8 70%, #D4AF37 100%);background-size:100% 200%;border-radius:0 0 13px 13px;transition:height 1s linear;box-shadow:0 0 15px rgba(212,175,55,0.3), inset 0 0 20px rgba(255,233,168,0.3);height:5%;animation:fillShimmer 2s ease-in-out infinite;overflow:hidden}
+.cell-fill::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);animation:fillSweep 2s ease-in-out infinite}
+@keyframes fillShimmer{0%,100%{background-position:0% 100%}50%{background-position:0% 0%}}
+@keyframes fillSweep{0%{left:-100%}100%{left:100%}}
 .cell-icon{font-size:18px;z-index:2;margin-bottom:4px}
 .cell-label{font-size:7px;color:var(--text-muted);letter-spacing:0.5px;z-index:2;font-family:var(--mono)}
 .cell-power{font-size:10px;color:var(--gold);font-weight:700;z-index:2;margin-top:3px}
@@ -418,15 +421,25 @@ function updateCellsFromMining(){
   
   cellProgress = progress;
   
-  // Animate fills smoothly
+  // Animate fills smoothly - force update
   for(let i=0;i<3;i++){
     const el = document.getElementById('fill'+i);
     const pow = document.getElementById('power'+i);
     if(el){
-      el.style.transition = 'height 1s linear';
+      // Force height update with visible change
       el.style.height = progress+'%';
-      if(pow) pow.textContent = Math.floor(progress)+'%';
+      // Ensure display
+      el.style.display = 'block';
+      el.style.opacity = '1';
     }
+    if(pow){
+      pow.textContent = Math.floor(progress)+'%';
+      pow.style.color = progress >= 99 ? '#00FF88' : 'var(--gold)';
+    }
+  }
+  // Debug - log progress every 10%
+  if(Math.floor(progress) % 10 === 0){
+    console.log('Cell progress:', Math.floor(progress)+'%');
   }
   
   const status = document.getElementById('cellsStatus');
