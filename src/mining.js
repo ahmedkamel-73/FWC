@@ -55,7 +55,7 @@ export async function doMine(db, telegram_id) {
   const minLastMine = now - interval;
   
   const updateResult = await db.prepare(`UPDATE users SET 
-    balance = balance + ?, 
+    balance = ROUND(balance + ?, 8), 
     last_mine = ?, 
     first_mine_at = COALESCE(first_mine_at, ?),
     created_at = COALESCE(created_at, ?)
@@ -80,7 +80,7 @@ export async function doMine(db, telegram_id) {
   if (user.referral_by) {
     const refPercent = await getEconomyConfig(db, 'referral_percent') || CONFIG.referral_percent;
     referralBonus = amount * (refPercent / 100);
-    await db.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`)
+    await db.prepare(`UPDATE users SET balance = ROUND(balance + ?, 8) WHERE telegram_id = ?`)
       .bind(referralBonus, user.referral_by).run();
     await db.prepare(`INSERT INTO referrals_log(from_id, to_id, amount, created_at) VALUES (?, ?, ?, ?)`)
       .bind(user.referral_by, telegram_id, referralBonus, now).run();
