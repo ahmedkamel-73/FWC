@@ -260,7 +260,7 @@ document.addEventListener('DOMContentLoaded', function(){
 .cells-status{position:absolute;top:-28px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:9px;color:var(--gold);letter-spacing:1px;white-space:nowrap;background:rgba(0,0,0,0.5);padding:4px 10px;border-radius:10px;border:1px solid rgba(212,175,55,0.2)}
 
 /* Slider - Captcha Style */
-.slider-container{width:300px;margin:20px auto 10px;position:relative;background:rgba(0,0,0,0.6);border:1px solid rgba(212,175,55,0.2);border-radius:30px;height:54px;overflow:hidden;display:flex;align-items:center;padding:4px;box-shadow:inset 0 2px 5px rgba(0,0,0,0.5)}
+.slider-container{width:300px;margin:20px auto 10px;position:relative;background:rgba(0,0,0,0.6);border:1px solid rgba(212,175,55,0.2);border-radius:30px;height:54px;overflow:hidden;display:flex;align-items:center;padding:4px;box-shadow:inset 0 2px 5px rgba(0,0,0,0.5);direction:ltr !important}
 .slider-track{position:absolute;left:4px;top:4px;bottom:4px;width:0;background:linear-gradient(90deg, #B8860B 0%, #D4AF37 50%, #FFE9A8 100%);border-radius:26px;transition:width 0.1s;box-shadow:0 0 15px rgba(212,175,55,0.5)}
 .slider-thumb{width:46px;height:46px;background:linear-gradient(135deg, #FFF9E0 0%, #FFE9A8 15%, #D4AF37 45%, #B8860B 100%);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#2a2008;box-shadow:0 2px 10px rgba(0,0,0,0.5),0 0 0 2px rgba(212,175,55,0.4);cursor:grab;position:relative;z-index:2;user-select:none;touch-action:none}
 .slider-thumb:active{cursor:grabbing;transform:scale(1.05)}
@@ -280,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function(){
   <div id="banner-top"><div style="width: 320px;margin: auto;height: auto"><iframe data-aa='2460258' src='//ad.a-ads.com/2460258/?size=320x50' style='border:0; padding:0; width:320px; height:50px; overflow:hidden;display: block;margin: auto'></iframe></div></div>
 </div>
   <div class="content">
-    <div id="tab-mine"><div class="mining-card"><div class="cells-container"><div class="cells-status" id="cellsStatus">● CHARGING AUTOMATICALLY</div><div class="cell"><div class="cell-fill" id="fill0"></div><div class="cell-icon">⚡</div><div class="cell-label">CELL A</div><div class="cell-power" id="power0">0%</div></div><div class="cell"><div class="cell-fill" id="fill1"></div><div class="cell-icon">🔋</div><div class="cell-label">CELL B</div><div class="cell-power" id="power1">0%</div></div><div class="cell"><div class="cell-fill" id="fill2"></div><div class="cell-icon">💎</div><div class="cell-label">CELL C</div><div class="cell-power" id="power2">0%</div></div></div><div class="slider-container disabled" id="sliderContainer"><div class="slider-track" id="sliderTrack"></div><div class="slider-text" id="sliderText">CHARGING - WAIT</div><div class="slider-thumb" id="sliderThumb">→</div></div><div style="display:none;" class="mining-circle">FWC</div><div style="display:none;" id="mineGem">FWC</div><div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:10px;" id="miningStatus">Loading...</div><button class="claim-btn" id="claimBtn" disabled><span>⚡</span> <span id="claimText">Loading</span></button><button class="bonus-btn hidden" id="bonusBtn" style="display:none" onclick="watchAdForBonus()"><span>🎁</span> <span>Watch Ad for Bonus</span></button></div><div class="card" style="margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="label-small" data-i18n="checkin">DAILY CHECK-IN</div><div style="font-size:14px;font-weight:700;margin-top:4px;"><span data-i18n="streak">Streak</span>: <span id="streakNum">0</span></div></div><button class="task-btn" id="checkinBtn" onclick="doCheckin()" data-i18n="checkin">Check-in</button></div></div></div>
+    <div id="tab-mine"><div class="mining-card"><div class="cells-container"><div class="cells-status" id="cellsStatus">● CHARGING AUTOMATICALLY</div><div class="cell"><div class="cell-fill" id="fill0"></div><div class="cell-icon">⚡</div><div class="cell-label">CELL A</div><div class="cell-power" id="power0">0%</div></div><div class="cell"><div class="cell-fill" id="fill1"></div><div class="cell-icon">🔋</div><div class="cell-label">CELL B</div><div class="cell-power" id="power1">0%</div></div><div class="cell"><div class="cell-fill" id="fill2"></div><div class="cell-icon">💎</div><div class="cell-label">CELL C</div><div class="cell-power" id="power2">0%</div></div></div><div class="slider-container disabled" id="sliderContainer" dir="ltr"><div class="slider-track" id="sliderTrack"></div><div class="slider-text" id="sliderText">CHARGING - WAIT</div><div class="slider-thumb" id="sliderThumb">→</div></div><div style="display:none;" class="mining-circle">FWC</div><div style="display:none;" id="mineGem">FWC</div><div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:10px;" id="miningStatus">Loading...</div><button class="claim-btn" id="claimBtn" disabled><span>⚡</span> <span id="claimText">Loading</span></button><button class="bonus-btn hidden" id="bonusBtn" style="display:none" onclick="watchAdForBonus()"><span>🎁</span> <span>Watch Ad for Bonus</span></button></div><div class="card" style="margin-top:12px;"><div style="display:flex;justify-content:space-between;align-items:center;"><div><div class="label-small" data-i18n="checkin">DAILY CHECK-IN</div><div style="font-size:14px;font-weight:700;margin-top:4px;"><span data-i18n="streak">Streak</span>: <span id="streakNum">0</span></div></div><button class="task-btn" id="checkinBtn" onclick="doCheckin()" data-i18n="checkin">Check-in</button></div></div></div>
     <div id="tab-tasks" class="hidden"><h2>📋 <span data-i18n="tasks">Tasks</span></h2><div class="tasks-list" id="tasksList"><div style="text-align:center;color:var(--text-muted);padding:20px;"><span class="spinner"></span></div></div></div>
     <div id="tab-wallet" class="hidden">
       <h2>💳 <span data-i18n="wallet">Wallet</span></h2>
@@ -454,17 +454,21 @@ function initSlider(){
     return container.offsetWidth - thumb.offsetWidth - 8;
   }
   
+  function getClientX(e){
+    return e.touches ? e.touches[0].clientX : e.clientX;
+  }
+  
   function onStart(e){
     if(container.classList.contains('disabled')) return;
     sliderDragging = true;
-    startX = (e.touches ? e.touches[0].clientX : e.clientX) - currentX;
+    startX = getClientX(e) - currentX;
     thumb.style.transition = 'none';
     track.style.transition = 'none';
   }
   
   function onMove(e){
     if(!sliderDragging) return;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientX = getClientX(e);
     currentX = Math.max(0, Math.min(getMaxDrag(), clientX - startX));
     thumb.style.transform = `translateX(${currentX}px)`;
     track.style.width = (currentX + thumb.offsetWidth/2) + 'px';
