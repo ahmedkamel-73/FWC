@@ -378,8 +378,6 @@ window.switchTab=switchTab;window.doCheckin=doCheckin;window.requestWithdraw=req
 <script>
 let cellProgress = 0;
 let sliderDragging = false;
-let miningStartTime = Date.now();
-let initialRemaining = null;
 let animationInterval = null;
 let startX = 0;
 let currentX = 0;
@@ -393,23 +391,14 @@ function updateCellsFromMining(){
     if(STATE.canMine.ok){
       progress = 100;
       isReady = true;
-    } else if(STATE.canMine.reason === 'cooldown' && STATE.canMine.remaining){
-      // Initialize remaining on first call
-      if(initialRemaining === null){
-        initialRemaining = STATE.canMine.remaining;
-        miningStartTime = Date.now();
-      }
-      // Calculate live remaining based on elapsed time since page load (animation)
-      const elapsedSinceLoad = (Date.now() - miningStartTime) / 1000;
-      const currentRemaining = Math.max(0, initialRemaining - elapsedSinceLoad);
-      const elapsed = Math.max(0, total - currentRemaining);
+    } else if(STATE.canMine.reason === 'cooldown'){
+      // Use remaining directly from backend - it already accounts for elapsed time since last mine (even when app closed)
+      // This way if user mined 2h ago and opens now, remaining=7200, progress=50% immediately
+      const remaining = STATE.canMine.remaining || 0;
+      const elapsed = Math.max(0, total - remaining);
       progress = Math.min(100, Math.max(0, (elapsed/total)*100));
-      isReady = false;
-      // If remaining reaches 0, mark ready
-      if(currentRemaining <= 1){
-        progress = 100;
-        isReady = true;
-      }
+      isReady = remaining <= 1;
+      if(isReady) progress = 100;
     } else {
       progress = 0;
       isReady = false;
@@ -421,14 +410,12 @@ function updateCellsFromMining(){
   
   cellProgress = progress;
   
-  // Animate fills smoothly - force update
+  // Update fills - must be visible even at 0% start
   for(let i=0;i<3;i++){
     const el = document.getElementById('fill'+i);
     const pow = document.getElementById('power'+i);
     if(el){
-      // Force height update with visible change
       el.style.height = progress+'%';
-      // Ensure display
       el.style.display = 'block';
       el.style.opacity = '1';
     }
@@ -436,10 +423,6 @@ function updateCellsFromMining(){
       pow.textContent = Math.floor(progress)+'%';
       pow.style.color = progress >= 99 ? '#00FF88' : 'var(--gold)';
     }
-  }
-  // Debug - log progress every 10%
-  if(Math.floor(progress) % 10 === 0){
-    console.log('Cell progress:', Math.floor(progress)+'%');
   }
   
   const status = document.getElementById('cellsStatus');
