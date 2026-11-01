@@ -385,19 +385,22 @@ let currentX = 0;
 function updateCellsFromMining(){
   let progress = 0;
   let isReady = false;
-  const total = 4*3600; // 14400s
+  const total = 4*3600*1000; // 4 hours in ms = 14400000
   
   if(STATE && STATE.canMine){
     if(STATE.canMine.ok){
       progress = 100;
       isReady = true;
     } else if(STATE.canMine.reason === 'cooldown'){
-      // Use remaining directly from backend - it already accounts for elapsed time since last mine (even when app closed)
-      // This way if user mined 2h ago and opens now, remaining=7200, progress=50% immediately
-      const remaining = STATE.canMine.remaining || 0;
+      // Remaining is in ms (from backend), total also in ms
+      let remaining = STATE.canMine.remaining || 0;
+      // Fallback if remaining is in seconds ( < 20000 ), convert to ms
+      if(remaining > 0 && remaining < 20000){
+        remaining = remaining * 1000;
+      }
       const elapsed = Math.max(0, total - remaining);
       progress = Math.min(100, Math.max(0, (elapsed/total)*100));
-      isReady = remaining <= 1;
+      isReady = remaining <= 1000;
       if(isReady) progress = 100;
     } else {
       progress = 0;
