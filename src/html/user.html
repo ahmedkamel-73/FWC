@@ -269,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function(){
 .slider-container.ready .slider-text{color:var(--gold)}
 .slider-container.disabled{opacity:0.4;pointer-events:none}
 .slider-container.success .slider-track{width:calc(100% - 8px) !important;background:linear-gradient(90deg, #00AA66 0%, #00FF88 100%)}
-</style></head>
+</style><style>#claimBtn{display:none !important;}</style></head>
 <body>
 <div id="splash-screen"><div class="splash-ring-1"></div><div class="splash-logo">FWC</div><div class="splash-title">FWC CELLS</div><div class="splash-subtitle">LIVE • SECURE • EARN</div><div class="splash-loader"></div></div>
 <div class="container">
@@ -468,26 +468,28 @@ function initSlider(){
     container.classList.add('success');
     if(text) text.textContent = '✓ CLAIMING...';
     thumb.textContent = '✓';
-    // Trigger ad then claim
+    // Slider itself is the claim - ad then direct mine
     setTimeout(async () => {
       try{
         if(typeof watchAdForBonus === 'function'){
           await watchAdForBonus();
         }
       }catch(e){console.log('Ad error', e)}
-      // After ad, trigger original claim
-      const claimBtn = document.getElementById('claimBtn');
-      if(claimBtn && !claimBtn.disabled){
-        claimBtn.click();
-      } else if(typeof doClaim === 'function'){
-        doClaim();
-      } else {
-        // Fallback call /api/mine
+      // Directly call mine API - no button needed
+      try{
         if(typeof api === 'function'){
           const res = await api('/api/mine', {method:'POST'});
-          if(res && res.ok) location.reload();
+          if(res && res.ok){
+            if(text) text.textContent = '✓ CLAIMED!';
+            setTimeout(()=>location.reload(), 1000);
+            return;
+          }
         }
-      }
+        // Fallback to original claim function if api fails
+        if(typeof doClaim === 'function'){
+          doClaim();
+        }
+      }catch(e){console.log('Mine error', e)}
       // Reset slider after 2s
       setTimeout(()=>{
         currentX = 0;
