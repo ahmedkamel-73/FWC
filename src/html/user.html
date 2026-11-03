@@ -522,7 +522,7 @@ function initSlider(){
         if(!watched) throw new Error('Ad not watched');
       }catch(e){console.log('Ad error', e)}
       try{
-        const res = await api('/api/mine', {method:'POST'});
+        const res = await api('/api/mine','POST');
         if(res && res.ok){
           if(text) text.textContent = '✓ CLAIMED '+ (res.amount||'') +' FWC!';
           setTimeout(()=>location.reload(), 1200);
