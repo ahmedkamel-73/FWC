@@ -21,7 +21,7 @@ export const CONFIG = {
   referral_percent: 5,
   root_admin_id: 921627899,
   default_language: 'en',
-  workerUrl: 'https://fwc-bot.workers.dev', // 👈 مهم جداً للتحقق من ton_proof
+  workerUrl: 'https://fwc.ahmed73.workers.dev', // 👈 مهم جداً للتحقق من ton_proof
 };
 
 // Secrets - from Cloudflare Dashboard only
