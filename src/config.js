@@ -4,7 +4,7 @@
 export const CONFIG = {
   jetton: "EQC0bkbZmjWW82AIwb0oAQHvdj4JPbwrmYpmjnB2FJSAUh76",
   treasury: "UQDoMZ-PRZGOqa1uyTZd7znXHR93zceemATkPOdUEAQyAjw1",
-  pool: "EQA_FhrVf_wjOAvg-Ubzqive8-9riRc0KX_NdEmh-uyynZRM",
+  pool: "EQCUaVJUrUHzUa6IWxrrreNCgqLUDrDt11ky-0DpZHDB8G12",
   channels: {
     main: "@fwc_coin",
     group: "@fwc_coin1",
@@ -21,13 +21,22 @@ export const CONFIG = {
   referral_percent: 5,
   root_admin_id: 921627899,
   default_language: 'en',
-  workerUrl: 'https://fwc.ahmed73.workers.dev', // 👈 مهم جداً للتحقق من ton_proof
+  workerUrl: 'https://fwc-bot.workers.dev',
 };
 
 // Secrets - from Cloudflare Dashboard only
 export function getSecrets(env) {
+  // متوقعش الموقع لو التوكن مش موجود - التوكن للبوت بس
   if (!env.BOT_TOKEN) {
-    throw new Error("BOT_TOKEN missing in Cloudflare Secrets - Add in Dashboard > Variables and Secrets");
+    console.log("BOT_TOKEN missing - serving pages without bot");
+    return {
+      botToken: null,
+      adminSecret: env.ADMIN_SECRET,
+      mnemonic: env.TON_MNEMONIC_TREASURY,
+      adsgramId: env.ADSGRAM_BLOCK_ID,
+      toncenterApiKey: env.TONCENTER_API_KEY,
+      tonApiKey: env.TONAPI_KEY,
+    };
   }
   return {
     botToken: env.BOT_TOKEN,
