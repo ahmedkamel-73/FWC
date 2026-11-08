@@ -224,7 +224,10 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
-    const { BOT_TOKEN: botToken } = getSecrets(env);
+    // FIXED: was `const { BOT_TOKEN: botToken } = getSecrets(env)` but getSecrets returned { botToken } -> ALWAYS undefined, webhook always 500.
+    // Now reads env directly + getSecrets fallback, trimmed.
+    const { botToken: botTokenFromSecrets } = getSecrets(env);
+    const botToken = (botTokenFromSecrets || env?.BOT_TOKEN || '').toString().trim();
 
     // ========== STATIC PAGES ==========
     if (path === '/tonconnect-manifest.json') {
@@ -526,7 +529,7 @@ export default {
           }
 
           const result = await saveWallet(env.DB, tgUser.id, walletAddress, { verified: true });
-          if (!result.ok) return json({ ok: false, error: result.reason }, 400);
+          if (!result.ok) return json({ ok: false, error: result.reason, detail: result.detail || null, referrals: result.referrals ?? null, claimed: result.claimed ?? null, need: result.need ?? null }, 400);
 
           return json({ ok: true, wallet: result.wallet, verified: true, warning: dupeCheck.duplicate ? 'duplicate_wallet_detected' : null });
         } catch (e) {
@@ -549,7 +552,7 @@ export default {
         }
 
         const result = await saveWallet(env.DB, tgUser.id, walletAddress, { verified: false });
-        if (!result.ok) return json({ ok: false, error: result.reason }, 400);
+        if (!result.ok) return json({ ok: false, error: result.reason, detail: result.detail || null, referrals: result.referrals ?? null, claimed: result.claimed ?? null, need: result.need ?? null }, 400);
 
         return json({ ok: true, wallet: result.wallet, verified: false, warning: dupeCheck.duplicate ? 'duplicate_wallet_detected' : null });
       }
@@ -584,7 +587,7 @@ export default {
         }
 
         const result = await doTask(env.DB, tgUser.id, taskId, date, env);
-        if (!result.ok) return json({ ok: false, error: result.reason }, 400);
+        if (!result.ok) return json({ ok: false, error: result.reason, detail: result.detail || null, referrals: result.referrals ?? null, claimed: result.claimed ?? null, need: result.need ?? null }, 400);
         return json({ ok: true, reward: result.reward, newBalance: result.newBalance });
       }
 
@@ -835,6 +838,12 @@ export default {
 
 
         // ============ ADMIN FOUNDER ============
+        // Diagnostic - NEVER returns secret values, only presence + length.
+        if (path === '/api/admin/debug-secrets') {
+          const bt = (env?.BOT_TOKEN || '').toString();
+          const tc = (env?.TONCENTER_API_KEY || '').toString();
+          return json({ ok: true, scriptName: 'fwc', hasBOT_TOKEN: !!bt.trim(), botTokenLength: bt.trim().length, hasTONCENTER: !!tc.trim(), hasADMIN_SECRET: !!(env?.ADMIN_SECRET || '').toString().trim(), hasDB: !!env?.DB, hint: bt.trim() ? 'BOT_TOKEN IS present in this Worker env.' : 'BOT_TOKEN is EMPTY in THIS Worker (fwc, Production). Check Cloudflare > Workers > fwc > Settings > Variables > Production, then Deploy.' });
+        }
         if (path === '/api/admin/founder' && request.method === 'GET') {
           const cfg = await getFounderConfig(env.DB);
           const owners = await getFounderOwnersCount(env.DB);

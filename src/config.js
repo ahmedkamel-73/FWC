@@ -34,24 +34,23 @@ export const CONFIG = {
 
 // Secrets - from Cloudflare Dashboard only
 export function getSecrets(env) {
-  // متوقعش الموقع لو التوكن مش موجود - التوكن للبوت بس
-  if (!env.BOT_TOKEN) {
-    console.log("BOT_TOKEN missing - serving pages without bot");
-    return {
-      botToken: null,
-      adminSecret: env.ADMIN_SECRET,
-      mnemonic: env.TON_MNEMONIC_TREASURY,
-      adsgramId: env.ADSGRAM_BLOCK_ID,
-      toncenterApiKey: env.TONCENTER_API_KEY,
-      tonApiKey: env.TONAPI_KEY,
-    };
-  }
+  // FIXED: used to return only { botToken } but index.js destructured { BOT_TOKEN } -> always undefined.
+  // Now returns BOTH spellings. No console.log here: logging on every request flooded logs with
+  // "BOT_TOKEN missing" even on /api/founder/status which does not need bot at all.
+  const raw = (env?.BOT_TOKEN || '').toString().trim();
+  const token = raw || null;
   return {
-    botToken: env.BOT_TOKEN,
-    adminSecret: env.ADMIN_SECRET,
-    mnemonic: env.TON_MNEMONIC_TREASURY,
-    adsgramId: env.ADSGRAM_BLOCK_ID,
-    toncenterApiKey: env.TONCENTER_API_KEY,
-    tonApiKey: env.TONAPI_KEY,
+    BOT_TOKEN: token,
+    botToken: token,
+    ADMIN_SECRET: env?.ADMIN_SECRET || null,
+    adminSecret: env?.ADMIN_SECRET || null,
+    mnemonic: env?.TON_MNEMONIC_TREASURY || null,
+    TON_MNEMONIC_TREASURY: env?.TON_MNEMONIC_TREASURY || null,
+    adsgramId: env?.ADSGRAM_BLOCK_ID || null,
+    ADSGRAM_BLOCK_ID: env?.ADSGRAM_BLOCK_ID || null,
+    toncenterApiKey: (env?.TONCENTER_API_KEY || '').toString().trim() || null,
+    TONCENTER_API_KEY: (env?.TONCENTER_API_KEY || '').toString().trim() || null,
+    tonApiKey: (env?.TONAPI_KEY || '').toString().trim() || null,
+    TONAPI_KEY: (env?.TONAPI_KEY || '').toString().trim() || null,
   };
 }
