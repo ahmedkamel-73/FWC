@@ -1,4 +1,3 @@
-
 // src/index.js - FWC 4.0.0 PRODUCTION
 // Main router: webhooks, APIs, HTML pages
 
@@ -15,7 +14,7 @@ import {
   createAntiCheatAlert, getAntiCheatAlerts, resolveAlert, dismissAlert,
 } from './db.js';
 import { getCurrentMiningAmount, canMine, doMine, canWithdraw } from './mining.js';
-import { getDailyTasks, doTask, doCheckin, getCheckinStreak, getUserDailyProgress, hasCheckedInToday, testJoinVerification } from './tasks.js';
+import { getDailyTasks, doTask, doCheckin, getCheckinStreak, getUserDailyProgress, hasCheckedInToday } from './tasks.js';
 import { saveWallet, validateTonAddress, normalizeTonAddress } from './wallet.js';
 import { calculateWithdrawalFee, getFeeConfig, updateFeePercent } from './fees.js';
 import {
@@ -82,7 +81,7 @@ async function getTelegramUser(request, env) {
     if (!initData) return null;
     
     // Verify signature (non-blocking - log warning but allow)
-    const botToken = (env?.BOT_TOKEN || '').toString().trim();
+    const botToken = env.BOT_TOKEN;
     if (botToken) {
       try {
         const isValid = await verifyTelegramInitData(initData, botToken);
@@ -225,9 +224,7 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
-    // FIX: was `const { BOT_TOKEN: botToken } = getSecrets(env)` but getSecrets returns { botToken }, so this was ALWAYS undefined.
-    const { botToken } = getSecrets(env);
-    const botTokenSafe = (botToken || env?.BOT_TOKEN || '').toString().trim();
+    const { BOT_TOKEN: botToken } = getSecrets(env);
 
     // ========== STATIC PAGES ==========
     if (path === '/tonconnect-manifest.json') {
@@ -838,13 +835,6 @@ export default {
 
 
         // ============ ADMIN FOUNDER ============
-
-        // Diagnostic - NEVER returns secret values, only presence + length, so you can prove env is wired without leaking.
-        if (path === '/api/admin/debug-secrets') {
-          const bt = (env?.BOT_TOKEN || '').toString();
-          const tc = (env?.TONCENTER_API_KEY || '').toString();
-          return json({ ok: true, scriptName: 'fwc', hasBOT_TOKEN: !!bt.trim(), botTokenLength: bt.trim().length, botTokenStartsWith: bt.trim().slice(0, 3), hasTONCENTER: !!tc.trim(), toncenterLength: tc.trim().length, hasADMIN_SECRET: !!(env?.ADMIN_SECRET || '').toString().trim(), hasDB: !!env?.DB, hint: bt.trim() ? 'BOT_TOKEN IS present in this Worker env. If tasks still say missing, you deployed a different Worker/env.' : 'BOT_TOKEN is EMPTY in THIS Worker (scriptName fwc, Production). Check: Cloudflare > Workers > fwc > Settings > Variables > Production, then Deploy.' });
-        }
         if (path === '/api/admin/founder' && request.method === 'GET') {
           const cfg = await getFounderConfig(env.DB);
           const owners = await getFounderOwnersCount(env.DB);
@@ -888,14 +878,6 @@ export default {
           return json({ ok: true, wallet: user.wallet, jettonBalance: jettonBal, balance: jettonBal, withdrawCount: wdCount?.c || 0, holdAmount, meetsHold: jettonBal >= holdAmount });
         }
 
-
-        if (path === '/api/admin/tasks/test-join') {
-          const channel = url.searchParams.get('channel') || '';
-          const userId = parseInt(url.searchParams.get('user_id') || '0');
-          if (!channel || !userId) return json({ ok: false, error: 'need channel + user_id, e.g. ?channel=@fwc_coin&user_id=123' }, 400);
-          const r = await testJoinVerification(env, channel, userId);
-          return json({ ok: true, ...r, hint: r.ok ? 'Bot CAN see this chat. If user status is left/kicked, user really has not joined.' : 'Bot CANNOT see this chat. Add bot as ADMIN in the channel/group, check BOT_TOKEN, check channel username.' });
-        }
         if (path === '/api/admin/tasks' && request.method === 'GET') {
           const tasks = await getAllTasksAdmin(env.DB);
           return json({ ok: true, tasks });
@@ -1031,7 +1013,7 @@ export default {
 
     // ========== TELEGRAM WEBHOOK ==========
     if (path === '/webhook' && request.method === 'POST') {
-      if (!botTokenSafe) return new Response('BOT_TOKEN missing', { status: 500 });
+      if (!botToken) return new Response('BOT_TOKEN missing', { status: 500 });
 
       try {
         const update = await request.json();
@@ -1073,7 +1055,7 @@ export default {
             const buttons = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
             if (isAdmin) buttons.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
 
-            await sendTelegramMessage(botTokenSafe, fromId,
+            await sendTelegramMessage(botToken, fromId,
               `⛏️ *FWC Mining*\\n\\nWelcome ${fromFirstName}! Start mining FWC now.`,
               { inline_keyboard: buttons }
             );
