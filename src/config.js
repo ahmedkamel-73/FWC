@@ -18,6 +18,14 @@ export const CONFIG = {
   withdraw_delay_hours: 24,
   withdraw_fee_percent: 5, // 5% fixed
   withdraw_hold_amount: 1000, // Hold requirement
+  // Founder Badge (burn to support coin) - defaults, overridable from Admin / config_overrides
+  founder_enabled: 0,
+  founder_price: 10000,
+  founder_limit: 500,
+  founder_burn_address: "EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c",
+  founder_interval_hours: 8, // Founder mines every 8h instead of 4h
+  founder_bonus_percent: 20, // Extra % on top of x2 (8h => base * 2 * 1.20 = x2.4)
+  founder_fee_percent: 3, // Founder withdrawal fee fixed 3%
   referral_percent: 5,
   root_admin_id: 921627899,
   default_language: 'en',
@@ -25,25 +33,29 @@ export const CONFIG = {
 };
 
 // Secrets - from Cloudflare Dashboard only
+// FIX: getSecrets used to return { botToken } but index.js destructured { BOT_TOKEN }.
+// So botToken was ALWAYS undefined even when env.BOT_TOKEN was set correctly.
+// Now it returns BOTH names, trimmed, so any file reading it works.
 export function getSecrets(env) {
-  // متوقعش الموقع لو التوكن مش موجود - التوكن للبوت بس
-  if (!env.BOT_TOKEN) {
+  const raw = (env?.BOT_TOKEN || '').toString().trim();
+  if (!raw) {
     console.log("BOT_TOKEN missing - serving pages without bot");
-    return {
-      botToken: null,
-      adminSecret: env.ADMIN_SECRET,
-      mnemonic: env.TON_MNEMONIC_TREASURY,
-      adsgramId: env.ADSGRAM_BLOCK_ID,
-      toncenterApiKey: env.TONCENTER_API_KEY,
-      tonApiKey: env.TONAPI_KEY,
-    };
   }
+  const token = raw || null;
   return {
-    botToken: env.BOT_TOKEN,
-    adminSecret: env.ADMIN_SECRET,
-    mnemonic: env.TON_MNEMONIC_TREASURY,
-    adsgramId: env.ADSGRAM_BLOCK_ID,
-    toncenterApiKey: env.TONCENTER_API_KEY,
-    tonApiKey: env.TONAPI_KEY,
+    // Both spellings - prevents future destructuring mismatch
+    BOT_TOKEN: token,
+    botToken: token,
+    // Other secrets - also return both spellings for safety
+    ADMIN_SECRET: env?.ADMIN_SECRET || null,
+    adminSecret: env?.ADMIN_SECRET || null,
+    mnemonic: env?.TON_MNEMONIC_TREASURY || null,
+    TON_MNEMONIC_TREASURY: env?.TON_MNEMONIC_TREASURY || null,
+    adsgramId: env?.ADSGRAM_BLOCK_ID || null,
+    ADSGRAM_BLOCK_ID: env?.ADSGRAM_BLOCK_ID || null,
+    toncenterApiKey: (env?.TONCENTER_API_KEY || '').toString().trim() || null,
+    TONCENTER_API_KEY: (env?.TONCENTER_API_KEY || '').toString().trim() || null,
+    tonApiKey: (env?.TONAPI_KEY || '').toString().trim() || null,
+    TONAPI_KEY: (env?.TONAPI_KEY || '').toString().trim() || null,
   };
 }
