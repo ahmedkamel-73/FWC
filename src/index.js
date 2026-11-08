@@ -363,7 +363,8 @@ export default {
         }
 
         const miningAmount = await getCurrentMiningAmount(env.DB);
-        const founderFlag = await isFounder(env.DB, tgUser.id);
+        // FIXED: admin login from browser has no Telegram initData -> tgUser is null. Old code did tgUser.id -> crash -> 500 -> frontend showed 'Wrong password' even with correct password.
+        const founderFlag = tgUser ? await isFounder(env.DB, tgUser.id) : false;
         const founderCfg = await getFounderConfig(env.DB);
         const canMineRes = await canMine(env.DB, tgUser.id);
         const canWithdrawRes = await canWithdraw(env.DB, env, tgUser.id);
@@ -735,8 +736,10 @@ export default {
 
       // ============ ADMIN APIs ============
       if (path.startsWith('/api/admin/')) {
-        const adminSecret = request.headers.get('X-Admin-Secret');
-        if (!env.ADMIN_SECRET || adminSecret !== env.ADMIN_SECRET) {
+        // FIXED: frontend trims password, backend didn't. If env.ADMIN_SECRET has trailing space/newline from Cloudflare paste, comparison failed even with correct password.
+        const adminSecret = (request.headers.get('X-Admin-Secret') || '').toString().trim();
+        const expectedSecret = (env.ADMIN_SECRET || '').toString().trim();
+        if (!expectedSecret || adminSecret !== expectedSecret) {
           return json({ ok: false, error: 'unauthorized' }, 401);
         }
 
