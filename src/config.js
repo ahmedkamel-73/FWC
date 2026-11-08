@@ -33,29 +33,25 @@ export const CONFIG = {
 };
 
 // Secrets - from Cloudflare Dashboard only
-// FIX: getSecrets used to return { botToken } but index.js destructured { BOT_TOKEN }.
-// So botToken was ALWAYS undefined even when env.BOT_TOKEN was set correctly.
-// Now it returns BOTH names, trimmed, so any file reading it works.
 export function getSecrets(env) {
-  const raw = (env?.BOT_TOKEN || '').toString().trim();
-  if (!raw) {
+  // متوقعش الموقع لو التوكن مش موجود - التوكن للبوت بس
+  if (!env.BOT_TOKEN) {
     console.log("BOT_TOKEN missing - serving pages without bot");
+    return {
+      botToken: null,
+      adminSecret: env.ADMIN_SECRET,
+      mnemonic: env.TON_MNEMONIC_TREASURY,
+      adsgramId: env.ADSGRAM_BLOCK_ID,
+      toncenterApiKey: env.TONCENTER_API_KEY,
+      tonApiKey: env.TONAPI_KEY,
+    };
   }
-  const token = raw || null;
   return {
-    // Both spellings - prevents future destructuring mismatch
-    BOT_TOKEN: token,
-    botToken: token,
-    // Other secrets - also return both spellings for safety
-    ADMIN_SECRET: env?.ADMIN_SECRET || null,
-    adminSecret: env?.ADMIN_SECRET || null,
-    mnemonic: env?.TON_MNEMONIC_TREASURY || null,
-    TON_MNEMONIC_TREASURY: env?.TON_MNEMONIC_TREASURY || null,
-    adsgramId: env?.ADSGRAM_BLOCK_ID || null,
-    ADSGRAM_BLOCK_ID: env?.ADSGRAM_BLOCK_ID || null,
-    toncenterApiKey: (env?.TONCENTER_API_KEY || '').toString().trim() || null,
-    TONCENTER_API_KEY: (env?.TONCENTER_API_KEY || '').toString().trim() || null,
-    tonApiKey: (env?.TONAPI_KEY || '').toString().trim() || null,
-    TONAPI_KEY: (env?.TONAPI_KEY || '').toString().trim() || null,
+    botToken: env.BOT_TOKEN,
+    adminSecret: env.ADMIN_SECRET,
+    mnemonic: env.TON_MNEMONIC_TREASURY,
+    adsgramId: env.ADSGRAM_BLOCK_ID,
+    toncenterApiKey: env.TONCENTER_API_KEY,
+    tonApiKey: env.TONAPI_KEY,
   };
 }
