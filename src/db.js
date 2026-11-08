@@ -104,6 +104,30 @@ export async function initDB(db) {
     );`).run();
   
     await db.prepare(`CREATE INDEX IF NOT EXISTS idx_udt_user_date ON user_daily_tasks(telegram_id, date);`).run();
+
+    // ========== MIGRATION: user_daily_tasks must allow max_per_day > 1 (ads x7, invite x100) ==========
+    // Old PK (telegram_id, task_id, date) allowed only 1 claim/day and broke ads/invite tasks.
+    // New schema: id AUTOINCREMENT PK, index on (telegram_id, task_id, date).
+    // Runs once: if old table has no 'id' column, recreate it preserving data.
+    try {
+      const cols = await db.prepare(`PRAGMA table_info(user_daily_tasks)`).all();
+      const hasId = (cols.results || []).some(c => c.name === 'id');
+      if (!hasId) {
+        await db.prepare(`ALTER TABLE user_daily_tasks RENAME TO user_daily_tasks_old`).run();
+        await db.prepare(`CREATE TABLE user_daily_tasks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          telegram_id INTEGER,
+          task_id TEXT,
+          date TEXT,
+          created_at INTEGER
+        )`).run();
+        await db.prepare(`INSERT INTO user_daily_tasks (telegram_id, task_id, date, created_at) SELECT telegram_id, task_id, date, created_at FROM user_daily_tasks_old`).run();
+        await db.prepare(`DROP TABLE user_daily_tasks_old`).run();
+        await db.prepare(`CREATE INDEX IF NOT EXISTS idx_udt_user_date ON user_daily_tasks(telegram_id, date)`).run();
+        await db.prepare(`CREATE INDEX IF NOT EXISTS idx_udt_task ON user_daily_tasks(telegram_id, task_id, date)`).run();
+      }
+    } catch (e) { console.warn('user_daily_tasks migration:', e.message); }
+
   
     // ========== DAILY CHECKINS ==========
     await db.prepare(`CREATE TABLE IF NOT EXISTS daily_checkins (
@@ -150,6 +174,15 @@ export async function initDB(db) {
       created_at INTEGER
     );`).run();
   
+    // ========== FOUNDER OWNERS ==========
+    await db.prepare(`CREATE TABLE IF NOT EXISTS founder_owners (
+      telegram_id INTEGER PRIMARY KEY,
+      price REAL,
+      tx_hash TEXT UNIQUE,
+      created_at INTEGER
+    );`).run();
+    await db.prepare(`CREATE INDEX IF NOT EXISTS idx_founder_tx ON founder_owners(tx_hash);`).run();
+
     // ========== ANTI-CHEAT ALERTS ==========
     await db.prepare(`CREATE TABLE IF NOT EXISTS anticheat_alerts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -202,6 +235,14 @@ export async function initDB(db) {
         ['withdraw_fee_percent', '5'],
         ['withdraw_hold_amount', '1000'],
         ['referral_percent', '5'],
+        ['founder_enabled', '0'],
+        ['founder_price', '10000'],
+        ['founder_limit', '500'],
+        ['founder_burn_address', 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c'],
+        ['founder_burned', '0'],
+        ['founder_interval_hours', '8'],
+        ['founder_bonus_percent', '20'],
+        ['founder_fee_percent', '3'],
         ['ad_enabled', '1'],
         ['ad_auto_enabled', '1'],
         ['ad_auto_block_id', ''],
@@ -430,4 +471,37 @@ export async function resolveAlert(db, id, adminId) {
 export async function dismissAlert(db, id, adminId) {
   return await db.prepare(`UPDATE anticheat_alerts SET status = 'dismissed', resolved_by = ?, resolved_at = unixepoch() WHERE id = ?`)
     .bind(adminId, id).run();
+}
+
+// ========== FOUNDER ==========
+export async function isFounder(db, telegram_id) {
+  if (!telegram_id) return false;
+  try {
+    const row = await db.prepare(`SELECT * FROM founder_owners WHERE telegram_id = ?`).bind(telegram_id).first();
+    return !!row;
+  } catch { return false; }
+}
+export async function getFounderConfig(db) {
+  const keys = ['founder_enabled','founder_price','founder_limit','founder_burn_address','founder_burned','founder_interval_hours','founder_bonus_percent','founder_fee_percent'];
+  const out = {};
+  for (const k of keys) {
+    const row = await db.prepare(`SELECT value FROM config_overrides WHERE key = ?`).bind(k).first();
+    if (row?.value !== undefined && row.value !== '') out[k] = row.value;
+  }
+  return {
+    enabled: out.founder_enabled === '1',
+    price: parseFloat(out.founder_price ?? '10000') || 10000,
+    limit: parseInt(out.founder_limit ?? '500') || 500,
+    burn_address: out.founder_burn_address || 'EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c',
+    burned: parseFloat(out.founder_burned ?? '0') || 0,
+    interval_hours: parseFloat(out.founder_interval_hours ?? '8') || 8,
+    bonus_percent: parseFloat(out.founder_bonus_percent ?? '20') || 0,
+    fee_percent: parseFloat(out.founder_fee_percent ?? '3') || 3,
+  };
+}
+export async function getFounderOwnersCount(db) {
+  try {
+    const row = await db.prepare(`SELECT COUNT(*) as c FROM founder_owners`).first();
+    return row?.c || 0;
+  } catch { return 0; }
 }
