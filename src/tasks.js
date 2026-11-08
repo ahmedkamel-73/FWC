@@ -128,20 +128,54 @@ export async function doTask(db, telegram_id, task_id, date, env) {
       // Fall through to insert + reward below (one reward per referral)
     }
 
-    // Verify subscription for join tasks
+    // Verify subscription for join tasks - FIXED: distinguish bot problems from user not joined
+    // Root causes of old generic 'verification_error':
+    //  1. BOT_TOKEN missing / has spaces in Worker env
+    //  2. Bot is NOT admin/member in the channel/group -> Telegram returns 403 "chat not found / member list inaccessible / bot is not a member"
+    //  3. Network / Telegram 5xx -> retry once
+    // Old code mapped ALL of these to one generic error, so user thought HE was the problem.
     if (task.type === 'join' && task.channel) {
-      try {
-        const botToken = env.BOT_TOKEN;
-        if (!botToken) return { ok: false, reason: 'verification_error', detail: 'BOT_TOKEN missing' };
-        const res = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(task.channel)}&user_id=${telegram_id}`);
-        const data = await res.json();
-        if (!data.ok || !['member', 'administrator', 'creator'].includes(data.result?.status)) {
-          return { ok: false, reason: 'not_subscribed' };
+      const botToken = (env?.BOT_TOKEN || env?.botToken || '').toString().trim();
+      if (!botToken) return { ok: false, reason: 'bot_token_missing', detail: 'BOT_TOKEN is empty in Worker env. Set it in Cloudflare Dashboard > Settings > Variables.' };
+      // Normalize channel: "@fwc_coin" or "fwc_coin" or "-100123..." all work. Telegram needs @ for usernames.
+      let chatId = String(task.channel).trim();
+      if (!chatId.startsWith('@') && !chatId.startsWith('-') && !/^\d+$/.test(chatId)) chatId = '@' + chatId;
+      let lastErr = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const res = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${telegram_id}`);
+          let data = null;
+          try { data = await res.json(); } catch { data = null; }
+          if (!data) { lastErr = 'Telegram returned non-JSON (HTTP ' + res.status + ')'; continue; }
+          if (data.ok) {
+            const status = data.result?.status;
+            // member / administrator / creator / restricted = joined. left / kicked = NOT joined.
+            if (['member', 'administrator', 'creator', 'restricted'].includes(status)) break;
+            return { ok: false, reason: 'not_subscribed', detail: 'Telegram status: ' + status };
+          }
+          // data.ok === false -> read Telegram description, it tells us WHO is wrong
+          const desc = (data.description || '').toLowerCase();
+          if (desc.includes('chat not found') || desc.includes('member list') || desc.includes('bot is not a member') || desc.includes('bot was blocked') || desc.includes('forbidden') || desc.includes('chat_id is empty') || desc.includes('peer_id_invalid')) {
+            return { ok: false, reason: 'bot_not_in_chat', detail: 'Telegram: ' + data.description + ' | Channel: ' + chatId + ' | Fix: Add the bot as ADMIN in ' + chatId + ' (Channels: Admin, Groups: Member+ at least). Then retry.' };
+          }
+          if (desc.includes('user not found') || desc.includes('participant_id_invalid') || desc.includes('user_id_invalid')) {
+            return { ok: false, reason: 'not_subscribed', detail: 'Telegram: ' + data.description };
+          }
+          // Unknown Telegram error -> retry once, then surface it (not generic)
+          lastErr = data.description || 'Telegram error';
+          continue;
+        } catch (e) {
+          lastErr = e.message;
+          continue;
         }
-      } catch (e) {
-        return { ok: false, reason: 'verification_error', detail: e.message };
       }
+      if (lastErr) return { ok: false, reason: 'verification_error', detail: 'Telegram API failed after retry: ' + lastErr + ' | Channel: ' + chatId };
+      // If we broke out of loop via member status, continue to reward. If loop ended without break and without return, it means last attempt was member - already handled. Safety:
+      // Re-check once more is not needed; if we are here and lastErr is null, verification passed.
     }
+
+    // Admin diagnostic helper - call from /api/admin/tasks/test-join
+    // Returns raw Telegram result so admin can see exactly why it fails.
 
     // NOTE: youtube / x / custom tasks CANNOT be verified server-side (no YouTube/X API in Worker).
     // They are click-to-claim after opening the link in frontend. Do NOT add fake verification here.
@@ -183,5 +217,22 @@ export async function doTask(db, telegram_id, task_id, date, env) {
   } catch(e) {
     console.error('doTask error', e);
     return { ok: false, reason: 'server_error', detail: e.message };
+  }
+}
+
+
+// Diagnostic: test join verification for one user/channel without giving reward.
+// Returns { ok, status, telegramRaw, hint } - use it in Admin to see the real Telegram answer.
+export async function testJoinVerification(env, channel, telegram_id) {
+  const botToken = (env?.BOT_TOKEN || env?.botToken || '').toString().trim();
+  if (!botToken) return { ok: false, reason: 'bot_token_missing' };
+  let chatId = String(channel || '').trim();
+  if (chatId && !chatId.startsWith('@') && !chatId.startsWith('-') && !/^\d+$/.test(chatId)) chatId = '@' + chatId;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${botToken}/getChatMember?chat_id=${encodeURIComponent(chatId)}&user_id=${telegram_id}`);
+    const data = await res.json().catch(() => null);
+    return { ok: !!data?.ok, status: data?.result?.status || null, telegramRaw: data, chatId };
+  } catch (e) {
+    return { ok: false, reason: 'verification_error', detail: e.message };
   }
 }
