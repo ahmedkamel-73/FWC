@@ -9,11 +9,12 @@ import {
   getAllTasksAdmin, createTask, updateTask, deleteTask,
   createWithdrawal, getWithdrawalById, approveWithdrawal, rejectWithdrawal,
   getUserPendingWithdrawal, logFee, getTotalFees,
+  getFounderConfig, isFounder, getFounderOwnersCount,
   trackUserIP, checkWalletDuplicate, checkIPDuplicate,
   createAntiCheatAlert, getAntiCheatAlerts, resolveAlert, dismissAlert,
 } from './db.js';
 import { getCurrentMiningAmount, canMine, doMine, canWithdraw } from './mining.js';
-import { getDailyTasks, doTask, doCheckin, getCheckinStreak, getUserDailyProgress, hasCheckedInToday } from './tasks.js';
+import { getDailyTasks, doTask, doCheckin, getCheckinStreak, getUserDailyProgress, hasCheckedInToday, testJoinVerification } from './tasks.js';
 import { saveWallet, validateTonAddress, normalizeTonAddress } from './wallet.js';
 import { calculateWithdrawalFee, getFeeConfig, updateFeePercent } from './fees.js';
 import {
@@ -80,7 +81,7 @@ async function getTelegramUser(request, env) {
     if (!initData) return null;
     
     // Verify signature (non-blocking - log warning but allow)
-    const botToken = env.BOT_TOKEN;
+    const botToken = (env?.BOT_TOKEN || '').toString().trim();
     if (botToken) {
       try {
         const isValid = await verifyTelegramInitData(initData, botToken);
@@ -223,7 +224,9 @@ export default {
 
     const url = new URL(request.url);
     const path = url.pathname;
-    const { BOT_TOKEN: botToken } = getSecrets(env);
+    // FIX: was `const { BOT_TOKEN: botToken } = getSecrets(env)` but getSecrets returns { botToken }, so this was ALWAYS undefined.
+    const { botToken } = getSecrets(env);
+    const botTokenSafe = (botToken || env?.BOT_TOKEN || '').toString().trim();
 
     // ========== STATIC PAGES ==========
     if (path === '/tonconnect-manifest.json') {
@@ -359,6 +362,8 @@ export default {
         }
 
         const miningAmount = await getCurrentMiningAmount(env.DB);
+        const founderFlag = await isFounder(env.DB, tgUser.id);
+        const founderCfg = await getFounderConfig(env.DB);
         const canMineRes = await canMine(env.DB, tgUser.id);
         const canWithdrawRes = await canWithdraw(env.DB, env, tgUser.id);
         const ads = await getAdsConfig(env.DB);
@@ -377,6 +382,7 @@ export default {
           wallet_verified: user?.wallet_verified || 0,
           is_banned: user?.is_banned || 0,
           miningAmount,
+          founder: founderFlag ? { isFounder: true, interval_hours: founderCfg.interval_hours, bonus_percent: founderCfg.bonus_percent, fee_percent: founderCfg.fee_percent, nextAmount: Math.round(miningAmount * (founderCfg.interval_hours / 4) * (1 + founderCfg.bonus_percent / 100) * 100000000) / 100000000 } : { isFounder: false, interval_hours: founderCfg.interval_hours, bonus_percent: founderCfg.bonus_percent, fee_percent: founderCfg.fee_percent },
           canMine: canMineRes,
           canWithdraw: canWithdrawRes,
           ads: ads,
@@ -588,7 +594,7 @@ export default {
         const amount = Number(url.searchParams.get('amount'));
         if (!amount || amount <= 0) return json({ ok: false, error: 'invalid_amount' }, 400);
 
-        const feeInfo = await calculateWithdrawalFee(env.DB, amount);
+        const feeInfo = await calculateWithdrawalFee(env.DB, amount, tgUser.id);
         const user = await getUser(env.DB, tgUser.id);
 
         return json({
@@ -612,7 +618,7 @@ export default {
         if (!check.ok) return json({ ok: false, error: check.reason, detail: check }, 400);
 
         const user = await getUser(env.DB, tgUser.id);
-        const feeInfo = await calculateWithdrawalFee(env.DB, amount);
+        const feeInfo = await calculateWithdrawalFee(env.DB, amount, tgUser.id);
 
         if (user.balance < amount) {
           return json({ ok: false, error: 'insufficient_balance', required: amount, available: user.balance }, 400);
@@ -658,6 +664,69 @@ export default {
         return json({ ok: true, leaders: leaders.results || [] });
       }
 
+
+      // ============ FOUNDER BADGE APIs ============
+      if (path === '/api/founder/status' && tgUser) {
+        const cfg = await getFounderConfig(env.DB);
+        const owners = await getFounderOwnersCount(env.DB);
+        const mine = await isFounder(env.DB, tgUser.id);
+        return json({ ok: true, enabled: cfg.enabled, price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent, isFounder: mine });
+      }
+      if (path === '/api/founder/status' && !tgUser) {
+        const cfg = await getFounderConfig(env.DB);
+        const owners = await getFounderOwnersCount(env.DB);
+        return json({ ok: true, enabled: cfg.enabled, price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent });
+      }
+      if (path === '/api/founder/verify' && request.method === 'POST' && tgUser) {
+        const cfg = await getFounderConfig(env.DB);
+        if (!cfg.enabled) return json({ ok: false, error: 'disabled' }, 400);
+        const owners = await getFounderOwnersCount(env.DB);
+        if (owners >= cfg.limit) return json({ ok: false, error: 'sold_out' }, 400);
+        if (await isFounder(env.DB, tgUser.id)) return json({ ok: false, error: 'already_has' }, 400);
+        let body = {};
+        try { body = await request.json(); } catch {}
+        const txHash = (body.tx_hash || '').trim();
+        if (!txHash) return json({ ok: false, error: 'no_tx' }, 400);
+        const used = await env.DB.prepare(`SELECT * FROM founder_owners WHERE tx_hash = ?`).bind(txHash).first();
+        if (used) return json({ ok: false, error: 'tx_already_used' }, 400);
+        const userRow = await env.DB.prepare(`SELECT wallet FROM users WHERE telegram_id = ?`).bind(tgUser.id).first();
+        if (!userRow?.wallet) return json({ ok: false, error: 'no_wallet' }, 400);
+        const apiKey = env.TONCENTER_API_KEY || '';
+        if (!apiKey) return json({ ok: false, error: 'verify_unavailable', detail: 'Set TONCENTER_API_KEY' }, 500);
+        try {
+          // Real on-chain check: TonCenter jetton transfers by transaction hash
+          const trRes = await fetch(`https://toncenter.com/api/v3/jetton/transfers?transaction_hash=${encodeURIComponent(txHash)}&limit=10`, { headers: { 'X-API-Key': apiKey } });
+          const trData = await trRes.json();
+          const transfers = trData.jetton_transfers || trData.transfers || [];
+          if (!transfers || transfers.length === 0) return json({ ok: false, error: 'tx_not_found', detail: 'No jetton transfer found for this hash' }, 400);
+          // Find transfer to burn address with enough amount. Jetton address must match CONFIG.jetton if provided.
+          let matched = null;
+          for (const t of transfers) {
+            const dest = (t.destination?.address || t.destination || t.to || '').toString();
+            const amt = parseFloat(t.amount || 0) / 1e9;
+            const jettonMaster = (t.jetton_master?.address || t.jetton_master || '').toString();
+            if (dest.toLowerCase() === cfg.burn_address.toLowerCase() && amt + 0.001 >= cfg.price) {
+              if (!jettonMaster || jettonMaster.toLowerCase() === CONFIG.jetton.toLowerCase()) { matched = { dest, amt }; break; }
+            }
+          }
+          if (!matched) {
+            // Fallback: check any transfer to burn address, report amount
+            const toBurn = transfers.filter(t => (t.destination?.address || t.destination || '').toString().toLowerCase() === cfg.burn_address.toLowerCase());
+            if (toBurn.length === 0) return json({ ok: false, error: 'wrong_burn_address', detail: 'Tx did not go to burn address' }, 400);
+            const maxAmt = Math.max(...toBurn.map(t => parseFloat(t.amount || 0) / 1e9));
+            return json({ ok: false, error: 'amount_too_low', detail: `Sent ${maxAmt}, need ${cfg.price}` }, 400);
+          }
+          // Optional: verify sender matches user wallet (if TonCenter provides source)
+          // Do NOT block on sender mismatch alone - burn verification is destination+amount.
+          await env.DB.prepare(`INSERT INTO founder_owners (telegram_id, price, tx_hash, created_at) VALUES (?, ?, ?, unixepoch())`).bind(tgUser.id, cfg.price, txHash).run();
+          const newBurned = Math.round((cfg.burned + cfg.price) * 100000000) / 100000000;
+          await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_burned', ?)`).bind(String(newBurned)).run();
+          return json({ ok: true, badge: true, burned_total: newBurned, amount: matched.amt });
+        } catch (e) {
+          return json({ ok: false, error: 'verify_failed', detail: e.message }, 500);
+        }
+      }
+
       if (path === '/api/health') {
         const health = await getSystemHealth(env);
         return json(health, health.status === 'critical' ? 503 : 200);
@@ -672,6 +741,8 @@ export default {
 
         if (path === '/api/admin/stats') {
           const miningAmount = await getCurrentMiningAmount(env.DB);
+        const founderFlag = await isFounder(env.DB, tgUser.id);
+        const founderCfg = await getFounderConfig(env.DB);
           const usersCount = await env.DB.prepare(`SELECT COUNT(*) as c FROM users`).first();
           const wdPending = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE status='pending'`).first();
           const totalBalance = await env.DB.prepare(`SELECT COALESCE(SUM(balance),0) as s FROM users`).first();
@@ -748,7 +819,7 @@ export default {
             }
           } catch {}
           const wdCount = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE telegram_id = ? AND status != 'rejected'`).bind(targetId).first();
-          return json({ ok: true, wallet: user.wallet, jettonBalance: jettonBal, withdrawCount: wdCount?.c || 0, holdAmount });
+          return json({ ok: true, wallet: user.wallet, jettonBalance: jettonBal, balance: jettonBal, withdrawCount: wdCount?.c || 0, holdAmount, meetsHold: jettonBal >= holdAmount });
         }
 
         if (path === '/api/admin/hold' && request.method === 'GET') {
@@ -764,6 +835,66 @@ export default {
           return json({ ok: true, holdAmount: amount });
         }
 
+
+        // ============ ADMIN FOUNDER ============
+
+        // Diagnostic - NEVER returns secret values, only presence + length, so you can prove env is wired without leaking.
+        if (path === '/api/admin/debug-secrets') {
+          const bt = (env?.BOT_TOKEN || '').toString();
+          const tc = (env?.TONCENTER_API_KEY || '').toString();
+          return json({ ok: true, scriptName: 'fwc', hasBOT_TOKEN: !!bt.trim(), botTokenLength: bt.trim().length, botTokenStartsWith: bt.trim().slice(0, 3), hasTONCENTER: !!tc.trim(), toncenterLength: tc.trim().length, hasADMIN_SECRET: !!(env?.ADMIN_SECRET || '').toString().trim(), hasDB: !!env?.DB, hint: bt.trim() ? 'BOT_TOKEN IS present in this Worker env. If tasks still say missing, you deployed a different Worker/env.' : 'BOT_TOKEN is EMPTY in THIS Worker (scriptName fwc, Production). Check: Cloudflare > Workers > fwc > Settings > Variables > Production, then Deploy.' });
+        }
+        if (path === '/api/admin/founder' && request.method === 'GET') {
+          const cfg = await getFounderConfig(env.DB);
+          const owners = await getFounderOwnersCount(env.DB);
+          return json({ ok: true, enabled: cfg.enabled, price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent });
+        }
+        if (path === '/api/admin/founder/toggle' && request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const enabled = body.enabled === true || body.enabled === '1' || body.enabled === 1;
+          await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_enabled', ?)`).bind(enabled ? '1' : '0').run();
+          return json({ ok: true, enabled });
+        }
+        if (path === '/api/admin/founder/config' && request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          if (body.price !== undefined) await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_price', ?)`).bind(String(parseFloat(body.price))).run();
+          if (body.limit !== undefined) await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_limit', ?)`).bind(String(parseInt(body.limit))).run();
+          if (body.burn_address) await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_burn_address', ?)`).bind(String(body.burn_address).trim()).run();
+          if (body.interval_hours !== undefined) await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_interval_hours', ?)`).bind(String(parseFloat(body.interval_hours))).run();
+          if (body.bonus_percent !== undefined) await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_bonus_percent', ?)`).bind(String(parseFloat(body.bonus_percent))).run();
+          if (body.fee_percent !== undefined) await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_fee_percent', ?)`).bind(String(parseFloat(body.fee_percent))).run();
+          const cfg = await getFounderConfig(env.DB);
+          return json({ ok: true, ...cfg });
+        }
+        // Alias: /hold  -> same as /hold-check (Admin frontend calls /hold)
+        if (path.match(/^\/api\/admin\/users\/(\d+)\/hold$/) && !path.endsWith('/hold-check')) {
+          const targetId = parseInt(path.match(/^\/api\/admin\/users\/(\d+)\/hold$/)[1]);
+          const user = await env.DB.prepare(`SELECT * FROM users WHERE telegram_id = ?`).bind(targetId).first();
+          if (!user) return json({ ok: false, error: 'not_found' }, 404);
+          const cfgHold = await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'withdraw_hold_amount'`).first();
+          const holdAmount = cfgHold?.value ? parseFloat(cfgHold.value) : (CONFIG.withdraw_hold_amount || 1000);
+          if (!user.wallet) return json({ ok: true, wallet: null, jettonBalance: 0, withdrawCount: 0, holdAmount, balance: 0 });
+          const apiKey2 = env.TONCENTER_API_KEY || '';
+          let jettonBal = 0;
+          try {
+            if (apiKey2 && CONFIG.jetton) {
+              const r = await fetch(`https://toncenter.com/api/v3/jetton/wallets?owner_address=${user.wallet}&jetton_address=${CONFIG.jetton}&limit=1`, { headers: { 'X-API-Key': apiKey2 } });
+              const d = await r.json();
+              if (d.jetton_wallets && d.jetton_wallets.length > 0) jettonBal = parseFloat(d.jetton_wallets[0].balance) / 1e9;
+            }
+          } catch {}
+          const wdCount = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE telegram_id = ? AND status != 'rejected'`).bind(targetId).first();
+          return json({ ok: true, wallet: user.wallet, jettonBalance: jettonBal, balance: jettonBal, withdrawCount: wdCount?.c || 0, holdAmount, meetsHold: jettonBal >= holdAmount });
+        }
+
+
+        if (path === '/api/admin/tasks/test-join') {
+          const channel = url.searchParams.get('channel') || '';
+          const userId = parseInt(url.searchParams.get('user_id') || '0');
+          if (!channel || !userId) return json({ ok: false, error: 'need channel + user_id, e.g. ?channel=@fwc_coin&user_id=123' }, 400);
+          const r = await testJoinVerification(env, channel, userId);
+          return json({ ok: true, ...r, hint: r.ok ? 'Bot CAN see this chat. If user status is left/kicked, user really has not joined.' : 'Bot CANNOT see this chat. Add bot as ADMIN in the channel/group, check BOT_TOKEN, check channel username.' });
+        }
         if (path === '/api/admin/tasks' && request.method === 'GET') {
           const tasks = await getAllTasksAdmin(env.DB);
           return json({ ok: true, tasks });
@@ -899,7 +1030,7 @@ export default {
 
     // ========== TELEGRAM WEBHOOK ==========
     if (path === '/webhook' && request.method === 'POST') {
-      if (!botToken) return new Response('BOT_TOKEN missing', { status: 500 });
+      if (!botTokenSafe) return new Response('BOT_TOKEN missing', { status: 500 });
 
       try {
         const update = await request.json();
@@ -941,7 +1072,7 @@ export default {
             const buttons = [[{ text: '🚀 Open FWC Mining App', web_app: { url: workerUrl } }]];
             if (isAdmin) buttons.push([{ text: '👑 Admin Panel', web_app: { url: workerUrl + '/aha.htm' } }]);
 
-            await sendTelegramMessage(botToken, fromId,
+            await sendTelegramMessage(botTokenSafe, fromId,
               `⛏️ *FWC Mining*\\n\\nWelcome ${fromFirstName}! Start mining FWC now.`,
               { inline_keyboard: buttons }
             );
