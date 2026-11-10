@@ -150,8 +150,32 @@ export default {
     if(path==='/api/me'){
       const user=await createOrUpdateUser(env.DB,{telegram_id:tgUser.id,username:tgUser.username,first_name:tgUser.first_name});
       const mine=await canMine(env.DB,tgUser.id);
-      const founder=await isFounder(env.DB,tgUser.id);
-      return json({ok:true,user,canMine:mine,founder:{isFounder:founder}});
+      const founderFlag=await isFounder(env.DB,tgUser.id);
+      const founderCfg=await getFounderConfig(env.DB);
+      // Mining amount: 6 base, founder gets bonus
+      let miningAmount=6;
+      try{ const s=await getMiningSettings(env.DB); if(s?.amount) miningAmount=parseFloat(s.amount); }catch{}
+      let founderObj={isFounder:false,interval_hours:founderCfg?.interval_hours||168,bonus_percent:founderCfg?.bonus_percent||0,fee_percent:founderCfg?.fee_percent||0};
+      if(founderFlag){
+        const nextAmount=Math.round(miningAmount*( (founderCfg?.interval_hours||168)/4 )*(1+(founderCfg?.bonus_percent||0)/100)*100000000)/100000000;
+        founderObj={isFounder:true,interval_hours:founderCfg?.interval_hours||168,bonus_percent:founderCfg?.bonus_percent||0,fee_percent:founderCfg?.fee_percent||0,nextAmount};
+      }
+      // Streak: from daily_checkins
+      let streak=0;
+      try{ const r=await env.DB.prepare(`SELECT COUNT(*) c FROM daily_checkins WHERE telegram_id=?`).bind(tgUser.id).first(); streak=r?.c||0; }catch{}
+      // canWithdraw: wallet + balance >= min + not banned
+      let canWithdraw={ok:false,reason:'addWallet'};
+      try{
+        const min=parseFloat(await getConfigValue(env.DB,'withdraw_min','1000'));
+        if(!user?.wallet) canWithdraw={ok:false,reason:'addWallet'};
+        else if((user?.balance||0)<min) canWithdraw={ok:false,reason:'min',min};
+        else if(user?.is_banned) canWithdraw={ok:false,reason:'banned'};
+        else canWithdraw={ok:true};
+      }catch{ canWithdraw={ok:false,reason:'error'}; }
+      // Ads config (may be missing in clean DB, default null)
+      let adBlockId=null, adAutoBlockId=null;
+      try{ adBlockId=await getConfigValue(env.DB,'ads_free_block_id',null); adAutoBlockId=await getConfigValue(env.DB,'ads_auto_block_id',null); }catch{}
+      return json({ok:true,telegram_id:tgUser.id,username:tgUser.username||user?.username||null,first_name:user?.first_name||tgUser.first_name||null,language:user?.language||'en',balance:user?.balance||0,wallet:user?.wallet||null,wallet_verified:user?.wallet_verified||0,is_banned:user?.is_banned||0,miningAmount,founder:founderObj,canMine:mine,canWithdraw,streak,adBlockId,adAutoBlockId,ads:{freeBlockId:adBlockId,autoBlockId:adAutoBlockId},user});
     }
     if(path==='/api/mine' && request.method==='POST'){
       await createOrUpdateUser(env.DB,{telegram_id:tgUser.id,username:tgUser.username,first_name:tgUser.first_name});
