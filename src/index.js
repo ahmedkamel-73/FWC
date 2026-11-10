@@ -765,14 +765,42 @@ export default {
           const transfers = trData.jetton_transfers || trData.transfers || [];
           if (!transfers || transfers.length === 0) return json({ ok: false, error: 'tx_not_found', detail: 'No jetton transfer found for this hash' }, 400);
           // Find transfer to burn address with enough amount. Jetton address must match CONFIG.jetton if provided.
+          // SAFE sender check: if TonCenter returns a source and it clearly differs from the user's wallet -> reject.
+          // If source is missing/unparseable -> allow (do not break old valid burns).
+          const normAddr = (a) => {
+            const s = (a || '').toString().trim();
+            if (!s) return '';
+            try { return Address.parse(s).toRawString(); } catch { return s.toLowerCase(); }
+          };
+          // Note: top-level import already provides Address, use dynamic fallback if needed
+          let userWalletRaw = '';
+          try { const { Address } = await import('@ton/ton'); userWalletRaw = Address.parse(userRow.wallet).toRawString(); } catch { userWalletRaw = (userRow.wallet || '').toString().toLowerCase(); }
+          const getSource = (t) => (t.source?.address || t.source || t.from || t.sender?.address || t.sender || '').toString();
+          const getSourceRaw = (t) => {
+            const s = getSource(t);
+            if (!s) return '';
+            try { return normAddr(s); } catch { return s.toLowerCase(); }
+          };
           let matched = null;
+          let senderMismatchFound = false;
           for (const t of transfers) {
             const dest = (t.destination?.address || t.destination || t.to || '').toString();
             const amt = parseFloat(t.amount || 0) / 1e9;
             const jettonMaster = (t.jetton_master?.address || t.jetton_master || '').toString();
             if (dest.toLowerCase() === cfg.burn_address.toLowerCase() && amt + 0.001 >= cfg.price) {
-              if (!jettonMaster || jettonMaster.toLowerCase() === CONFIG.jetton.toLowerCase()) { matched = { dest, amt }; break; }
+              if (!jettonMaster || jettonMaster.toLowerCase() === CONFIG.jetton.toLowerCase()) {
+                const srcRaw = getSourceRaw(t);
+                if (!srcRaw) { matched = { dest, amt }; break; }
+                // Compare raw, fallback to lowercased friendly if raw parse failed
+                const srcLower = getSource(t).toLowerCase();
+                const userLower = (userRow.wallet || '').toString().toLowerCase();
+                if (srcRaw === userWalletRaw || srcLower === userLower) { matched = { dest, amt }; break; }
+                senderMismatchFound = true;
+              }
             }
+          }
+          if (!matched && senderMismatchFound) {
+            return json({ ok: false, error: 'sender_mismatch', detail: 'Burn was not sent from your registered wallet' }, 400);
           }
           if (!matched) {
             // Fallback: check any transfer to burn address, report amount
