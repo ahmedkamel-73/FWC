@@ -47,13 +47,7 @@ export default {
     await initDB(env.DB);
     const url=new URL(request.url); const path=url.pathname;
     const secrets=getSecrets(env);
-    if(path==='/tonconnect-manifest.json') return json({url:url.origin,name:'FWC Mining',iconUrl:url.origin+'/logo.png'});
-    if(path==='/'||path==='/app') return htmlResponse(USER_HTML);
-    if(path==='/aha.htm') return htmlResponse(ADMIN_HTML);
-    if(!path.startsWith('/api/')) return json({ok:false,error:'not_found'},404);
-    const tgUser=await getTelegramUser(request,env);
-
-    // BOT WEBHOOK - Telegram sends updates here. Must be BEFORE auth.
+    // BOT WEBHOOK - MUST be BEFORE /api/ guard, /webhook is NOT /api/
     if(path==='/webhook' && request.method==='POST'){
       try{ const update=await request.json(); await handleBotUpdate(env, update); }catch(e){ console.warn('webhook error', e.message); }
       return json({ok:true});
@@ -61,6 +55,12 @@ export default {
     if(path==='/webhook' && request.method==='GET'){
       return json({ok:true, hint:'POST Telegram updates here. Set webhook to https://fwc.ahmed73.workers.dev/webhook'});
     }
+    if(path==='/tonconnect-manifest.json') return json({url:url.origin,name:'FWC Mining',iconUrl:url.origin+'/logo.png'});
+    if(path==='/'||path==='/app') return htmlResponse(USER_HTML);
+    if(path==='/aha.htm') return htmlResponse(ADMIN_HTML);
+    if(path==='/logo.png' || path==='/logo.jpg' || path==='/favicon.ico') return json({ok:false,error:'not_found'},404);
+    if(!path.startsWith('/api/')) return json({ok:false,error:'not_found'},404);
+    const tgUser=await getTelegramUser(request,env);
     // PUBLIC DEBUG - no auth, only booleans, never values
     if(path==='/api/debug-secrets'){
       return json({ok:true, hasBOT_TOKEN: !!secrets.BOT_TOKEN, botTokenLength: secrets.BOT_TOKEN.length, hasADMIN_SECRET: !!secrets.ADMIN_SECRET, hasTONCENTER: !!secrets.TONCENTER_API_KEY, hasDB: !!env?.DB});
