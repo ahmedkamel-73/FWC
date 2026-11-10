@@ -1,3 +1,4 @@
+
 #!/bin/bash
 # FWC CLEAN v1 - deploy
 set -e
