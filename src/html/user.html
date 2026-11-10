@@ -499,6 +499,7 @@ let currentX = 0;
 let smoothRemainingMs = null;
 let lastCanMineKey = '';
 function formatCountdown(ms){
+  if(ms===null || ms===undefined) return '—';
   if(ms<=0) return '0h 00m 00s';
   const totalSec = Math.ceil(ms/1000);
   const h = Math.floor(totalSec/3600);
@@ -509,10 +510,9 @@ function formatCountdown(ms){
 function updateCellsFromMining(){
   let progress = 0;
   let isReady = false;
-  // Smooth: use local remaining that ticks every second, not stale 30s value
-  let remainingMs = null;
+  let totalMs = 4*3600*1000;
+  if(STATE && STATE.founderStatus && STATE.founderStatus.isFounder && STATE.founderStatus.interval_hours) totalMs = STATE.founderStatus.interval_hours*3600*1000;
   if(STATE && STATE.canMine){
-    // Detect new cooldown cycle (new remaining from server)
     const key = (STATE.canMine.ok?'ready':STATE.canMine.reason)+'|'+String(STATE.canMine.remaining||'');
     if(key !== lastCanMineKey){
       lastCanMineKey = key;
@@ -522,28 +522,20 @@ function updateCellsFromMining(){
         if(r > 0 && r < 20000) r = r * 1000;
         smoothRemainingMs = r;
       } else { smoothRemainingMs = null; }
+    } else {
+      // Same cycle: tick down smoothly 1s per call
+      if(smoothRemainingMs !== null && smoothRemainingMs > 0) smoothRemainingMs = Math.max(0, smoothRemainingMs - 1000);
     }
-    // Tick down smoothly by 1s each call (called every 1000ms)
-    if(smoothRemainingMs !== null && smoothRemainingMs > 0){
-      // First call after sync: don't decrement yet, subsequent calls will
-      if(window._cellsTicked){ smoothRemainingMs = Math.max(0, smoothRemainingMs - 1000); }
-      window._cellsTicked = true;
-    }
-    remainingMs = smoothRemainingMs;
-    // Total: 4h normal, 8h for Founder
-    let totalMs = 4*3600*1000;
-    if(STATE.founder && STATE.founder.isFounder && STATE.founderStatus && STATE.founderStatus.interval_hours) totalMs = STATE.founderStatus.interval_hours*3600*1000;
-    else if(STATE.founderStatus && STATE.founderStatus.interval_hours && STATE.founderStatus.isFounder) totalMs = STATE.founderStatus.interval_hours*3600*1000;
-    if(STATE.canMine.ok){ progress = 100; isReady = true; remainingMs = 0; }
-    else if(STATE.canMine.reason === 'cooldown' && remainingMs !== null){
-      const elapsed = Math.max(0, totalMs - remainingMs);
+    if(STATE.canMine.ok){ progress = 100; isReady = true; smoothRemainingMs = 0; }
+    else if(STATE.canMine.reason === 'cooldown' && smoothRemainingMs !== null){
+      const elapsed = Math.max(0, totalMs - smoothRemainingMs);
       progress = Math.min(100, Math.max(0, (elapsed/totalMs)*100));
-      isReady = remainingMs <= 1000;
+      isReady = smoothRemainingMs <= 1000;
       if(isReady) progress = 100;
-    } else { progress = 0; isReady = false; remainingMs = null; }
+    } else { progress = 0; isReady = false; }
   } else { progress = 0; isReady = false; }
   cellProgress = progress;
-  const countdownText = (remainingMs !== null && !isReady) ? '⏳ '+formatCountdown(remainingMs) : '✅ READY';
+  // === COLUMNS: PERCENTAGE ONLY (as user asked) ===
   for(let i=0;i<3;i++){
     const el = document.getElementById('fill'+i);
     const pow = document.getElementById('power'+i);
@@ -553,12 +545,13 @@ function updateCellsFromMining(){
       el.style.opacity = '1';
     }
     if(pow){
-      // Small gold text place: now shows COUNTDOWN, not % (user request)
-      pow.textContent = isReady ? '✅ READY' : formatCountdown(remainingMs);
+      pow.textContent = Math.floor(progress)+'%';
       pow.style.color = progress >= 99 ? '#00FF88' : 'var(--gold)';
-      pow.style.fontSize = '9px';
+      pow.style.fontSize = '10px';
     }
   }
+  // === BELOW: COUNTDOWN FROM 4H UNTIL SLIDER WORKS ===
+  const countdownText = isReady ? '✅ READY' : '⏳ '+formatCountdown(smoothRemainingMs);
   const status = document.getElementById('cellsStatus');
   const slider = document.getElementById('sliderContainer');
   const sliderText = document.getElementById('sliderText');
@@ -577,17 +570,22 @@ function updateCellsFromMining(){
     if(miningStatus) miningStatus.textContent = '✅ Cells Ready - Slide to claim';
   } else {
     if(status){
-      status.textContent = '● CHARGING - '+countdownText+' - '+Math.floor(progress)+'%';
+      status.textContent = '● CHARGING AUTOMATICALLY '+Math.floor(progress)+'%';
       status.style.color = 'var(--gold)';
       status.style.borderColor = 'rgba(212,175,55,0.2)';
     }
     if(slider){
       slider.classList.add('disabled');
       slider.classList.remove('ready');
-      if(sliderText) sliderText.textContent = countdownText+' - '+Math.floor(progress)+'%';
+      // Slider text = COUNTDOWN (below columns)
+      if(sliderText) sliderText.textContent = countdownText;
     }
-    if(miningStatus && STATE.canMine && STATE.canMine.reason === 'cooldown'){
+    if(miningStatus){
+      // The line BELOW the slider = COUNTDOWN from 4h
       miningStatus.textContent = countdownText+' - '+Math.floor(progress)+'% charged';
+      miningStatus.style.color = 'var(--gold)';
+      miningStatus.style.fontSize = '12px';
+      miningStatus.style.fontWeight = '700';
     }
   }
 }
