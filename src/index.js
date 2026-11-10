@@ -58,7 +58,6 @@ export default {
     if(path==='/tonconnect-manifest.json') return json({url:url.origin,name:'FWC Mining',iconUrl:url.origin+'/logo.png'});
     if(path==='/'||path==='/app') return htmlResponse(USER_HTML);
     if(path==='/aha.htm') return htmlResponse(ADMIN_HTML);
-    if(path==='/logo.png' || path==='/logo.jpg' || path==='/favicon.ico') return json({ok:false,error:'not_found'},404);
     if(!path.startsWith('/api/')) return json({ok:false,error:'not_found'},404);
     const tgUser=await getTelegramUser(request,env);
     // PUBLIC DEBUG - no auth, only booleans, never values
@@ -149,21 +148,27 @@ export default {
     if(!tgUser) return json({ok:false,error:'no_telegram_user'},401);
     if(path==='/api/me'){
       const user=await createOrUpdateUser(env.DB,{telegram_id:tgUser.id,username:tgUser.username,first_name:tgUser.first_name});
+      let referralCode=user?.referral_code;
+      if(!referralCode){
+        try{
+          const arr=new Uint8Array(8); crypto.getRandomValues(arr);
+          referralCode=[...arr].map(b=>b.toString(16).padStart(2,'0')).join('');
+          await env.DB.prepare(`UPDATE users SET referral_code=? WHERE telegram_id=?`).bind(referralCode,tgUser.id).run();
+          user.referral_code=referralCode;
+        }catch{}
+      }
       const mine=await canMine(env.DB,tgUser.id);
       const founderFlag=await isFounder(env.DB,tgUser.id);
       const founderCfg=await getFounderConfig(env.DB);
-      // Mining amount: 6 base, founder gets bonus
       let miningAmount=6;
       try{ const s=await getMiningSettings(env.DB); if(s?.amount) miningAmount=parseFloat(s.amount); }catch{}
       let founderObj={isFounder:false,interval_hours:founderCfg?.interval_hours||168,bonus_percent:founderCfg?.bonus_percent||0,fee_percent:founderCfg?.fee_percent||0};
       if(founderFlag){
-        const nextAmount=Math.round(miningAmount*( (founderCfg?.interval_hours||168)/4 )*(1+(founderCfg?.bonus_percent||0)/100)*100000000)/100000000;
+        const nextAmount=Math.round(miningAmount*((founderCfg?.interval_hours||168)/4)*(1+(founderCfg?.bonus_percent||0)/100)*100000000)/100000000;
         founderObj={isFounder:true,interval_hours:founderCfg?.interval_hours||168,bonus_percent:founderCfg?.bonus_percent||0,fee_percent:founderCfg?.fee_percent||0,nextAmount};
       }
-      // Streak: from daily_checkins
       let streak=0;
       try{ const r=await env.DB.prepare(`SELECT COUNT(*) c FROM daily_checkins WHERE telegram_id=?`).bind(tgUser.id).first(); streak=r?.c||0; }catch{}
-      // canWithdraw: wallet + balance >= min + not banned
       let canWithdraw={ok:false,reason:'addWallet'};
       try{
         const min=parseFloat(await getConfigValue(env.DB,'withdraw_min','1000'));
@@ -172,10 +177,9 @@ export default {
         else if(user?.is_banned) canWithdraw={ok:false,reason:'banned'};
         else canWithdraw={ok:true};
       }catch{ canWithdraw={ok:false,reason:'error'}; }
-      // Ads config (may be missing in clean DB, default null)
       let adBlockId=null, adAutoBlockId=null;
       try{ adBlockId=await getConfigValue(env.DB,'ads_free_block_id',null); adAutoBlockId=await getConfigValue(env.DB,'ads_auto_block_id',null); }catch{}
-      return json({ok:true,telegram_id:tgUser.id,username:tgUser.username||user?.username||null,first_name:user?.first_name||tgUser.first_name||null,language:user?.language||'en',balance:user?.balance||0,wallet:user?.wallet||null,wallet_verified:user?.wallet_verified||0,is_banned:user?.is_banned||0,miningAmount,founder:founderObj,canMine:mine,canWithdraw,streak,adBlockId,adAutoBlockId,ads:{freeBlockId:adBlockId,autoBlockId:adAutoBlockId},user});
+      return json({ok:true,telegram_id:tgUser.id,username:tgUser.username||user?.username||null,first_name:user?.first_name||tgUser.first_name||null,language:user?.language||'en',balance:user?.balance||0,wallet:user?.wallet||null,wallet_verified:user?.wallet_verified||0,is_banned:user?.is_banned||0,miningAmount,founder:founderObj,canMine:mine,canWithdraw,streak,adBlockId,adAutoBlockId,ads:{freeBlockId:adBlockId,autoBlockId:adAutoBlockId},referral_code:referralCode,user});
     }
     if(path==='/api/mine' && request.method==='POST'){
       await createOrUpdateUser(env.DB,{telegram_id:tgUser.id,username:tgUser.username,first_name:tgUser.first_name});
@@ -232,9 +236,22 @@ export default {
       return json({ok:false,reason:'no_bonus'});
     }
     if(path==='/api/referral'){
-      const refs=(await env.DB.prepare(`SELECT telegram_id,username,first_name FROM users WHERE referral_by=?`).bind(tgUser.id).all()).results||[];
-      const u=await getUser(env.DB,tgUser.id);
-      return json({ok:true,code:u?.referral_code,referrals:refs,count:refs.length,link:`https://t.me/FWC_Bot?start=${u?.referral_code||''}`});
+      let u=await getUser(env.DB,tgUser.id);
+      let code=u?.referral_code;
+      if(!code){
+        try{
+          const arr=new Uint8Array(8); crypto.getRandomValues(arr);
+          code=[...arr].map(b=>b.toString(16).padStart(2,'0')).join('');
+          await env.DB.prepare(`UPDATE users SET referral_code=? WHERE telegram_id=?`).bind(code,tgUser.id).run();
+        }catch{}
+      }
+      const refs=(await env.DB.prepare(`SELECT telegram_id,username,first_name,balance,created_at FROM users WHERE referral_by=?`).bind(tgUser.id).all()).results||[];
+      const referrals=refs.map(r=>({id:r.telegram_id,name:r.first_name||'User',username:r.username||'',balance:r.balance||0,earned:0,joined:r.created_at||0,active:1}));
+      const count=refs.length;
+      let total_earnings=0;
+      try{ const e=await env.DB.prepare(`SELECT COALESCE(SUM(amount),0) s FROM referrals_log WHERE from_id=?`).bind(tgUser.id).first(); total_earnings=e?.s||0; }catch{}
+      const referral_link=`https://t.me/fwcoinbot?start=ref_${code||''}`;
+      return json({ok:true,code,referral_code:code,referral_count:count,count,referral_link,link:referral_link,referrals,total_earnings,totalEarnings:total_earnings});
     }
     if(path==='/api/leaderboard'){
       const rows=(await env.DB.prepare(`SELECT telegram_id,username,first_name,balance FROM users ORDER BY balance DESC LIMIT 50`).all()).results||[];
