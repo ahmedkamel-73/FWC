@@ -1,9 +1,12 @@
-# ⛏️ FWC Mining Bot — Production
+# FWC CLEAN v1 - Step 1
+Worker fwc @ https://fwc.ahmed73.workers.dev
 
-Complete Telegram mining bot with TON blockchain integration, batch payouts (Highload V2 - 255/TX), anti-cheat detection, and full admin panel.
+## Deploy
+1. Set D1 database_id in wrangler.toml
+2. Set secrets in Cloudflare > Workers > fwc > Settings > Variables > Production: BOT_TOKEN, ADMIN_SECRET, TONCENTER_API_KEY
+3. wrangler deploy
 
-## 🚀 Quick Deploy (7 Steps)
-
-### 1. Install
-```bash
-npm install
+## Test
+- /api/health -> bot ok:true
+- /api/debug-secrets -> hasBOT_TOKEN true, hasADMIN_SECRET true
+- /aha.htm -> login with ADMIN_SECRET, works from browser

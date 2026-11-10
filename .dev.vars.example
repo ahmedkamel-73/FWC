@@ -1,20 +1,4 @@
-# .dev.vars.example - Copy to .dev.vars for LOCAL DEVELOPMENT ONLY
-# NEVER commit .dev.vars to git!
-
-# Telegram Bot
-BOT_TOKEN=your_bot_token_from_botfather
-
-# Admin secret (any long random string)
-ADMIN_SECRET=change_me_to_something_long_and_random
-
-# TON Treasury wallet (12 or 24 words, space-separated)
-TON_MNEMONIC_TREASURY=word1 word2 word3 word4 word5 word6 word7 word8 word9 word10 word11 word12 word13 word14 word15 word16 word17 word18 word19 word20 word21 word22 word23 word24
-
-# Adsgram
-ADSGRAM_BLOCK_ID=int-xxxxx
-
-# TON Center API key (optional, for mainnet)
+# Copy to .dev.vars for local dev (never commit real values)
+BOT_TOKEN=
+ADMIN_SECRET=
 TONCENTER_API_KEY=
-
-# Worker URL for local dev
-WORKER_URL=http://localhost:8787
