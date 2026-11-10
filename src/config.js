@@ -38,6 +38,7 @@ export function getSecrets(env) {
   if (!env.BOT_TOKEN) {
     console.log("BOT_TOKEN missing - serving pages without bot");
     return {
+      BOT_TOKEN: null,
       botToken: null,
       adminSecret: env.ADMIN_SECRET,
       mnemonic: env.TON_MNEMONIC_TREASURY,
@@ -47,6 +48,7 @@ export function getSecrets(env) {
     };
   }
   return {
+    BOT_TOKEN: env.BOT_TOKEN,
     botToken: env.BOT_TOKEN,
     adminSecret: env.ADMIN_SECRET,
     mnemonic: env.TON_MNEMONIC_TREASURY,
