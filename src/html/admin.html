@@ -21,6 +21,27 @@
 :where(code, pre, kbd, samp) {
   font-family: "Optimistic Mono", ui-monospace, monospace;
 }
+</style><style>
+@font-face {
+  font-family: "Optimistic";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("/fonts/OptimisticAI_VF_Optimized.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Optimistic Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/OptimisticMono_W_TextRegular.woff2") format("woff2");
+}
+:where(html) {
+  font-family: "Optimistic", system-ui, sans-serif;
+}
+:where(code, pre, kbd, samp) {
+  font-family: "Optimistic Mono", ui-monospace, monospace;
+}
 </style>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -139,7 +160,7 @@
     <div class="tabs-mobile" id="mobTabs"></div>
     <div class="header">
       <div>
-        <img src="/logo.png" style="width:48px;height:48px;border-radius:50%;vertical-align:middle;margin-right:8px"><h1 style="display:inline" id="pageTitle">Dashboard</h1>
+        <h1 id="pageTitle">Dashboard</h1>
         <div class="header-info" id="pageSub">System overview</div>
       </div>
       <button class="btn btn-sm" onclick="refreshPage()">🔄 Refresh</button>
@@ -1170,6 +1191,30 @@ window.toggleChannelField = toggleChannelField;
 window.approveWd = approveWd;
 window.rejectWd = rejectWd;
 window.saveFee = saveFee;
+
+// ===== FIX: checkUserHold + resetWithdrawals were called but never defined =====
+async function checkUserHold(tgId){
+  try{
+    toast('Checking on-chain balance...','info');
+    // Try dedicated hold endpoint, fallback to wallet endpoint (both supported in backend)
+    let res = await api(`/api/admin/users/${tgId}/hold-check`);
+    if(!res.ok) { const alt = await api(`/api/admin/users/${tgId}/hold`); if(alt.ok) res = alt; }
+    if(!res.ok){ toast('Error: '+(res.error||'not found'),'error'); alert('Error: '+(res.error||'not found')); return; }
+    const bal = res.jettonBalance ?? res.balance ?? res.onChainBalance ?? 0;
+    const hold = res.holdAmount ?? res.hold ?? 0;
+    const wallet = res.wallet || '';
+    const ok = bal >= hold;
+    const msg = `User: ${tgId}\nWallet: ${wallet||'—'}\nOn-chain FWC: ${bal}\nHold required: ${hold}\nStatus: ${ok?'✅ Meets Hold':'❌ Below Hold'}`;
+    alert(msg);
+  }catch(e){ alert('Error: '+e.message); }
+}
+async function resetWithdrawals(tgId){
+  if(!confirm('Reset withdrawals for '+tgId+'?')) return;
+  const res = await api(`/api/admin/users/${tgId}/withdrawals/reset`,'POST');
+  if(res.ok){ toast('Withdrawals reset ✅','success'); await loadUsers(); renderContent(); }
+  else toast('Error: '+(res.error||'failed'),'error');
+}
+
 window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
@@ -1177,5 +1222,64 @@ window.executePayout = executePayout;
 window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
 window.checkPassword = checkPassword;
 </script>
+<script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script>
+<!-- FOUNDER BADGE CONTROL - ADDED ONLY -->
+<div class="admin-section" id="founderSection" style="margin-top:20px; padding:20px; background:var(--surface); border:1px solid var(--border); border-radius:12px;">
+  <h3 style="color:var(--accent); margin-bottom:12px;">👑 Founder Badge Control (حرق لدعم العملة)</h3>
+  <div id="founderAdminStatus" style="font-size:13px; color:var(--text-muted); margin-bottom:16px;">Loading...</div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+    <button class="btn" style="background:#00FF88; color:#000; padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:700;" onclick="toggleFounder(true)">✅ تفعيل</button>
+    <button class="btn" style="background:#ff4d4d; color:#fff; padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:700;" onclick="toggleFounder(false)">❌ إيقاف</button>
+    <button class="btn" style="background:#D4AF37; color:#000; padding:8px 16px; border-radius:8px; border:none; cursor:pointer; font-weight:700;" onclick="loadFounderAdmin()">🔄 تحديث</button>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:12px;">
+    <div style="display:flex; gap:8px; align-items:center;"><label style="width:120px;">السعر (FWC):</label><input id="founderPriceInput" type="number" value="10000" style="background:#000; border:1px solid #333; color:#fff; padding:6px 10px; border-radius:6px;"><button class="btn" style="background:#333; color:#fff; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;" onclick="saveFounderConfig()">حفظ</button></div>
+    <div style="display:flex; gap:8px; align-items:center;"><label style="width:120px;">العدد الأقصى:</label><input id="founderLimitInput" type="number" value="500" style="background:#000; border:1px solid #333; color:#fff; padding:6px 10px; border-radius:6px;"><button class="btn" style="background:#333; color:#fff; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;" onclick="saveFounderConfig()">حفظ</button></div>
+    <div style="display:flex; gap:8px; align-items:center;"><label style="width:120px;">وقت الجمع (ساعة):</label><input id="founderIntervalInput" type="number" value="8" min="1" max="24" style="background:#000; border:1px solid #333; color:#fff; padding:6px 10px; border-radius:6px;"><span style="font-size:11px;color:var(--text-muted);">الفاوندر يجمع كل 8 ساعات بدل 4</span><button class="btn" style="background:#333; color:#fff; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;" onclick="saveFounderConfig()">حفظ</button></div>
+    <div style="display:flex; gap:8px; align-items:center;"><label style="width:120px;">بونص التعدين (%):</label><input id="founderBonusInput" type="number" value="20" min="0" max="100" style="background:#000; border:1px solid #333; color:#fff; padding:6px 10px; border-radius:6px;"><span style="font-size:11px;color:var(--text-muted);">فوق الضعف - مثال: 20% = ×2.4</span><button class="btn" style="background:#333; color:#fff; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;" onclick="saveFounderConfig()">حفظ</button></div>
+    <div style="display:flex; gap:8px; align-items:center;"><label style="width:120px;">رسوم سحب الفاوندر (%):</label><input id="founderFeeInput" type="number" value="3" min="0" max="20" step="0.5" style="background:#000; border:1px solid #333; color:#fff; padding:6px 10px; border-radius:6px;"><span style="font-size:11px;color:var(--text-muted);">ثابت للفاوندر فقط</span><button class="btn" style="background:#333; color:#fff; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;" onclick="saveFounderConfig()">حفظ</button></div>
+    <div style="display:flex; gap:8px; align-items:center;"><label style="width:120px;">عنوان الحرق:</label><input id="founderBurnInput" type="text" style="width:400px; background:#000; border:1px solid #333; color:#fff; padding:6px 10px; border-radius:6px;" value="EQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM9c"><button class="btn" style="background:#333; color:#fff; padding:6px 12px; border-radius:6px; border:none; cursor:pointer;" onclick="saveFounderConfig()">حفظ</button></div>
+  </div>
+  <div id="founderStats" style="margin-top:16px; font-size:12px; color:var(--text-muted);"></div>
+</div>
+<script>
+// Founder Admin - Added only
+async function loadFounderAdmin(){
+  try{
+    const res = await api('/api/admin/founder');
+    if(!res.ok){ document.getElementById('founderAdminStatus').textContent = 'خطأ: '+res.error; return; }
+    document.getElementById('founderAdminStatus').innerHTML = `الحالة: <b style="color:${res.enabled?'#00FF88':'#ff4d4d'}">${res.enabled?'مفعل ✅':'متوقف ❌'}</b><br>السعر: ${res.price} FWC - الحد: ${res.limit} - المباع: ${res.owners} - المتبقي: ${res.remaining} - المحروق: ${res.burned} FWC<br>عنوان الحرق: ${res.burn_address}`;
+    document.getElementById('founderPriceInput').value = res.price;
+    document.getElementById('founderLimitInput').value = res.limit;
+    document.getElementById('founderBurnInput').value = res.burn_address;
+    if(res.interval_hours !== undefined) document.getElementById('founderIntervalInput').value = res.interval_hours;
+    if(res.bonus_percent !== undefined) document.getElementById('founderBonusInput').value = res.bonus_percent;
+    if(res.fee_percent !== undefined) document.getElementById('founderFeeInput').value = res.fee_percent;
+    // Show perks in status line
+    document.getElementById('founderAdminStatus').innerHTML += `<br>مميزات الفاوندر: جمع كل ${res.interval_hours ?? 8} ساعات | بونص ${res.bonus_percent ?? 20}% | رسوم سحب ${res.fee_percent ?? 3}%`;
+    document.getElementById('founderStats').textContent = `تم بيع ${res.owners} / ${res.limit} - محروق ${res.burned} FWC`;
+  }catch(e){ document.getElementById('founderAdminStatus').textContent = 'خطأ: '+e.message; }
+}
+async function toggleFounder(enabled){
+  try{
+    const res = await api('/api/admin/founder/toggle','POST',{enabled});
+    if(res.ok){ alert(enabled?'تم التفعيل ✅':'تم الإيقاف ❌'); loadFounderAdmin(); } else alert('خطأ: '+res.error);
+  }catch(e){ alert(e.message); }
+}
+async function saveFounderConfig(){
+  const price = parseFloat(document.getElementById('founderPriceInput').value);
+  const limit = parseInt(document.getElementById('founderLimitInput').value);
+  const burn_address = document.getElementById('founderBurnInput').value;
+  const interval_hours = parseFloat(document.getElementById('founderIntervalInput').value);
+  const bonus_percent = parseFloat(document.getElementById('founderBonusInput').value);
+  const fee_percent = parseFloat(document.getElementById('founderFeeInput').value);
+  try{
+    const res = await api('/api/admin/founder/config','POST',{price, limit, burn_address, interval_hours, bonus_percent, fee_percent});
+    if(res.ok){ alert('تم الحفظ ✅'); loadFounderAdmin(); } else alert('خطأ');
+  }catch(e){ alert(e.message); }
+}
+setTimeout(loadFounderAdmin, 1000);
+</script>
+
 <script>(function(){var loc=location.href.replace(/#.*$/,"");var ATTR_NAMES=["data-product-id","data-productid","data-product_id","product-id","productid","product_id","data-source-entity-id","source-entity-id","source_entity_id","data-product","data-metadata","data-meta"];var DATASET_KEYS=["productId","productid","product_id","sourceEntityId","sourceentityid","source_entity_id","product","metadata","meta"];function readProductId(value){if(typeof value!=="string"||value.length===0)return null;if(/^[0-9]{6,}$/.test(value))return value;var match=value.match(/(?:product(?:_|-)?id|source(?:_|-)?entity(?:_|-)?id)["'=:\s]+([0-9]{6,})/i);return match?match[1]:null}function extractProductId(start){for(var node=start;node&&node!==document.body;node=node.parentElement){for(var i=0;i<ATTR_NAMES.length;i++){var attrValue=node.getAttribute&&node.getAttribute(ATTR_NAMES[i]);var attrProductId=readProductId(attrValue);if(attrProductId)return attrProductId}var dataset=node.dataset||null;if(dataset){for(var j=0;j<DATASET_KEYS.length;j++){var dataValue=dataset[DATASET_KEYS[j]];var dataProductId=readProductId(dataValue);if(dataProductId)return dataProductId}}}return null}function isInlineMediaSlotElement(node){return !!(node&&node.getAttribute&&node.getAttribute("data-clippy-inline-media-slot")!==null)}function findInlineMediaSlot(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(isInlineMediaSlotElement(node))return node}return null}function readInlineMediaUrl(node){if(!node)return null;return node.getAttribute&&((node.getAttribute("data-clippy-inline-media-url")||node.getAttribute("data-url")||node.getAttribute("data_url")))||node.href||null}function stripHash(url){return String(url).replace(/#.*$/,"")}function urlsMatch(a,b){if(!a||!b)return false;try{return stripHash(new URL(a,loc).href)===stripHash(new URL(b,loc).href)}catch(_){return stripHash(a)===stripHash(b)}}function isFirstPartyReelUrl(value){try{var url=new URL(value,loc);if(url.protocol!=="https:")return false;var host=url.hostname.toLowerCase();var supported=host==="instagram.com"||host.endsWith(".instagram.com")||host==="facebook.com"||host.endsWith(".facebook.com");return supported&&/\/reels?\//i.test(url.pathname)}catch(_){return false}}function isInlineMediaUrlClick(node,href){var slot=findInlineMediaSlot(node);if(!slot)return false;var slotUrl=readInlineMediaUrl(slot);if(slotUrl)return urlsMatch(href,slotUrl);return isFirstPartyReelUrl(href)}function findDataHref(start){for(var node=start;node&&node!==document.body;node=node.parentElement){if(node.getAttribute){var href=node.getAttribute("data-href")||node.getAttribute("data-url");if(href)return{href:href,node:node}}}return null}var nativeOpen=window.open;window.open=function(url){if(parent!==window&&typeof url==="string"&&/^https?:\/\//.test(url)){parent.postMessage({type:"ecto:usercontent-link-click",href:url},"*");return null}return nativeOpen?nativeOpen.apply(window,arguments):null};document.addEventListener("click",function(e){var target=e.target instanceof Element?e.target:null;if(!target)return;if(parent===window)return;var a=target.closest?target.closest("a[href]"):null;if(a&&a.href&&/^https?:\/\//.test(a.href)&&a.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(a,a.href))return;var productId=extractProductId(target)||extractProductId(a);if(productId){e.preventDefault();parent.postMessage({type:"ecto-artifact-link-click",productId:productId},"*");return}e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:a.href},"*");return}var dataHref=findDataHref(target);if(dataHref&&/^https?:\/\//.test(dataHref.href)&&dataHref.href.replace(/#.*$/,"")!==loc){if(isInlineMediaUrlClick(dataHref.node,dataHref.href))return;e.preventDefault();parent.postMessage({type:"ecto:usercontent-link-click",href:dataHref.href},"*")}},true)})();</script><script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script></body>
 </html>
