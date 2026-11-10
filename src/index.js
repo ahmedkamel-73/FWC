@@ -222,7 +222,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const path = url.pathname;
-    const { BOT_TOKEN: botToken } = getSecrets(env);
+    const botToken = env.BOT_TOKEN || getSecrets(env).botToken;
 
     // ========== TELEGRAM WEBHOOK FIRST - MUST ALWAYS RETURN 200 ==========
     // Webhook must never return 500, or Telegram keeps messages pending forever.
