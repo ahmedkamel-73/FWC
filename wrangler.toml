@@ -1,18 +1,29 @@
 name = "fwc"
 main = "src/index.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
 
-[vars]
-WORKER_URL = "https://fwc.ahmed73.workers.dev"
+[assets]
+directory = "./public"
 
 [[d1_databases]]
 binding = "DB"
 database_name = "fwc-db"
 database_id = "8a82042b-2f57-43a4-a7d3-590e6bc84800"
 
+[triggers]
+crons = [
+  "*/15 * * * *",
+  "0 */6 * * *",
+  "0 9 * * *"
+]
+
+[vars]
+WORKER_URL = "https://fwc.ahmed73.workers.dev"
+
+[observability]
+enabled = true
+
 [[rules]]
 type = "Text"
 globs = ["**/*.html"]
-
-[assets]
-directory = "./public"

@@ -1,3 +1,15 @@
+// vitest.config.js
+import { defineConfig } from 'vitest/config';
 
-// FWC CLEAN v1 - tests (optional)
-export default { test: { include: ['test/**/*.test.js'] } };
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['tests/**/*.test.js'],
+    coverage: {
+      reporter: ['text', 'html'],
+      include: ['src/**/*.js'],
+      exclude: ['src/index.js', 'src/html/**', 'src/ton-executor.js'],
+    },
+  },
+});
