@@ -219,7 +219,10 @@ export default {
     if(path==='/api/founder/status'){
       const founder=await isFounder(env.DB,tgUser.id);
       const cfg=await getFounderConfig(env.DB);
-      return json({ok:true,isFounder:founder,config:cfg});
+      let owners=0;
+      try{ const r=await env.DB.prepare(`SELECT COUNT(*) c FROM founder_owners`).first(); owners=r?.c||0; }catch{}
+      // Flat shape matching old UI: renderFounder() expects price, burn_address, owners, enabled at top level
+      return json({ok:true,enabled:cfg.enabled,price:cfg.price,limit:cfg.limit,owners,remaining:Math.max(0,(cfg.limit||500)-owners),burned:cfg.burned,burn_address:cfg.burn_address,interval_hours:cfg.interval_hours,bonus_percent:cfg.bonus_percent,fee_percent:cfg.fee_percent,isFounder:founder,config:cfg});
     }
     // --- Old UI compat (Step 1.5) ---
     if(path==='/api/checkin' && request.method==='POST'){
@@ -254,8 +257,10 @@ export default {
       return json({ok:true,code,referral_code:code,referral_count:count,count,referral_link,link:referral_link,referrals,total_earnings,totalEarnings:total_earnings});
     }
     if(path==='/api/leaderboard'){
-      const rows=(await env.DB.prepare(`SELECT telegram_id,username,first_name,balance FROM users ORDER BY balance DESC LIMIT 50`).all()).results||[];
-      return json({ok:true,leaderboard:rows});
+      const rows=(await env.DB.prepare(`SELECT telegram_id,username,first_name,balance FROM users WHERE is_banned=0 ORDER BY balance DESC LIMIT 50`).all()).results||[];
+      const leaders=rows.map(r=>({telegram_id:r.telegram_id,username:r.username||'',first_name:r.first_name||'User',balance:r.balance||0}));
+      // UI expects res.leaders, keep leaderboard for compat
+      return json({ok:true,leaders,leaderboard:leaders});
     }
     if(path==='/api/language' && request.method==='POST'){
       return json({ok:true});
