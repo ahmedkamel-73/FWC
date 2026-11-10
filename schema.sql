@@ -1,3 +1,4 @@
+
 -- FWC CLEAN v1 - schema.sql (reference, initDB in src/db.js creates these)
 CREATE TABLE IF NOT EXISTS users (telegram_id INTEGER PRIMARY KEY, username TEXT, first_name TEXT, balance REAL DEFAULT 0, wallet TEXT, referral_code TEXT, referral_by INTEGER, created_at INTEGER);
 CREATE TABLE IF NOT EXISTS mining_log (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_id INTEGER, amount REAL, created_at INTEGER);
