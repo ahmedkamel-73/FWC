@@ -291,11 +291,11 @@ async function api(path, method = 'GET', body = null) {
   
   try {
     const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
-    if (res.status === 401) {
-      document.getElementById('login-screen').classList.remove('hidden');
-      document.getElementById('admin-app').classList.add('hidden');
-      ADMIN_SECRET = '';
-    }
+    // FIX: do NOT check/clear password here. This runs early (before login, ADMIN_SECRET='')
+    // and on every tab. A 401 here used to wipe the password the user just typed.
+    // Only checkPassword() decides if the password is wrong.
+    // If we are already logged in and get 401 later, checkPassword flow will show login again
+    // via the caller, not by wiping here.
     return await res.json();
   } catch (e) {
     return { ok: false, error: 'network' };
@@ -345,7 +345,7 @@ async function checkPassword() {
     if (!res.ok && rawPass !== pass) { res = await tryLogin(rawPass); lastPwd = rawPass; }
     
     if (res.ok) {
-      ADMIN_SECRET = pass;
+      ADMIN_SECRET = lastPwd;
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('admin-app').classList.remove('hidden');
       errEl.textContent = '';
