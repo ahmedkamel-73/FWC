@@ -828,14 +828,26 @@ export default {
       // ============ ADMIN APIs ============
       if (path.startsWith('/api/admin/')) {
         const adminSecret = request.headers.get('X-Admin-Secret');
-        if (!env.ADMIN_SECRET || adminSecret !== env.ADMIN_SECRET) {
+        // Allow EITHER: correct ADMIN_SECRET (web) OR verified Telegram admin identity (Telegram Mini App).
+        // From Telegram, Init-Data proves you are root admin even if browser autofill types a wrong/old password.
+        // From web, Init-Data is empty, so password must match exactly.
+        let viaTelegram = false;
+        if (tgUser?.id) {
+          try { viaTelegram = await isAdminDB(env.DB, tgUser.id); } catch { viaTelegram = false; }
+        }
+        const viaPassword = !!env.ADMIN_SECRET && adminSecret === env.ADMIN_SECRET;
+        if (!viaPassword && !viaTelegram) {
           return json({ ok: false, error: 'unauthorized' }, 401);
         }
 
         if (path === '/api/admin/stats') {
+          // FIX (web admin): tgUser is null on web (no Telegram Init-Data).
+          // Old code did tgUser.id here -> TypeError -> 500, and admin.html showed it as "Wrong password".
+          // On Telegram tgUser exists, so it worked there. This is why same password failed on web only.
+          // founderFlag/founderCfg are not returned here, so guard them and never let them crash login check.
           const miningAmount = await getCurrentMiningAmount(env.DB);
-        const founderFlag = await isFounder(env.DB, tgUser.id);
-        const founderCfg = await getFounderConfig(env.DB);
+        const founderFlag = tgUser?.id ? await isFounder(env.DB, tgUser.id).catch(() => false) : false;
+        const founderCfg = await getFounderConfig(env.DB).catch(() => null);
           const usersCount = await env.DB.prepare(`SELECT COUNT(*) as c FROM users`).first();
           const wdPending = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE status='pending'`).first();
           const totalBalance = await env.DB.prepare(`SELECT COALESCE(SUM(balance),0) as s FROM users`).first();
