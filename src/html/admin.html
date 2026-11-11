@@ -320,20 +320,29 @@ async function tryTelegramAutoLogin() {
 }
 document.addEventListener('DOMContentLoaded', async () => { await tryTelegramAutoLogin(); });
 async function checkPassword() {
-  const pass = document.getElementById('admin-pass').value.trim();
+  const rawPass = document.getElementById('admin-pass').value;
+  const pass = rawPass.trim();
   const errEl = document.getElementById('login-error');
   
   if (!pass) return;
   errEl.textContent = 'Checking...';
   
+  // FIX (web only): do NOT send an empty X-Telegram-Init-Data header on web.
+  // On web getInitData() == '' and sending an empty header made the server
+  // treat the request as a broken Telegram identity instead of a pure password login.
+  // On Telegram getInitData() is non-empty and is sent normally.
+  async function tryLogin(pwd) {
+    const headers = { 'Content-Type': 'application/json', 'X-Admin-Secret': pwd };
+    const initData = getInitData();
+    if (initData) headers['X-Telegram-Init-Data'] = initData;
+    return await fetch('/api/admin/stats', { headers });
+  }
   try {
-    const res = await fetch('/api/admin/stats', {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Telegram-Init-Data': getInitData(),
-        'X-Admin-Secret': pass
-      }
-    });
+    let lastPwd = pass;
+    let res = await tryLogin(pass);
+    // If ADMIN_SECRET in Cloudflare itself has a leading/trailing space, trimmed password fails.
+    // Try the raw value once before showing "Wrong password".
+    if (!res.ok && rawPass !== pass) { res = await tryLogin(rawPass); lastPwd = rawPass; }
     
     if (res.ok) {
       ADMIN_SECRET = pass;
