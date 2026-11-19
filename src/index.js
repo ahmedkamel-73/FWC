@@ -1133,6 +1133,40 @@ export default {
           else await dismissAlert(env.DB, alertId, 0);
           return json({ ok: true });
         }
+        // STEP 2 ONLY: Clawback - deduct a chosen amount from every user in this alert, with reason + log. Uses same deduct logic as Step 1 (never below 0). Does NOT guess mining/task tables.
+        const clawMatch = path.match(/^\/api\/admin\/anticheat\/(\d+)\/clawback$/);
+        if (clawMatch && request.method === 'POST') {
+          const alertId = parseInt(clawMatch[1]);
+          const body = await request.json().catch(() => ({}));
+          const amount = parseFloat(body.amount);
+          const reason = typeof body.reason === 'string' ? body.reason.slice(0, 200) : ('clawback alert #' + alertId);
+          if (!isFinite(amount) || amount <= 0) return json({ ok: false, error: 'invalid_amount' }, 400);
+          const alertRow = await env.DB.prepare(`SELECT * FROM anticheat_alerts WHERE id = ?`).bind(alertId).first();
+          if (!alertRow) return json({ ok: false, error: 'not_found' }, 404);
+          let ids = [];
+          try {
+            const raw = String(alertRow.telegram_ids || '');
+            if (raw.trim().startsWith('[')) ids = JSON.parse(raw);
+            else ids = raw.split(',').map(s => parseInt(String(s).trim())).filter(n => isFinite(n));
+          } catch { ids = []; }
+          if (!ids.length) return json({ ok: false, error: 'no_users_in_alert' }, 400);
+          const results = [];
+          for (const tid of ids) {
+            const u = await env.DB.prepare(`SELECT balance FROM users WHERE telegram_id = ?`).bind(tid).first();
+            if (!u) { results.push({ telegram_id: tid, deducted: 0, before: 0, after: 0, note: 'not_found' }); continue; }
+            const beforeBal = u.balance || 0;
+            const deduct = Math.min(amount, beforeBal);
+            const afterBal = Math.max(0, beforeBal - deduct);
+            await env.DB.prepare(`UPDATE users SET balance = ? WHERE telegram_id = ?`).bind(afterBal, tid).run();
+            try {
+              await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_balance_log (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_id INTEGER, mode TEXT, amount REAL, before_balance REAL, after_balance REAL, reason TEXT, created_at INTEGER)`).run();
+              await env.DB.prepare(`INSERT INTO admin_balance_log (telegram_id, mode, amount, before_balance, after_balance, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, unixepoch())`).bind(tid, 'clawback', deduct, beforeBal, afterBal, reason).run();
+            } catch (e) { console.warn('clawback log failed', e.message); }
+            results.push({ telegram_id: tid, deducted: deduct, before: beforeBal, after: afterBal });
+          }
+          await resolveAlert(env.DB, alertId, 0);
+          return json({ ok: true, alertId, results });
+        }
 
         if (path === '/api/admin/health') {
           const health = await getSystemHealth(env);
