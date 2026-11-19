@@ -1167,6 +1167,40 @@ export default {
           await resolveAlert(env.DB, alertId, 0);
           return json({ ok: true, alertId, results });
         }
+        // STEP 3 ONLY: Ban from alert - ban all, or ban all except one. Per banned user: ban + unlink wallet (wallet=NULL, wallet_verified=0) + cancel pending withdrawals (reset withdrawal counter: pending -> rejected, so withdrawCount drops). Does NOT delete users, does NOT touch already-paid withdrawals. Login NOT touched.
+        const banAlertMatch = path.match(/^\/api\/admin\/anticheat\/(\d+)\/ban$/);
+        if (banAlertMatch && request.method === 'POST') {
+          const alertId = parseInt(banAlertMatch[1]);
+          const body = await request.json().catch(() => ({}));
+          const mode = body.mode === 'except_one' ? 'except_one' : 'all';
+          const keepId = parseInt(body.keepId);
+          const reason = typeof body.reason === 'string' ? body.reason.slice(0, 200) : ('anticheat ban alert #' + alertId);
+          const alertRow = await env.DB.prepare(`SELECT * FROM anticheat_alerts WHERE id = ?`).bind(alertId).first();
+          if (!alertRow) return json({ ok: false, error: 'not_found' }, 404);
+          let ids = [];
+          try {
+            const raw = String(alertRow.telegram_ids || '');
+            if (raw.trim().startsWith('[')) ids = JSON.parse(raw);
+            else ids = raw.split(',').map(s => parseInt(String(s).trim())).filter(n => isFinite(n));
+          } catch { ids = []; }
+          if (!ids.length) return json({ ok: false, error: 'no_users_in_alert' }, 400);
+          let targets = ids;
+          if (mode === 'except_one') {
+            if (!isFinite(keepId) || !ids.includes(keepId)) return json({ ok: false, error: 'invalid_keepId' }, 400);
+            targets = ids.filter(t => t !== keepId);
+          }
+          const results = [];
+          for (const tid of targets) {
+            const u = await env.DB.prepare(`SELECT telegram_id, wallet FROM users WHERE telegram_id = ?`).bind(tid).first();
+            if (!u) { results.push({ telegram_id: tid, note: 'not_found' }); continue; }
+            await banUser(env.DB, tid, reason);
+            await env.DB.prepare(`UPDATE users SET wallet = NULL, wallet_verified = 0 WHERE telegram_id = ?`).bind(tid).run();
+            const pend = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE telegram_id = ? AND status = 'pending'`).bind(tid).first();
+            await env.DB.prepare(`UPDATE withdrawals SET status = 'rejected' WHERE telegram_id = ? AND status = 'pending'`).bind(tid).run();
+            results.push({ telegram_id: tid, banned: true, wallet_unlinked: true, pending_withdrawals_cancelled: pend?.c || 0 });
+          }
+          return json({ ok: true, alertId, mode, keepId: mode === 'except_one' ? keepId : null, results });
+        }
 
         if (path === '/api/admin/health') {
           const health = await getSystemHealth(env);
