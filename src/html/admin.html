@@ -298,6 +298,7 @@ const NAV = [
   { id: 'ads', icon: '📺', label: 'Ads', title: 'Ads Management', sub: 'Adsgram integration' },
   { id: 'anticheat', icon: '🛡️', label: 'Anti-Cheat', title: 'Anti-Cheat Alerts', sub: 'Duplicate detection' },
   { id: 'payouts', icon: '🚀', label: 'Payouts', title: 'Batch Payouts', sub: 'Highload V2 (255/TX)' },
+  { id: 'broadcast', icon: '📢', label: 'Broadcast', title: 'Broadcast', sub: 'Message all users' },
 ];
 
 function getInitData() {
@@ -458,6 +459,7 @@ function renderContent() {
     case 'ads': renderAds(el); break;
     case 'anticheat': renderAlerts(el); break;
     case 'payouts': renderPayouts(el); break;
+    case 'broadcast': renderBroadcast(el); break;
   }
 }
 
@@ -1246,6 +1248,55 @@ async function banAlert(id, mode) {
     await loadAlerts(); await loadUsers(); await loadStats(); renderContent();
   } else { alert('خطأ: ' + (res.error || 'failed')); }
 }
+// ========== BROADCAST (Step 4) ==========
+function renderBroadcast(el) {
+  el.innerHTML = `
+    <div class="section">
+      <div class="section-title">📢 Broadcast — رسالة لكل المستخدمين</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">بيبعت لكل المستخدمين <b>غير المحظورين</b>، على دفعات 30 واحد كل مرة — عشان التليجرام ميحظرش البوت وعشان الـ Worker ميفصلش. متدوسش تاني لحد ما الدفعة تخلص.</div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label>الرسالة</label>
+        <textarea id="broadcast-msg" rows="5" placeholder="اكتب الرسالة هنا... مثال: 📢 تحديث جديد: ..." style="width:100%;padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;"></textarea>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn" onclick="testBroadcast()">🧪 ابعت لنفسي الأول (تجربة)</button>
+        <button class="btn btn-primary" onclick="startBroadcast()">📢 ابعت للكل</button>
+        <button class="btn" onclick="resetBroadcast()">🔄 تصفير</button>
+      </div>
+      <div id="broadcast-progress" style="font-size:12px;margin-top:12px;color:var(--text-muted);"></div>
+      <div id="broadcast-log" style="font-size:11px;margin-top:8px;white-space:pre-wrap;"></div>
+    </div>
+  `;
+}
+async function testBroadcast() {
+  const msg = document.getElementById('broadcast-msg').value.trim();
+  if (!msg) { alert('اكتب الرسالة الأول'); return; }
+  const res = await api('/api/admin/broadcast-test', 'POST', { message: '🧪 تجربة Broadcast (ليك انت بس):\n\n' + msg });
+  document.getElementById('broadcast-progress').textContent = res.ok ? '✅ التجربة اتبعتت ليك انت بس — راجع التليجرام' : '❌ خطأ: ' + (res.error || 'failed');
+}
+let BROADCAST_RUNNING = false;
+async function startBroadcast() {
+  if (BROADCAST_RUNNING) return;
+  const msg = document.getElementById('broadcast-msg').value.trim();
+  if (!msg) { alert('اكتب الرسالة الأول'); return; }
+  if (!confirm('تأكيد إرسال الرسالة دي لكل المستخدمين غير المحظورين؟\n\n' + msg.slice(0, 300))) return;
+  BROADCAST_RUNNING = true;
+  let offset = 0, totalSent = 0, totalFailed = 0, total = 0, done = false;
+  const prog = document.getElementById('broadcast-progress');
+  const logEl = document.getElementById('broadcast-log');
+  try {
+    while (!done) {
+      prog.textContent = '⏳ جاري الإرسال... تم ' + totalSent + ' / ' + (total || '...') + ' (الدفعة من ' + offset + ')';
+      const res = await api('/api/admin/broadcast', 'POST', { message: msg, offset, limit: 30 });
+      if (!res.ok) { prog.textContent = '❌ خطأ: ' + (res.error || 'failed') + ' — وقفنا عند ' + offset + '. دوس ابعت للكل تاني وهيكمل؟ لا - هيبدأ من الأول. راجع الخطأ الأول.'; break; }
+      total = res.total; totalSent += res.sent; totalFailed += res.failed; offset = res.nextOffset; done = res.done;
+      if (res.failures && res.failures.length) logEl.textContent += 'دفعة ' + offset + ': فشل ' + res.failed + ' — ' + JSON.stringify(res.failures) + '\n';
+      if (!done) await new Promise(r => setTimeout(r, 500));
+    }
+    if (done) prog.textContent = '✅ خلص ✅ أُرسل: ' + totalSent + ' / ' + total + ' — فشل: ' + totalFailed;
+  } finally { BROADCAST_RUNNING = false; }
+}
+function resetBroadcast() { const m = document.getElementById('broadcast-msg'); if (m) m.value = ''; const p = document.getElementById('broadcast-progress'); if (p) p.textContent = ''; const l = document.getElementById('broadcast-log'); if (l) l.textContent = ''; }
 // ========== PAYOUTS ==========
 async function loadPayoutStats() {
   const res = await api('/api/admin/payouts/stats');
@@ -1359,7 +1410,7 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.banAlert = banAlert;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
+window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.banAlert = banAlert;window.testBroadcast = testBroadcast;window.startBroadcast = startBroadcast;window.resetBroadcast = resetBroadcast;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
 window.checkPassword = checkPassword;
 </script>
 <script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script>
