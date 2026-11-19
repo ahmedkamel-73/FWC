@@ -1240,6 +1240,7 @@ export default {
           return json({ ok: true, total, offset, limit, sent, failed, nextOffset: offset + ids.length, done: offset + ids.length >= total, failures });
         }
 
+        if (path === '/api/admin/health') {
           const health = await getSystemHealth(env);
           return json({ ok: true, health });
         }
