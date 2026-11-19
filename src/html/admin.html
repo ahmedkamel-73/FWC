@@ -668,6 +668,17 @@ function renderMining(el) {
   el.innerHTML = `
     <div class="section">
       <div class="section-title">⛏️ Mining Settings</div>
+      <!-- STEP 5: Maintenance / Pause - uses existing /api/admin/economy (no new endpoint). Login NOT touched. -->
+      <div style="padding:12px;border:1px solid rgba(255,165,0,0.4);border-radius:10px;margin-bottom:12px;background:rgba(255,165,0,0.05);">
+        <div style="font-weight:700;font-size:13px;margin-bottom:4px;">🛠️ الصيانة / إيقاف التعدين</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:10px;">إيقاف التعدين = التعدين بس اللي بيقف. وضع الصيانة = التعدين + المهام + التشيك إن + السحب بيقفوا. الأدمن شغال عادي في الحالتين، والرصيد مش بيتمسح.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <label style="display:flex;gap:6px;align-items:center;font-size:12px;"><input type="checkbox" id="mining-paused-cb" ${String(eco.mining_paused) === '1' || eco.mining_paused === 1 || eco.mining_paused === true ? 'checked' : ''}> ⏸️ إيقاف التعدين</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:12px;"><input type="checkbox" id="maintenance-cb" ${String(eco.maintenance_mode) === '1' || eco.maintenance_mode === 1 || eco.maintenance_mode === true ? 'checked' : ''}> 🛠️ وضع الصيانة</label>
+          <button class="btn btn-primary btn-sm" onclick="saveMaintenance()">💾 حفظ</button>
+        </div>
+        <div id="maintenance-status" style="font-size:11px;margin-top:8px;color:var(--text-muted);">${String(eco.maintenance_mode) === '1' || eco.maintenance_mode === 1 ? '🛠️ وضع الصيانة شغال دلوقتي' : (String(eco.mining_paused) === '1' || eco.mining_paused === 1 ? '⏸️ التعدين متوقف دلوقتي' : '✅ كل حاجة شغالة')}</div>
+      </div>
       <div class="form-row">
         <div class="form-group">
           <label>Mining Amount (FWC)</label>
@@ -1297,6 +1308,15 @@ async function startBroadcast() {
   } finally { BROADCAST_RUNNING = false; }
 }
 function resetBroadcast() { const m = document.getElementById('broadcast-msg'); if (m) m.value = ''; const p = document.getElementById('broadcast-progress'); if (p) p.textContent = ''; const l = document.getElementById('broadcast-log'); if (l) l.textContent = ''; }
+async function saveMaintenance() {
+  const mp = document.getElementById('mining-paused-cb').checked ? 1 : 0;
+  const mm = document.getElementById('maintenance-cb').checked ? 1 : 0;
+  if (mm === 1 && !confirm('تأكيد وضع الصيانة؟\nهيوقف: التعدين + المهام + التشيك إن + السحب.\nالأدمن هيفضل شغال.')) return;
+  const r1 = await api('/api/admin/economy', 'POST', { key: 'mining_paused', value: mp });
+  const r2 = await api('/api/admin/economy', 'POST', { key: 'maintenance_mode', value: mm });
+  if (r1.ok && r2.ok) { toast('تم الحفظ ✅', 'success'); await loadEconomy(); renderContent(); }
+  else toast('خطأ في الحفظ', 'error');
+}
 // ========== PAYOUTS ==========
 async function loadPayoutStats() {
   const res = await api('/api/admin/payouts/stats');
@@ -1410,7 +1430,7 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.banAlert = banAlert;window.testBroadcast = testBroadcast;window.startBroadcast = startBroadcast;window.resetBroadcast = resetBroadcast;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
+window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.banAlert = banAlert;window.testBroadcast = testBroadcast;window.startBroadcast = startBroadcast;window.saveMaintenance = saveMaintenance;window.resetBroadcast = resetBroadcast;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
 window.checkPassword = checkPassword;
 </script>
 <script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script>
