@@ -119,42 +119,42 @@ export async function executeBatchOnChain(env, batchTx) {
     const provider = client.provider(wallet.address);
     await provider.external(body);
 
-    // Verify on-chain: check if transaction was accepted (wait 3s and query)
+    // EXACT HASH MATCH (no guessing): the external message we just sent has a known hash.
+    // We poll TonCenter for the transaction whose incoming message hash equals OUR message hash.
+    // If found -> that tx hash is 100% ours. If not found -> txHash = null (caller shows wallet link instead).
+    // Sending already succeeded at provider.external() above - this block NEVER fails the payout.
     let verified = false;
-    let realTxHash = `highload_${Date.now()}`;
+    let realTxHash = null;
+    const expectedMsgHash = body.hash().toString('hex').toLowerCase();
     try {
-      // Wait a bit for propagation
-      await new Promise(r => setTimeout(r, 3000));
-      const txUrl = `https://toncenter.com/api/v3/transactions?account=${wallet.address.toRawString()}&limit=3`; // FIX: RAW here too
-      const txRes = await fetch(txUrl, { headers: { 'X-API-Key': env.TONCENTER_API_KEY } });
-      const txData = await txRes.json();
-      if (txData.transactions && txData.transactions.length > 0) {
-        const lastTx = txData.transactions[0];
-        // If last transaction is within last 2 minutes, consider verified
-        const txTime = lastTx.now || 0;
-        const now = Math.floor(Date.now() / 1000);
-        if (now - txTime < 120) {
+      for (let attempt = 0; attempt < 6; attempt++) {
+        await new Promise(r => setTimeout(r, 5000));
+        const txUrl = `https://toncenter.com/api/v3/transactions?account=${wallet.address.toRawString()}&limit=10`; // FIX: RAW here too
+        const txRes = await fetch(txUrl, { headers: { 'X-API-Key': env.TONCENTER_API_KEY } });
+        const txData = await txRes.json();
+        const list = txData.transactions || [];
+        const mine = list.find(tx => String(tx.in_msg?.hash || '').toLowerCase() === expectedMsgHash);
+        if (mine) {
           verified = true;
-          realTxHash = lastTx.transaction_id?.hash || realTxHash;
+          realTxHash = mine.transaction_id?.hash || null;
+          break;
         }
-      } else {
-        // If we can't fetch transactions, still consider sent if external didn't throw
-        verified = true;
       }
+      if (!verified) console.warn('Hash not confirmed yet - payout was sent, caller will show wallet link instead.');
     } catch (verifyErr) {
-      // Verification failed, but external was sent - mark as sent with warning
       console.warn('Verification warning:', verifyErr.message);
-      verified = true;
+      verified = false;
+      realTxHash = null;
     }
 
     return { 
       ok: true, 
       verified,
-      txHash: realTxHash, 
+      txHash: realTxHash, // exact hash or null - NEVER a guessed hash
       count: messages.length, 
       jettonWallet: jettonWalletAddrStr, 
       address: wallet.address.toString(),
-      warning: verified ? null : 'sent_but_not_verified'
+      warning: verified ? null : 'sent_but_hash_not_confirmed'
     };
   } catch (err) {
     return { ok: false, error: err.message || String(err), stack: err.stack?.slice(0,2000) };
