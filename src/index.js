@@ -531,6 +531,11 @@ export default {
       }
 
       if (path === '/api/mine' && request.method === 'POST' && tgUser) {
+        // STEP 5: mining_paused blocks mining only. maintenance_mode blocks mining + tasks + checkin + withdraw.
+        const _mp = await getEconomyConfig(env.DB, 'mining_paused');
+        const _mm = await getEconomyConfig(env.DB, 'maintenance_mode');
+        if (String(_mm) === '1' || _mm === 1 || _mm === true) return json({ ok: false, error: 'maintenance_mode', message: 'الصيانة شغالة دلوقتي - حاول تاني بعد شوية' }, 503);
+        if (String(_mp) === '1' || _mp === 1 || _mp === true) return json({ ok: false, error: 'mining_paused', message: 'التعدين متوقف مؤقتاً' }, 503);
         const rlKey = `mine:${tgUser.id}`;
         if (await checkRateLimit(env.DB, rlKey, 6, 60000)) {
           return json({ ok: false, error: 'rate_limited', retry_after: 60 }, 429);
@@ -630,6 +635,8 @@ export default {
       }
 
       if (path === '/api/checkin' && request.method === 'POST' && tgUser) {
+        const _mmC = await getEconomyConfig(env.DB, 'maintenance_mode');
+        if (String(_mmC) === '1' || _mmC === 1 || _mmC === true) return json({ ok: false, error: 'maintenance_mode', message: 'الصيانة شغالة دلوقتي' }, 503);
         const date = new Date().toISOString().split('T')[0];
         const already = await hasCheckedInToday(env.DB, tgUser.id, date);
         if (already) return json({ ok: false, error: 'already_checked_in' }, 400);
@@ -638,6 +645,8 @@ export default {
       }
 
       if (path.startsWith('/api/tasks/') && request.method === 'POST' && tgUser) {
+        const _mmT = await getEconomyConfig(env.DB, 'maintenance_mode');
+        if (String(_mmT) === '1' || _mmT === 1 || _mmT === true) return json({ ok: false, error: 'maintenance_mode', message: 'الصيانة شغالة دلوقتي' }, 503);
         const taskId = path.split('/')[3];
         if (!taskId) return json({ ok: false, error: 'invalid_task' }, 400);
 
@@ -675,6 +684,8 @@ export default {
       }
 
       if (path === '/api/withdraw' && request.method === 'POST' && tgUser) {
+        const _mmW = await getEconomyConfig(env.DB, 'maintenance_mode');
+        if (String(_mmW) === '1' || _mmW === 1 || _mmW === true) return json({ ok: false, error: 'maintenance_mode', message: 'الصيانة شغالة دلوقتي' }, 503);
         const body = await request.json();
         const amount = Number(body.amount);
         if (!amount || amount <= 0) return json({ ok: false, error: 'invalid_amount' }, 400);
@@ -1209,8 +1220,15 @@ export default {
           if (!message) return json({ ok: false, error: 'empty_message' }, 400);
           const botToken = env.BOT_TOKEN || getSecrets(env).botToken;
           if (!botToken) return json({ ok: false, error: 'no_bot_token' }, 500);
-          if (!tgUser || !tgUser.id) return json({ ok: false, error: 'no_admin_user' }, 400);
-          const r = await sendTelegramMessage(botToken, tgUser.id, message);
+          // FIX: web admin logs in with password, so tgUser is null. Use tgUser.id if present (Telegram mode), else first admin from DB, else owner 921627899.
+          let testTarget = (tgUser && tgUser.id) ? tgUser.id : null;
+          if (!testTarget) {
+            try {
+              const admRow = await env.DB.prepare(`SELECT telegram_id FROM admins ORDER BY telegram_id ASC LIMIT 1`).first();
+              testTarget = admRow ? admRow.telegram_id : 921627899;
+            } catch { testTarget = 921627899; }
+          }
+          const r = await sendTelegramMessage(botToken, testTarget, message);
           return json({ ok: !!(r && r.ok), error: r && !r.ok ? (r.description || r.error || 'failed') : undefined });
         }
         // STEP 4 (Broadcast): send to all non-banned users in BATCHES. Worker times out if we send to everyone in one request, so admin UI calls this repeatedly with offset/limit (e.g. 30 at a time) until done. Login NOT touched. Uses existing sendTelegramMessage + BOT_TOKEN.
