@@ -889,19 +889,51 @@ export default {
           return json({ ok: false, error: 'unauthorized' }, 401);
         }
 
-        // STEP 11-1 (Admin roles): root + assistant. STEP 1 ONLY: manage admins, NO permission changes yet.
-        // Root = 921627899 only. Web (no Telegram identity + correct ADMIN_SECRET) counts as root, because only root knows the password.
-        // Telegram assistant calling with password does NOT become root - Telegram identity wins when present.
+        // STEP 11-1 + 11-2 (Admin roles) - FIXED from db.js (real root cause).
+        // db.js schema is the truth:
+        //   admins(telegram_id PK, username, first_name, role CHECK(role IN ('admin','superadmin')), added_by, created_at NOT NULL)
+        // Old index.js code used role='assistant' / role='root' -> BOTH violate the CHECK -> "CHECK constraint failed" -> db_error.
+        // Old code also omitted created_at (NOT NULL) -> second failure. And PRAGMA/ALTER was never the problem.
+        // Fix: DB stores 'admin' (assistant) / 'superadmin' (root). API maps them to 'assistant' / 'root' for admin.html.
+        // All writes go through db.js addAdminById / removeAdmin / getAllAdmins, which already use the correct columns.
         const isRootAdmin = tgUser?.id ? (tgUser.id === 921627899) : viaPassword;
-        const ensureAdminsRoleCol = async () => {
-          // FIX (real bug): old admins table was created WITHOUT role column, and PRAGMA table_info does NOT work in D1,
-          // so the old code never added the column -> INSERT with role threw -> Worker 500 -> admin.html showed "error network".
-          // Fix: try ALTER directly, ignore "duplicate column" if it already exists. Never let this throw.
-          try { await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admins (telegram_id INTEGER PRIMARY KEY, role TEXT DEFAULT 'assistant')`).run(); } catch {}
-          try { await env.DB.prepare(`ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'assistant'`).run(); } catch (e) { /* column already exists - fine */ }
-          try { await env.DB.prepare(`INSERT OR IGNORE INTO admins (telegram_id, role) VALUES (921627899, 'root')`).run(); } catch {}
-          try { await env.DB.prepare(`UPDATE admins SET role = 'root' WHERE telegram_id = 921627899`).run(); } catch {}
+        const mapDbRoleToApi = (r) => (r === 'superadmin' ? 'root' : 'assistant');
+        const ensureRootAdminRow = async () => {
+          try { await env.DB.prepare(`INSERT OR IGNORE INTO admins(telegram_id, username, first_name, role, created_at) VALUES (921627899, 'root', 'superadmin', 'superadmin', unixepoch())`).run(); } catch {}
+          try { await env.DB.prepare(`UPDATE admins SET role = 'superadmin' WHERE telegram_id = 921627899`).run(); } catch {}
         };
+        if (path === '/api/admin/admins' && request.method === 'GET') {
+          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
+          await ensureRootAdminRow();
+          let rows;
+          try { rows = await getAllAdmins(env.DB); } catch (e) { return json({ ok: false, error: 'db_error', detail: String(e.message || e) }, 500); }
+          return json({ ok: true, admins: (rows || []).map(r => ({ telegram_id: r.telegram_id, username: r.username || null, first_name: r.first_name || null, role: mapDbRoleToApi(r.role) })), root_id: 921627899 });
+        }
+        if (path === '/api/admin/admins' && request.method === 'POST') {
+          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
+          const body = await request.json().catch(() => ({}));
+          const tid = parseInt(body.telegram_id);
+          if (!isFinite(tid) || tid <= 0) return json({ ok: false, error: 'invalid_telegram_id' }, 400);
+          if (tid === 921627899) return json({ ok: false, error: 'already_root' }, 400);
+          // Look up username/first_name from users table so the row is complete (db.js addAdminById expects them).
+          let _u = null;
+          try { _u = await env.DB.prepare(`SELECT username, first_name FROM users WHERE telegram_id = ?`).bind(tid).first(); } catch {}
+          const _addedBy = tgUser?.id || 921627899;
+          try {
+            await addAdminById(env.DB, tid, _u?.username || null, _u?.first_name || null, _addedBy);
+          } catch (e) {
+            return json({ ok: false, error: 'db_error', detail: String(e.message || e) }, 500);
+          }
+          return json({ ok: true, telegram_id: tid, role: 'assistant' });
+        }
+        const adminDelMatch = path.match(/^\/api\/admin\/admins\/(\d+)$/);
+        if (adminDelMatch && request.method === 'DELETE') {
+          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
+          const tid = parseInt(adminDelMatch[1]);
+          if (tid === 921627899) return json({ ok: false, error: 'cannot_remove_root' }, 400);
+          try { await removeAdmin(env.DB, tid); } catch (e) { return json({ ok: false, error: 'db_error', detail: String(e.message || e) }, 500); }
+          return json({ ok: true, removed: tid });
+        }
         // STEP 11-2 (Assistant permissions): central gate. Root = everything. Assistant = limited.
         // ALLOWED for assistant: GET stats/users/detail/balance-log/withdrawals/payouts-stats/preview/anticheat/health/tasks/economy/fees/founder/hold (view only)
         // + POST withdrawals approve/reject + POST anticheat resolve/dismiss.
@@ -925,43 +957,6 @@ export default {
           return json({ ok: false, error: 'assistant_forbidden', message: 'Assistant admins cannot do this. Root only.' }, 403);
         }
         // Return role in stats so admin.html can hide forbidden buttons (no extra endpoint needed).
-        if (path === '/api/admin/admins' && request.method === 'GET') {
-          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
-          await ensureAdminsRoleCol();
-          let rows;
-          try {
-            rows = await env.DB.prepare(`SELECT telegram_id, COALESCE(role,'assistant') as role FROM admins ORDER BY telegram_id ASC`).all();
-          } catch (e) {
-            // Fallback: table without role column (very old) - list ids as assistant
-            try { rows = await env.DB.prepare(`SELECT telegram_id FROM admins ORDER BY telegram_id ASC`).all(); } catch (e2) { return json({ ok: false, error: 'db_error', detail: e2.message }, 500); }
-            return json({ ok: true, admins: (rows.results || []).map(r => ({ telegram_id: r.telegram_id, role: r.telegram_id === 921627899 ? 'root' : 'assistant' })), root_id: 921627899 });
-          }
-          return json({ ok: true, admins: rows.results || [], root_id: 921627899 });
-        }
-        if (path === '/api/admin/admins' && request.method === 'POST') {
-          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
-          const body = await request.json().catch(() => ({}));
-          const tid = parseInt(body.telegram_id);
-          if (!isFinite(tid) || tid <= 0) return json({ ok: false, error: 'invalid_telegram_id' }, 400);
-          if (tid === 921627899) return json({ ok: false, error: 'already_root' }, 400);
-          await ensureAdminsRoleCol();
-          // New admins are ALWAYS assistant. API can never create a second root.
-          try {
-            await env.DB.prepare(`INSERT OR REPLACE INTO admins (telegram_id, role) VALUES (?, 'assistant')`).bind(tid).run();
-          } catch (e) {
-            return json({ ok: false, error: 'db_error', detail: e.message }, 500);
-          }
-          return json({ ok: true, telegram_id: tid, role: 'assistant' });
-        }
-        const adminDelMatch = path.match(/^\/api\/admin\/admins\/(\d+)$/);
-        if (adminDelMatch && request.method === 'DELETE') {
-          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
-          const tid = parseInt(adminDelMatch[1]);
-          if (tid === 921627899) return json({ ok: false, error: 'cannot_remove_root' }, 400);
-          await ensureAdminsRoleCol();
-          await env.DB.prepare(`DELETE FROM admins WHERE telegram_id = ?`).bind(tid).run();
-          return json({ ok: true, removed: tid });
-        }
 
         if (path === '/api/admin/stats') {
           // FIX (web admin): tgUser is null on web (no Telegram Init-Data).
