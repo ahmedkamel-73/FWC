@@ -42,6 +42,7 @@
 :where(code, pre, kbd, samp) {
   font-family: "Optimistic Mono", ui-monospace, monospace;
 }
+body.is-assistant .root-only { display: none !important; }
 </style><style>
 @font-face {
   font-family: "Optimistic";
@@ -277,6 +278,7 @@ let EDITING_TASK_ID = null;
 
 const STATE = {
   tab: 'dashboard',
+  role: 'root',
   stats: { usersCount: 0, wdPending: 0, miningAmount: 0, totalBalance: 0, totalMined: 0, totalFees: 0, openAlerts: 0 },
   users: [],
   tasks: [],
@@ -291,14 +293,15 @@ const STATE = {
 const NAV = [
   { id: 'dashboard', icon: '📊', label: 'Dashboard', title: 'Dashboard', sub: 'System overview' },
   { id: 'users', icon: '👥', label: 'Users', title: 'Users', sub: 'Manage accounts & bans' },
-  { id: 'mining', icon: '⛏️', label: 'Mining', title: 'Mining Settings', sub: 'Rewards & intervals' },
-  { id: 'tasks', icon: '📋', label: 'Tasks', title: 'Daily Tasks', sub: 'Add/edit/delete' },
+  { id: 'mining', icon: '⛏️', label: 'Mining', title: 'Mining Settings', sub: 'Rewards & intervals', rootOnly: true },
+  { id: 'tasks', icon: '📋', label: 'Tasks', title: 'Daily Tasks', sub: 'Add/edit/delete', rootOnly: true },
   { id: 'withdrawals', icon: '💸', label: 'Withdrawals', title: 'Withdrawals', sub: 'Approve or reject' },
-  { id: 'fees', icon: '💰', label: 'Fees', title: 'Withdrawal Fees', sub: 'Dynamic fee settings' },
-  { id: 'ads', icon: '📺', label: 'Ads', title: 'Ads Management', sub: 'Adsgram integration' },
+  { id: 'fees', icon: '💰', label: 'Fees', title: 'Withdrawal Fees', sub: 'Dynamic fee settings', rootOnly: true },
+  { id: 'ads', icon: '📺', label: 'Ads', title: 'Ads Management', sub: 'Adsgram integration', rootOnly: true },
   { id: 'anticheat', icon: '🛡️', label: 'Anti-Cheat', title: 'Anti-Cheat Alerts', sub: 'Duplicate detection' },
-  { id: 'payouts', icon: '🚀', label: 'Payouts', title: 'Batch Payouts', sub: 'Highload V2 (255/TX)' },
-  { id: 'broadcast', icon: '📢', label: 'Broadcast', title: 'Broadcast', sub: 'Message all users' },
+  { id: 'payouts', icon: '🚀', label: 'Payouts', title: 'Batch Payouts', sub: 'Highload V2 (255/TX)', rootOnly: true },
+  { id: 'broadcast', icon: '📢', label: 'Broadcast', title: 'Broadcast', sub: 'Message all users', rootOnly: true },
+  { id: 'admins', icon: '👑', label: 'Admins', title: 'Admins', sub: 'Add / remove assistant admins', rootOnly: true },
 ];
 
 function getInitData() {
@@ -391,8 +394,9 @@ function toast(msg, type = 'info') {
 }
 
 function renderNav() {
+  const visibleNav = NAV.filter(n => !(n.rootOnly && STATE.role !== 'root'));
   const sidebar = document.getElementById('sidebarNav');
-  sidebar.innerHTML = NAV.map(n => {
+  sidebar.innerHTML = visibleNav.map(n => {
     let badge = '';
     if (n.id === 'withdrawals' && STATE.stats.wdPending > 0) {
       badge = `<span class="badge">${STATE.stats.wdPending}</span>`;
@@ -405,12 +409,14 @@ function renderNav() {
   }).join('');
 
   const mob = document.getElementById('mobTabs');
-  mob.innerHTML = NAV.map(n =>
+  mob.innerHTML = visibleNav.map(n =>
     `<button class="mob-tab ${STATE.tab === n.id ? 'active' : ''}" onclick="switchTab('${n.id}')">${n.icon} ${n.label}</button>`
   ).join('');
 }
 
 function switchTab(tab) {
+  const navItem = NAV.find(n => n.id === tab);
+  if (navItem && navItem.rootOnly && STATE.role !== 'root') { toast('Root only — assistant cannot open this tab', 'error'); return; }
   STATE.tab = tab;
   renderNav();
   const nav = NAV.find(n => n.id === tab);
@@ -434,6 +440,7 @@ async function loadTab() {
       case 'ads': await loadEconomy(); break;
       case 'anticheat': await loadAlerts(); break;
       case 'payouts': await loadPayoutStats(); break;
+      case 'admins': await loadAdminsList(); break;
     }
   } catch (e) {
     console.error(e);
@@ -460,14 +467,65 @@ function renderContent() {
     case 'anticheat': renderAlerts(el); break;
     case 'payouts': renderPayouts(el); break;
     case 'broadcast': renderBroadcast(el); break;
+    case 'admins': renderAdmins(el); break;
   }
 }
+
+// ========== ADMINS (STEP 11-2, root only) ==========
+async function loadAdminsList() {
+  const res = await api('/api/admin/admins');
+  STATE.adminsList = res.ok ? (res.admins || []) : [];
+}
+function renderAdmins(el) {
+  const rows = (STATE.adminsList || []).map(a => `<tr><td>${a.telegram_id}</td><td>${a.role === 'root' ? '👑 Root' : '🧑‍💼 Assistant'}</td><td>${a.telegram_id === 921627899 ? '—' : `<button class="btn btn-sm btn-danger" onclick="removeAdmin(${a.telegram_id})">Remove</button>`}</td></tr>`).join('') || '<tr><td colspan="3">No admins yet</td></tr>';
+  el.innerHTML = `
+    <div class="card"><h3>👑 Admins</h3><p style="color:var(--text-muted);font-size:13px;">Root = you only. New admins are always Assistant. Assistant can: view stats/users, approve/reject withdrawals, view/close alerts. Assistant cannot: deduct/clawback, ban, broadcast, founder/economy/fees/Hold, maintenance, payouts execute, add/remove admins.</p>
+    <table class="table"><thead><tr><th>Telegram ID</th><th>Role</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+    <div style="display:flex;gap:8px;margin-top:12px;"><input id="newAdminId" type="number" placeholder="Telegram ID of assistant (e.g. 123456789)" style="flex:1;"><button class="btn" onclick="addAdmin()">+ Add Assistant</button></div>
+    <div id="adminsMsg" style="margin-top:8px;font-size:13px;color:var(--text-muted);"></div></div>`;
+}
+async function addAdmin() {
+  const v = document.getElementById('newAdminId').value.trim();
+  const tid = parseInt(v);
+  if (!tid) { toast('Enter a valid Telegram ID', 'error'); return; }
+  const res = await api('/api/admin/admins', 'POST', { telegram_id: tid });
+  if (res.ok) { toast('Assistant added ✅', 'success'); await loadAdminsList(); renderContent(); }
+  else toast('Error: ' + (res.error || 'failed'), 'error');
+}
+async function removeAdmin(tid) {
+  if (!confirm('Remove assistant ' + tid + '?')) return;
+  const res = await api('/api/admin/admins/' + tid, 'DELETE');
+  if (res.ok) { toast('Removed ✅', 'success'); await loadAdminsList(); renderContent(); }
+  else toast('Error: ' + (res.error || 'failed'), 'error');
+}
+window.addAdmin = addAdmin; window.removeAdmin = removeAdmin;
 
 // ========== DASHBOARD ==========
 async function loadStats() {
   const res = await api('/api/admin/stats');
-  if (res.ok) STATE.stats = { ...STATE.stats, ...res };
+  if (res.ok) { STATE.stats = { ...STATE.stats, ...res }; if (res.role) STATE.role = res.role; applyRoleUI(); }
 }
+// STEP 11-2: hide root-only tabs + buttons for assistant. Backend still enforces (403) even if UI is bypassed.
+function applyRoleUI() {
+  document.body.classList.toggle('is-assistant', STATE.role !== 'root');
+  if (STATE.role !== 'root' && ['mining','tasks','fees','ads','payouts','broadcast','admins'].includes(STATE.tab)) { STATE.tab = 'dashboard'; }
+  renderNav();
+  hideAssistantButtons();
+}
+function hideAssistantButtons() {
+  if (STATE.role === 'root') return;
+  const blocked = ['toggleBan','clawback','banAlert','saveMining','saveFee','saveTaskData','deleteTaskItem','toggleTaskActive','executePayout','sendBroadcast','sendBroadcastTest','saveFounderConfig','toggleFounder','toggleFounderVisible','resetWithdrawals','deductBalance','adjustBalance','addAdmin','removeAdmin'];
+  document.querySelectorAll('[onclick]').forEach(el => {
+    const oc = el.getAttribute('onclick') || '';
+    if (blocked.some(b => oc.includes(b))) el.style.display = 'none';
+  });
+  document.querySelectorAll('.root-only').forEach(el => el.style.display = 'none');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const obs = new MutationObserver(() => { if (STATE.role !== 'root') hideAssistantButtons(); });
+  const c = document.getElementById('content');
+  if (c) obs.observe(c, { childList: true, subtree: true });
+});
 
 function renderDashboard(el) {
   el.innerHTML = `
