@@ -10,6 +10,11 @@ export const TON_CONFIG = {
 };
 
 async function getJettonWalletAddress(env, ownerAddress) {
+  // TonCenter v3 expects RAW address (0:...). If a Friendly UQ.../EQ... address arrives, convert it.
+  if (typeof ownerAddress === 'string' && (ownerAddress.startsWith('UQ') || ownerAddress.startsWith('EQ'))) {
+    const { Address } = await import('@ton/core');
+    ownerAddress = Address.parse(ownerAddress).toRawString();
+  }
   const apiKey = env.TONCENTER_API_KEY;
   const url = `https://toncenter.com/api/v3/jetton/wallets?owner_address=${ownerAddress}&jetton_address=${TON_CONFIG.jettonMaster}&limit=1`;
   const res = await fetch(url, { headers: { 'X-API-Key': apiKey } });
@@ -44,7 +49,7 @@ export async function executeBatchOnChain(env, batchTx) {
     const walletContract = new HighloadWalletV3(keyPair.publicKey, 0x10ad, 86400);
     const wallet = client.open(walletContract);
 
-    const jettonWalletAddrStr = await getJettonWalletAddress(env, wallet.address.toString());
+    const jettonWalletAddrStr = await getJettonWalletAddress(env, wallet.address.toRawString()); // FIX: TonCenter v3 needs RAW 0:... not Friendly UQ...
     const jettonWalletAddress = Address.parse(jettonWalletAddrStr);
 
     const gasTon = toNano('0.05');
@@ -120,7 +125,7 @@ export async function executeBatchOnChain(env, batchTx) {
     try {
       // Wait a bit for propagation
       await new Promise(r => setTimeout(r, 3000));
-      const txUrl = `https://toncenter.com/api/v3/transactions?account=${wallet.address.toString()}&limit=3`;
+      const txUrl = `https://toncenter.com/api/v3/transactions?account=${wallet.address.toRawString()}&limit=3`; // FIX: RAW here too
       const txRes = await fetch(txUrl, { headers: { 'X-API-Key': env.TONCENTER_API_KEY } });
       const txData = await txRes.json();
       if (txData.transactions && txData.transactions.length > 0) {
