@@ -746,12 +746,14 @@ export default {
         const cfg = await getFounderConfig(env.DB);
         const owners = await getFounderOwnersCount(env.DB);
         const mine = await isFounder(env.DB, tgUser.id);
-        return json({ ok: true, enabled: cfg.enabled, price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent, isFounder: mine });
+        let _vis = '1'; try { const vr = await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'founder_visible'`).first(); if (vr) _vis = String(vr.value); } catch {}
+        return json({ ok: true, enabled: cfg.enabled, visible: _vis !== '0', price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent, isFounder: mine });
       }
       if (path === '/api/founder/status' && !tgUser) {
         const cfg = await getFounderConfig(env.DB);
         const owners = await getFounderOwnersCount(env.DB);
-        return json({ ok: true, enabled: cfg.enabled, price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent });
+        let _vis2 = '1'; try { const vr2 = await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'founder_visible'`).first(); if (vr2) _vis2 = String(vr2.value); } catch {}
+        return json({ ok: true, enabled: cfg.enabled, visible: _vis2 !== '0', price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent });
       }
       if (path === '/api/founder/verify' && request.method === 'POST' && tgUser) {
         const cfg = await getFounderConfig(env.DB);
@@ -998,13 +1000,21 @@ export default {
         if (path === '/api/admin/founder' && request.method === 'GET') {
           const cfg = await getFounderConfig(env.DB);
           const owners = await getFounderOwnersCount(env.DB);
-          return json({ ok: true, enabled: cfg.enabled, price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent });
+          let _visA = '1'; try { const vrA = await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'founder_visible'`).first(); if (vrA) _visA = String(vrA.value); } catch {}
+          return json({ ok: true, enabled: cfg.enabled, visible: _visA !== '0', price: cfg.price, limit: cfg.limit, owners, remaining: Math.max(0, cfg.limit - owners), burned: cfg.burned, burn_address: cfg.burn_address, interval_hours: cfg.interval_hours, bonus_percent: cfg.bonus_percent, fee_percent: cfg.fee_percent });
         }
         if (path === '/api/admin/founder/toggle' && request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
           const enabled = body.enabled === true || body.enabled === '1' || body.enabled === 1;
           await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_enabled', ?)`).bind(enabled ? '1' : '0').run();
           return json({ ok: true, enabled });
+        }
+        // STEP 7: Founder tab show/hide - SEPARATE from founder_enabled. visible=0 hides the tab in user app, but does NOT disable the program: existing founders keep bonus, verify still works if enabled. Login NOT touched.
+        if (path === '/api/admin/founder/visible' && request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const visible = body.visible === true || body.visible === '1' || body.visible === 1;
+          await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_visible', ?)`).bind(visible ? '1' : '0').run();
+          return json({ ok: true, visible });
         }
         if (path === '/api/admin/founder/config' && request.method === 'POST') {
           const body = await request.json().catch(() => ({}));
