@@ -1202,7 +1202,44 @@ export default {
           return json({ ok: true, alertId, mode, keepId: mode === 'except_one' ? keepId : null, results });
         }
 
-        if (path === '/api/admin/health') {
+        // STEP 4 - Test: send ONLY to the admin who clicked (tgUser.id), never to first user. Login NOT touched.
+        if (path === '/api/admin/broadcast-test' && request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const message = typeof body.message === 'string' ? body.message.trim().slice(0, 4000) : '';
+          if (!message) return json({ ok: false, error: 'empty_message' }, 400);
+          const botToken = env.BOT_TOKEN || getSecrets(env).botToken;
+          if (!botToken) return json({ ok: false, error: 'no_bot_token' }, 500);
+          if (!tgUser || !tgUser.id) return json({ ok: false, error: 'no_admin_user' }, 400);
+          const r = await sendTelegramMessage(botToken, tgUser.id, message);
+          return json({ ok: !!(r && r.ok), error: r && !r.ok ? (r.description || r.error || 'failed') : undefined });
+        }
+        // STEP 4 (Broadcast): send to all non-banned users in BATCHES. Worker times out if we send to everyone in one request, so admin UI calls this repeatedly with offset/limit (e.g. 30 at a time) until done. Login NOT touched. Uses existing sendTelegramMessage + BOT_TOKEN.
+        if (path === '/api/admin/broadcast' && request.method === 'POST') {
+          const body = await request.json().catch(() => ({}));
+          const message = typeof body.message === 'string' ? body.message.trim().slice(0, 4000) : '';
+          if (!message) return json({ ok: false, error: 'empty_message' }, 400);
+          const offset = Math.max(0, parseInt(body.offset) || 0);
+          const limit = Math.min(50, Math.max(1, parseInt(body.limit) || 30));
+          const botToken = env.BOT_TOKEN || getSecrets(env).botToken;
+          if (!botToken) return json({ ok: false, error: 'no_bot_token' }, 500);
+          const totalRow = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE is_banned = 0`).first();
+          const total = totalRow?.c || 0;
+          const batch = await env.DB.prepare(`SELECT telegram_id FROM users WHERE is_banned = 0 ORDER BY telegram_id ASC LIMIT ? OFFSET ?`).bind(limit, offset).all();
+          const ids = (batch.results || []).map(r => r.telegram_id);
+          let sent = 0, failed = 0;
+          const failures = [];
+          for (const tid of ids) {
+            const r = await sendTelegramMessage(botToken, tid, message);
+            if (r && r.ok) sent++;
+            else { failed++; if (failures.length < 10) failures.push({ telegram_id: tid, error: r?.description || r?.error || 'failed' }); }
+          }
+          try {
+            await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_broadcast_log (id INTEGER PRIMARY KEY AUTOINCREMENT, message TEXT, offset_used INTEGER, sent INTEGER, failed INTEGER, created_at INTEGER)`).run();
+            await env.DB.prepare(`INSERT INTO admin_broadcast_log (message, offset_used, sent, failed, created_at) VALUES (?, ?, ?, ?, unixepoch())`).bind(message, offset, sent, failed).run();
+          } catch {}
+          return json({ ok: true, total, offset, limit, sent, failed, nextOffset: offset + ids.length, done: offset + ids.length >= total, failures });
+        }
+
           const health = await getSystemHealth(env);
           return json({ ok: true, health });
         }
