@@ -873,7 +873,7 @@ export default {
 
         const balanceMatch = path.match(/^\/api\/admin\/users\/(\d+)\/balance$/);
         if (balanceMatch && request.method === 'POST') {
-          // STEP 1 ONLY: balance deduct + reason + log. Old add/set behavior unchanged.
+          // STEP 1 ONLY: balance deduct + reason + log. Old add/set behavior unchanged. Login NOT touched.
           const targetId = parseInt(balanceMatch[1]);
           const body = await request.json();
           const amount = typeof body.amount === 'number' ? body.amount : body.balance;
@@ -887,21 +887,19 @@ export default {
             await env.DB.prepare(`UPDATE users SET balance = ? WHERE telegram_id = ?`).bind(amount, targetId).run();
             newBal = amount;
           } else if (mode === 'subtract' || mode === 'deduct') {
-            // Deduct: never go below 0, never use negative amount from client.
             newBal = Math.max(0, (before.balance || 0) - amount);
             await env.DB.prepare(`UPDATE users SET balance = ? WHERE telegram_id = ?`).bind(newBal, targetId).run();
           } else {
             await env.DB.prepare(`UPDATE users SET balance = balance + ? WHERE telegram_id = ?`).bind(amount, targetId).run();
             newBal = (before.balance || 0) + amount;
           }
-          // Audit log: create table if missing (no db.js change needed), log every change.
           try {
             await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admin_balance_log (id INTEGER PRIMARY KEY AUTOINCREMENT, telegram_id INTEGER, mode TEXT, amount REAL, before_balance REAL, after_balance REAL, reason TEXT, created_at INTEGER)`).run();
             await env.DB.prepare(`INSERT INTO admin_balance_log (telegram_id, mode, amount, before_balance, after_balance, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, unixepoch())`).bind(targetId, mode, amount, before.balance || 0, newBal, reason).run();
           } catch (e) { console.warn('balance_log failed', e.message); }
           return json({ ok: true, newBalance: newBal });
         }
-        // STEP 1 ONLY: read balance log for one user (for review, no other endpoint changed).
+        // STEP 1 ONLY: read balance log for one user.
         if (path.match(/^\/api\/admin\/users\/(\d+)\/balance-log$/) && request.method === 'GET') {
           const targetId = parseInt(path.match(/\/(\d+)\/balance-log/)[1]);
           const rows = await env.DB.prepare(`SELECT * FROM admin_balance_log WHERE telegram_id = ? ORDER BY id DESC LIMIT 50`).bind(targetId).all().catch(() => ({ results: [] }));
