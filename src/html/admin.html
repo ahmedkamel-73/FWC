@@ -582,6 +582,7 @@ function renderUsers(el) {
                       <button class="btn btn-sm" onclick="openBalanceModal(${u.telegram_id})" title="Add/Edit Balance">💰</button>
                       <button class="btn btn-sm" onclick="checkUserHold(${u.telegram_id})" title="Check Jetton Balance">🔍 Hold</button>
                       <button class="btn btn-sm" onclick="resetWithdrawals(${u.telegram_id})" title="Reset withdrawals">🔄</button>
+                      <button class="btn btn-sm btn-primary" onclick="openUserDetail(${u.telegram_id})" title="User detail">👁️ التفاصيل</button>
                     </div>
                   </td>
                 </tr>
@@ -1317,6 +1318,42 @@ async function saveMaintenance() {
   if (r1.ok && r2.ok) { toast('تم الحفظ ✅', 'success'); await loadEconomy(); renderContent(); }
   else toast('خطأ في الحفظ', 'error');
 }
+// ========== USER DETAIL (Step 6) ==========
+async function openUserDetail(id) {
+  const res = await api('/api/admin/users/' + id + '/detail');
+  if (!res.ok) { toast('User not found', 'error'); return; }
+  const el = document.getElementById('content');
+  const u = res.user;
+  const wdRows = (res.withdrawals || []).map(w => `<tr><td>#${w.id}</td><td>${(w.amount || 0).toFixed(0)}</td><td>${w.status}</td><td>${w.tx_hash ? w.tx_hash.slice(0,12)+'...' : '—'}</td><td>${w.created_at ? new Date(w.created_at * 1000).toLocaleString() : '—'}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">مفيش سحوبات</td></tr>';
+  const alRows = (res.alerts || []).map(a => `<tr><td>#${a.id}</td><td>${a.type}</td><td>${a.status || 'open'}</td><td style="font-size:10px;">${(a.details || '').slice(0,120)}</td><td>${a.created_at ? new Date(a.created_at * 1000).toLocaleString() : '—'}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">مفيش تنبيهات ✅</td></tr>';
+  const blRows = (res.balanceLog || []).map(b => `<tr><td>${b.mode}</td><td>${b.amount}</td><td>${b.before_balance} → ${b.after_balance}</td><td style="font-size:10px;">${(b.reason || '').slice(0,100)}</td><td>${b.created_at ? new Date(b.created_at * 1000).toLocaleString() : '—'}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">مفيش حركات رصيد مسجلة</td></tr>';
+  el.innerHTML = `
+    <div class="section">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div class="section-title">👁️ ${u.first_name || '—'} <span style="font-size:11px;color:var(--text-muted);">ID: ${u.telegram_id} ${u.username ? '• @' + u.username : ''}</span></div>
+        <button class="btn btn-sm" onclick="loadTab()">⬅️ رجوع للمستخدمين</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:10px 0;">
+        <div style="background:var(--surface-2);border-radius:10px;padding:10px;"><div style="font-size:10px;color:var(--text-muted);">الرصيد</div><div style="font-weight:700;font-size:16px;">${(u.balance || 0).toFixed(2)} FWC</div></div>
+        <div style="background:var(--surface-2);border-radius:10px;padding:10px;"><div style="font-size:10px;color:var(--text-muted);">الحالة</div><div style="font-weight:700;">${u.is_banned ? '🚫 محظور' : '✅ نشط'} ${u.ban_reason ? '<span style="font-size:10px;">(' + u.ban_reason + ')</span>' : ''}</div></div>
+        <div style="background:var(--surface-2);border-radius:10px;padding:10px;"><div style="font-size:10px;color:var(--text-muted);">المحفظة</div><div style="font-size:11px;word-break:break-all;">${u.wallet || '—'} ${u.wallet_verified ? '✅' : ''}</div></div>
+        <div style="background:var(--surface-2);border-radius:10px;padding:10px;"><div style="font-size:10px;color:var(--text-muted);">الإحالات</div><div style="font-weight:700;">${res.referrals} شخص</div><div style="font-size:10px;">دعاه: ${res.referredByName || '—'}</div></div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="btn btn-sm ${u.is_banned ? 'btn-primary' : 'btn-danger'}" onclick="toggleBan(${u.telegram_id}, ${u.is_banned ? 1 : 0}); setTimeout(()=>openUserDetail(${u.telegram_id}), 600);">${u.is_banned ? 'Unban' : 'Ban'}</button>
+        <button class="btn btn-sm" onclick="openBalanceModal(${u.telegram_id})">💰 رصيد</button>
+        <button class="btn btn-sm" onclick="checkUserHold(${u.telegram_id})">🔍 Hold</button>
+        <button class="btn btn-sm" onclick="resetWithdrawals(${u.telegram_id})">🔄 تصفير سحب</button>
+      </div>
+      <div class="section-title" style="font-size:13px;">💸 السحوبات (آخر 20)</div>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th>المبلغ</th><th>الحالة</th><th>TX</th><th>التاريخ</th></tr></thead><tbody>${wdRows}</tbody></table></div>
+      <div class="section-title" style="font-size:13px;margin-top:14px;">🛡️ التنبيهات اللي فيها المستخدم ده</div>
+      <div class="table-wrap"><table><thead><tr><th>#</th><th>النوع</th><th>الحالة</th><th>التفاصيل</th><th>التاريخ</th></tr></thead><tbody>${alRows}</tbody></table></div>
+      <div class="section-title" style="font-size:13px;margin-top:14px;">📋 سجل حركات الرصيد (خصم / إضافة / مصادرة)</div>
+      <div class="table-wrap"><table><thead><tr><th>النوع</th><th>المبلغ</th><th>قبل ← بعد</th><th>السبب</th><th>التاريخ</th></tr></thead><tbody>${blRows}</tbody></table></div>
+    </div>
+  `;
+}
 // ========== PAYOUTS ==========
 async function loadPayoutStats() {
   const res = await api('/api/admin/payouts/stats');
@@ -1430,7 +1467,7 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.banAlert = banAlert;window.testBroadcast = testBroadcast;window.startBroadcast = startBroadcast;window.saveMaintenance = saveMaintenance;window.resetBroadcast = resetBroadcast;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
+window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.banAlert = banAlert;window.testBroadcast = testBroadcast;window.startBroadcast = startBroadcast;window.saveMaintenance = saveMaintenance;window.openUserDetail = openUserDetail;window.resetBroadcast = resetBroadcast;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
 window.checkPassword = checkPassword;
 </script>
 <script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script>
