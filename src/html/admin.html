@@ -291,61 +291,35 @@ async function api(path, method = 'GET', body = null) {
   
   try {
     const res = await fetch(path, { method, headers, body: body ? JSON.stringify(body) : null });
-    // FIX: do NOT check/clear password here. This runs early (before login, ADMIN_SECRET='')
-    // and on every tab. A 401 here used to wipe the password the user just typed.
-    // Only checkPassword() decides if the password is wrong.
-    // If we are already logged in and get 401 later, checkPassword flow will show login again
-    // via the caller, not by wiping here.
+    if (res.status === 401) {
+      document.getElementById('login-screen').classList.remove('hidden');
+      document.getElementById('admin-app').classList.add('hidden');
+      ADMIN_SECRET = '';
+    }
     return await res.json();
   } catch (e) {
     return { ok: false, error: 'network' };
   }
 }
 
-// Auto-login from Telegram: if opened inside Telegram Mini App, try Init-Data first (no password needed).
-async function tryTelegramAutoLogin() {
-  const initData = getInitData();
-  if (!initData) return false;
-  try {
-    const res = await fetch('/api/admin/stats', { headers: { 'Content-Type': 'application/json', 'X-Telegram-Init-Data': initData, 'X-Admin-Secret': '' } });
-    if (res.ok) {
-      ADMIN_SECRET = '';
-      document.getElementById('login-screen').classList.add('hidden');
-      document.getElementById('admin-app').classList.remove('hidden');
-      initAdmin();
-      return true;
-    }
-  } catch {}
-  return false;
-}
-document.addEventListener('DOMContentLoaded', async () => { await tryTelegramAutoLogin(); });
 async function checkPassword() {
-  const rawPass = document.getElementById('admin-pass').value;
-  const pass = rawPass.trim();
+  const pass = document.getElementById('admin-pass').value.trim();
   const errEl = document.getElementById('login-error');
   
   if (!pass) return;
   errEl.textContent = 'Checking...';
   
-  // FIX (web only): do NOT send an empty X-Telegram-Init-Data header on web.
-  // On web getInitData() == '' and sending an empty header made the server
-  // treat the request as a broken Telegram identity instead of a pure password login.
-  // On Telegram getInitData() is non-empty and is sent normally.
-  async function tryLogin(pwd) {
-    const headers = { 'Content-Type': 'application/json', 'X-Admin-Secret': pwd };
-    const initData = getInitData();
-    if (initData) headers['X-Telegram-Init-Data'] = initData;
-    return await fetch('/api/admin/stats', { headers });
-  }
   try {
-    let lastPwd = pass;
-    let res = await tryLogin(pass);
-    // If ADMIN_SECRET in Cloudflare itself has a leading/trailing space, trimmed password fails.
-    // Try the raw value once before showing "Wrong password".
-    if (!res.ok && rawPass !== pass) { res = await tryLogin(rawPass); lastPwd = rawPass; }
+    const res = await fetch('/api/admin/stats', {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Telegram-Init-Data': getInitData(),
+        'X-Admin-Secret': pass
+      }
+    });
     
     if (res.ok) {
-      ADMIN_SECRET = lastPwd;
+      ADMIN_SECRET = pass;
       document.getElementById('login-screen').classList.add('hidden');
       document.getElementById('admin-app').classList.remove('hidden');
       errEl.textContent = '';
@@ -547,7 +521,8 @@ function renderUsers(el) {
                     <div style="font-weight:700;">${(u.balance || 0).toFixed(2)}</div>
                     <div style="display:flex;gap:3px;margin-top:4px;">
                       <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;background:rgba(200,255,60,0.15);" onclick="quickAddBalance(${u.telegram_id}, 1000)">+1k</button>
-                      <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;background:rgba(200,255,60,0.15);" onclick="quickAddBalance(${u.telegram_id}, 5000)">+5k</button>
+                      <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;background:rgba(200,255,60,0.15);" onclick="quickAddBalance(${u.telegram_id}, 5000)">+5k</button><button class="btn btn-sm" style="padding:2px 6px;font-size:10px;background:rgba(255,77,77,0.15);" onclick="quickDeductBalance(${u.telegram_id}, 1000)">-1k</button>
+                      <button class="btn btn-sm" style="padding:2px 6px;font-size:10px;background:rgba(255,77,77,0.15);" onclick="quickDeductBalance(${u.telegram_id}, 5000)">-5k</button>
                     </div>
                   </td>
                   <td style="font-size:10px;color:var(--text-muted);">${u.wallet ? u.wallet.slice(0,8)+'... <span style="font-size:9px;color:var(--text-muted);">('+ (u.wallet_verified?'✅':'') +')</span>' : '—'}</td>
@@ -571,7 +546,8 @@ function renderUsers(el) {
         <h3>💰 Add Balance</h3>
         <div class="form-group" style="margin-top:12px;"><label>ID</label><input type="number" id="bal_tg_id"></div>
         <div class="form-group"><label>Amount</label><input type="number" id="bal_amount"></div>
-        <div class="form-group"><label>Mode</label><select id="bal_mode"><option value="add">Add</option><option value="set">Set</option></select></div>
+        <div class="form-group"><label>Mode</label><select id="bal_mode"><option value="add">Add</option><option value="subtract">Deduct (خصم)</option><option value="set">Set</option></select></div>
+        <div class="form-group"><label>Reason (سبب - اختياري بس مهم للخصم)</label><input type="text" id="bal_reason" placeholder="مثال: خصم مكافأة غش"></div>
         <div style="display:flex;gap:8px;margin-top:12px;"><button class="btn btn-primary" style="flex:1;" onclick="submitBalance()">Save</button><button class="btn" style="flex:1;" onclick="closeBalanceModal()">Cancel</button></div>
         <div id="bal_result" style="margin-top:10px;font-size:11px;"></div>
       </div>
@@ -582,7 +558,12 @@ function renderUsers(el) {
 async function quickAddBalance(tgId, amount){
   if(!confirm('Add '+amount+' to '+tgId+'?')) return;
   const res = await api('/api/admin/users/'+tgId+'/balance','POST',{amount,mode:'add'});
-  if(res.ok){toast('+'+amount+' ✅','success'); await loadUsers(); renderContent();} else toast('Error','error');
+  if(res.ok){toast('+'+amount+' ✅','success'); await loadUsers(); renderContent();} else toast('Error','error'); } async function quickDeductBalance(tgId, amount){
+  const reason = prompt('سبب الخصم (اختياري):', 'خصم يدوي');
+  if(reason===null) return;
+  if(!confirm('خصم '+amount+' من '+tgId+'؟')) return;
+  const res2 = await api('/api/admin/users/'+tgId+'/balance','POST',{amount,mode:'subtract',reason:reason||''});
+  if(res2.ok){toast('-'+amount+' ✅','success'); await loadUsers(); renderContent();} else toast('Error','error');
 }
 function openBalanceModal(tgId=null){
   document.getElementById('balanceModal').style.display='flex';
@@ -593,8 +574,10 @@ async function submitBalance(){
   const tgId=parseInt(document.getElementById('bal_tg_id').value);
   const amount=parseFloat(document.getElementById('bal_amount').value);
   const mode=document.getElementById('bal_mode').value;
-  if(!tgId||isNaN(amount)){document.getElementById('bal_result').textContent='Invalid';return;}
-  const res=await api('/api/admin/users/'+tgId+'/balance','POST',{amount,mode});
+  const reason=document.getElementById('bal_reason') ? document.getElementById('bal_reason').value.trim() : '';
+  if(!tgId||isNaN(amount)||amount<0){document.getElementById('bal_result').textContent='Invalid';return;}
+  if(mode==='subtract' && !confirm('خصم '+amount+' من '+tgId+'؟'+(reason?'\nالسبب: '+reason:''))) return;
+  const res=await api('/api/admin/users/'+tgId+'/balance','POST',{amount,mode,reason});
   if(res.ok){document.getElementById('bal_result').textContent='New: '+res.newBalance; toast('Updated ✅','success'); await loadUsers(); setTimeout(()=>{closeBalanceModal();renderContent();},800);} else document.getElementById('bal_result').textContent='Error';
 }
 
@@ -1256,7 +1239,7 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
+window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
 window.checkPassword = checkPassword;
 </script>
 <script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script>
