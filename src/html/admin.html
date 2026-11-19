@@ -1136,6 +1136,16 @@ function renderAlerts(el) {
         <span>🛡️ Open Alerts (${STATE.alerts.length})</span>
         <button class="btn btn-sm" onclick="loadTab()">🔄</button>
       </div>
+      <div style="padding:12px;border:1px solid rgba(255,77,77,0.3);border-radius:10px;margin:10px 0;background:rgba(255,77,77,0.05);">
+        <div style="font-weight:700;font-size:12px;margin-bottom:8px;">💸 مصادرة يدوية (تشتغل مع أي تنبيه - قديم أو جديد)</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <input id="manual-claw-ids" placeholder="IDs مثال: 1108745390,595770023" style="flex:2;padding:6px 8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;">
+          <input id="manual-claw-amount" type="number" placeholder="المبلغ" value="1000" style="flex:1;padding:6px 8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;">
+          <input id="manual-claw-reason" placeholder="السبب" value="مصادرة مكافأة غش" style="flex:1;padding:6px 8px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;">
+          <button class="btn btn-sm" style="background:rgba(255,77,77,0.2);border:1px solid rgba(255,77,77,0.4);" onclick="manualClawback()">💸 مصادرة</button>
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:6px;">اكتب IDs بنفسك لو التنبيه قديم، أو دوس على زرار المصادرة اللي جوه أي تنبيه.</div>
+      </div>
       ${STATE.alerts.length === 0 ? '<div class="empty">No alerts ✅</div>' :
         STATE.alerts.map(a => `
           <div style="padding:12px;border-radius:10px;background:rgba(255,77,77,0.08);border:1px solid rgba(255,77,77,0.2);margin-bottom:10px;">
@@ -1146,7 +1156,7 @@ function renderAlerts(el) {
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${a.details}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">Users: ${a.telegram_ids}</div>
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})">✅ Resolve</button><button class="btn btn-sm" style="background:rgba(255,77,77,0.2);border:1px solid rgba(255,77,77,0.4);" onclick="clawbackAlert(${a.id}, '${a.telegram_ids}')">💸 مصادرة (Clawback)</button>
+              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})">✅ Resolve</button><button class="btn btn-sm" style="background:rgba(255,77,77,0.2);border:1px solid rgba(255,77,77,0.4);" onclick="clawbackAlert(${a.id})">💸 مصادرة (Clawback)</button>
               <button class="btn btn-sm" onclick="dismissAlert(${a.id})">🚫 Dismiss</button>
             </div>
           </div>
@@ -1175,7 +1185,12 @@ async function dismissAlert(id) {
   }
 }
 
-async function clawbackAlert(id, telegramIds) {
+async function clawbackAlert(id) {
+  // FIX (old alerts): do NOT pass telegram_ids via onclick - old alerts store them as "[110..,595..]" which broke onclick quoting.
+  // Lookup the alert from STATE.alerts by id, so old + new alerts work the same.
+  const alert = (STATE.alerts || []).find(x => String(x.id) === String(id));
+  const telegramIds = alert ? String(alert.telegram_ids || '') : '';
+  if (!telegramIds) { alert('التنبيه مش لاقي مستخدمين'); return; }
   const amountStr = prompt('مبلغ المصادرة لكل مستخدم في التنبيه؟\nالمستخدمين: ' + telegramIds + '\n\nلو رصيد حد أقل من المبلغ، هيتخصم رصيده كله بس (مش هينزل تحت صفر).', '1000');
   if (amountStr === null) return;
   const amount = parseFloat(amountStr);
@@ -1189,6 +1204,25 @@ async function clawbackAlert(id, telegramIds) {
     alert('تمت المصادرة ✅\n' + lines);
     await loadAlerts(); await loadStats(); renderContent();
   } else { alert('خطأ: ' + (res.error || 'failed')); }
+}
+async function manualClawback() {
+  const idsStr = document.getElementById('manual-claw-ids').value.trim();
+  const amount = parseFloat(document.getElementById('manual-claw-amount').value);
+  const reason = document.getElementById('manual-claw-reason').value.trim() || 'مصادرة مكافأة غش';
+  if (!idsStr) { alert('اكتب IDs الأول'); return; }
+  if (!isFinite(amount) || amount <= 0) { alert('مبلغ غير صحيح'); return; }
+  const ids = idsStr.split(',').map(s => parseInt(s.trim())).filter(n => isFinite(n));
+  if (!ids.length) { alert('IDs غير صحيحة'); return; }
+  if (!confirm('تأكيد مصادرة ' + amount + ' من ' + ids.join(', ') + '؟\nالسبب: ' + reason)) return;
+  // Use first alert's clawback? No - use direct balance deduct per user via existing balance API (Step 1), so manual works even without an alert id.
+  let lines = [];
+  for (const tid of ids) {
+    const res = await api('/api/admin/users/' + tid + '/balance', 'POST', { amount, mode: 'subtract', reason });
+    if (res.ok) lines.push('ID ' + tid + ': خصم ' + amount + ' -> رصيد جديد ' + res.newBalance);
+    else lines.push('ID ' + tid + ': خطأ ' + (res.error || 'failed'));
+  }
+  alert('تمت المصادرة اليدوية ✅\n' + lines.join('\n'));
+  await loadAlerts(); await loadStats(); renderContent();
 }
 // ========== PAYOUTS ==========
 async function loadPayoutStats() {
@@ -1303,7 +1337,7 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
+window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
 window.checkPassword = checkPassword;
 </script>
 <script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script>
