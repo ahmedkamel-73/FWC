@@ -885,6 +885,23 @@ export default {
           return json({ ok: true, users: users.results || [] });
         }
 
+        // STEP 6 (User Detail): one user - profile + withdrawals + alerts + balance log + referrals. Read-only except existing actions. Login NOT touched.
+        const detailMatch = path.match(/^\/api\/admin\/users\/(\d+)\/detail$/);
+        if (detailMatch && request.method === 'GET') {
+          const targetId = parseInt(detailMatch[1]);
+          const user = await env.DB.prepare(`SELECT telegram_id, username, first_name, balance, wallet, wallet_verified, referral_by, referral_code, is_banned, ban_reason, created_at, last_mine FROM users WHERE telegram_id = ?`).bind(targetId).first();
+          if (!user) return json({ ok: false, error: 'not_found' }, 404);
+          let withdrawals = [];
+          try { const w = await env.DB.prepare(`SELECT id, amount, fee, net_amount, status, tx_hash, reject_reason, created_at FROM withdrawals WHERE telegram_id = ? ORDER BY created_at DESC LIMIT 20`).bind(targetId).all(); withdrawals = w.results || []; } catch {}
+          let alerts = [];
+          try { const a = await env.DB.prepare(`SELECT id, type, details, telegram_ids, status, created_at FROM anticheat_alerts ORDER BY created_at DESC LIMIT 200`).all(); const all = a.results || []; alerts = all.filter(r => String(r.telegram_ids || '').includes(String(targetId))); } catch {}
+          let balanceLog = [];
+          try { const b = await env.DB.prepare(`SELECT id, mode, amount, before_balance, after_balance, reason, created_at FROM admin_balance_log WHERE telegram_id = ? ORDER BY created_at DESC LIMIT 20`).bind(targetId).all(); balanceLog = b.results || []; } catch {}
+          let referrals = 0, referredByName = null;
+          try { const rc = await env.DB.prepare(`SELECT COUNT(*) as c FROM users WHERE referral_by = ?`).bind(targetId).first(); referrals = rc?.c || 0; } catch {}
+          try { if (user.referral_by) { const rb = await env.DB.prepare(`SELECT first_name, username FROM users WHERE telegram_id = ?`).bind(user.referral_by).first(); referredByName = rb ? (rb.first_name || rb.username || String(user.referral_by)) : String(user.referral_by); } } catch {}
+          return json({ ok: true, user, withdrawals, alerts, balanceLog, referrals, referredByName });
+        }
         const banMatch = path.match(/^\/api\/admin\/users\/(\d+)\/(ban|unban)$/);
         if (banMatch && request.method === 'POST') {
           const targetId = parseInt(banMatch[1]);
