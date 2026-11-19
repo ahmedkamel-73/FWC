@@ -889,6 +889,70 @@ export default {
           return json({ ok: false, error: 'unauthorized' }, 401);
         }
 
+        // STEP 11-1 (Admin roles): root + assistant. STEP 1 ONLY: manage admins, NO permission changes yet.
+        // Root = 921627899 only. Web (no Telegram identity + correct ADMIN_SECRET) counts as root, because only root knows the password.
+        // Telegram assistant calling with password does NOT become root - Telegram identity wins when present.
+        const isRootAdmin = tgUser?.id ? (tgUser.id === 921627899) : viaPassword;
+        const ensureAdminsRoleCol = async () => {
+          try { await env.DB.prepare(`CREATE TABLE IF NOT EXISTS admins (telegram_id INTEGER PRIMARY KEY, role TEXT DEFAULT 'assistant')`).run(); } catch {}
+          try {
+            const cols = await env.DB.prepare(`PRAGMA table_info(admins)`).all();
+            const names = (cols.results || []).map(c => c.name);
+            if (!names.includes('role')) await env.DB.prepare(`ALTER TABLE admins ADD COLUMN role TEXT DEFAULT 'assistant'`).run();
+          } catch {}
+          try { await env.DB.prepare(`INSERT OR IGNORE INTO admins (telegram_id, role) VALUES (921627899, 'root')`).run(); } catch {}
+          try { await env.DB.prepare(`UPDATE admins SET role = 'root' WHERE telegram_id = 921627899`).run(); } catch {}
+        };
+        // STEP 11-2 (Assistant permissions): central gate. Root = everything. Assistant = limited.
+        // ALLOWED for assistant: GET stats/users/detail/balance-log/withdrawals/payouts-stats/preview/anticheat/health/tasks/economy/fees/founder/hold (view only)
+        // + POST withdrawals approve/reject + POST anticheat resolve/dismiss.
+        // BLOCKED for assistant: deduct/clawback, ban (user + alert-ban), broadcast + broadcast-test, founder toggle/visible/config,
+        // economy/fees/hold/tasks POST/PUT/DELETE, payouts execute, withdrawals reset, admins manage.
+        const _m = request.method;
+        const _isAssistantBlocked =
+          path === '/api/admin/admins' && _m !== 'GET' ? true :
+          /^\/api\/admin\/admins\/\d+$/.test(path) ? true :
+          /\/balance$/.test(path) && _m === 'POST' ? true :
+          /\/(ban|unban)$/.test(path) && _m === 'POST' ? true :
+          /\/withdrawals\/reset$/.test(path) && _m === 'POST' ? true :
+          /\/anticheat\/\d+\/(clawback|ban)$/.test(path) && _m === 'POST' ? true :
+          (path === '/api/admin/broadcast' || path === '/api/admin/broadcast-test') && _m === 'POST' ? true :
+          (path === '/api/admin/payouts/execute') && _m === 'POST' ? true :
+          (path === '/api/admin/hold' || path === '/api/admin/founder/toggle' || path === '/api/admin/founder/visible' || path === '/api/admin/founder/config' || path === '/api/admin/economy' || path === '/api/admin/fees') && _m === 'POST' ? true :
+          (path === '/api/admin/tasks' && _m === 'POST') ? true :
+          /^\/api\/admin\/tasks\/[\w-]+$/.test(path) && (_m === 'PUT' || _m === 'DELETE') ? true :
+          false;
+        if (!isRootAdmin && _isAssistantBlocked) {
+          return json({ ok: false, error: 'assistant_forbidden', message: 'Assistant admins cannot do this. Root only.' }, 403);
+        }
+        // Return role in stats so admin.html can hide forbidden buttons (no extra endpoint needed).
+        if (path === '/api/admin/admins' && request.method === 'GET') {
+          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
+          await ensureAdminsRoleCol();
+          const rows = await env.DB.prepare(`SELECT telegram_id, COALESCE(role,'assistant') as role FROM admins ORDER BY telegram_id ASC`).all();
+          return json({ ok: true, admins: rows.results || [], root_id: 921627899 });
+        }
+        if (path === '/api/admin/admins' && request.method === 'POST') {
+          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
+          const body = await request.json().catch(() => ({}));
+          const tid = parseInt(body.telegram_id);
+          if (!isFinite(tid) || tid <= 0) return json({ ok: false, error: 'invalid_telegram_id' }, 400);
+          if (tid === 921627899) return json({ ok: false, error: 'already_root' }, 400);
+          await ensureAdminsRoleCol();
+          // New admins are ALWAYS assistant. API can never create a second root.
+          await env.DB.prepare(`INSERT OR REPLACE INTO admins (telegram_id, role) VALUES (?, 'assistant')`).bind(tid).run();
+          return json({ ok: true, telegram_id: tid, role: 'assistant' });
+        }
+        const adminDelMatch = path.match(/^\/api\/admin\/admins\/(\d+)$/);
+        if (adminDelMatch && request.method === 'DELETE') {
+          if (!isRootAdmin) return json({ ok: false, error: 'root_only' }, 403);
+          const tid = parseInt(adminDelMatch[1]);
+          if (tid === 921627899) return json({ ok: false, error: 'cannot_remove_root' }, 400);
+          await ensureAdminsRoleCol();
+          await env.DB.prepare(`DELETE FROM admins WHERE telegram_id = ?`).bind(tid).run();
+          return json({ ok: true, removed: tid });
+        }
+
         if (path === '/api/admin/stats') {
           // FIX (web admin): tgUser is null on web (no Telegram Init-Data).
           // Old code did tgUser.id here -> TypeError -> 500, and admin.html showed it as "Wrong password".
@@ -904,7 +968,7 @@ export default {
           const totalFees = await getTotalFees(env.DB, 0);
           const openAlerts = await env.DB.prepare(`SELECT COUNT(*) as c FROM anticheat_alerts WHERE status='open'`).first();
 
-          return json({ ok: true, miningAmount, usersCount: usersCount?.c || 0, wdPending: wdPending?.c || 0, totalBalance: totalBalance?.s || 0, totalMined: totalMined?.s || 0, totalFees, openAlerts: openAlerts?.c || 0 });
+          return json({ ok: true, role: isRootAdmin ? 'root' : 'assistant', isRoot: isRootAdmin, miningAmount, usersCount: usersCount?.c || 0, wdPending: wdPending?.c || 0, totalBalance: totalBalance?.s || 0, totalMined: totalMined?.s || 0, totalFees, openAlerts: openAlerts?.c || 0 });
         }
 
         if (path === '/api/admin/users') {
@@ -1222,8 +1286,10 @@ export default {
                   const _uname2 = _u2?.username ? '@' + _u2.username : '—';
                   const _wallet2 = _u2?.wallet || wd.wallet || '—';
                   const _amt2 = wd.amount; const _net2 = (wd.net_amount !== undefined && wd.net_amount !== null) ? wd.net_amount : wd.amount;
-                  try { await sendTelegramMessage(botToken, wd.telegram_id, `✅ *Withdrawal Sent*\n\nAmount: ${_amt2} FWC\nNet: ${_net2} FWC\nWallet: \`${_wallet2}\`\nTx: \`${txHash}\`\n\nCheck your wallet. Thank you for mining with FWC! ⛏️`); } catch (e) { console.error('Withdraw DM failed:', e.message); }
-                  try { await sendTelegramMessage(botToken, '@fwc_payouts', `✅ *Payout Completed*\n\n👤 ${_name2} (${_uname2})\n💰 Amount: ${_amt2} FWC\n💳 Wallet: \`${_wallet2}\`\n📅 Date: ${_date2}\nTx: \`${txHash}\`\n\n#FWC #Payout`); } catch (e) { console.error('Payout group post failed:', e.message); }
+                  const _isRealHash = txHash && !String(txHash).startsWith('batch_') && !String(txHash).startsWith('highload_');
+                  const _proofLine = _isRealHash ? `Tx: https://tonviewer.com/transaction/${txHash}` : `Verify: https://tonviewer.com/${_wallet2}`;
+                  try { await sendTelegramMessage(botToken, wd.telegram_id, `✅ *Withdrawal Sent*\n\nAmount: ${_amt2} FWC\nNet: ${_net2} FWC\nWallet: \`${_wallet2}\`\n${_proofLine}\n\nCheck your wallet. Thank you for mining with FWC! ⛏️`); } catch (e) { console.error('Withdraw DM failed:', e.message); }
+                  try { await sendTelegramMessage(botToken, '@fwc_payouts', `✅ *Payout Completed*\n\n👤 ${_name2} (${_uname2})\n💰 Amount: ${_amt2} FWC\n💳 Wallet: \`${_wallet2}\`\n📅 Date: ${_date2}\n${_proofLine}\n\n#FWC #Payout`); } catch (e) { console.error('Payout group post failed:', e.message); }
                 } catch (e) { console.error('Payout notify per-user failed:', e.message); }
               }
             } catch (e) { console.error('Payout notifications failed:', e.message); }
