@@ -1222,10 +1222,8 @@ export default {
                   const _uname2 = _u2?.username ? '@' + _u2.username : '—';
                   const _wallet2 = _u2?.wallet || wd.wallet || '—';
                   const _amt2 = wd.amount; const _net2 = (wd.net_amount !== undefined && wd.net_amount !== null) ? wd.net_amount : wd.amount;
-                  const _isRealHash = txHash && !String(txHash).startsWith('batch_') && !String(txHash).startsWith('highload_');
-                  const _proofLine = _isRealHash ? `Tx: https://tonviewer.com/transaction/${txHash}` : `Verify: https://tonviewer.com/${_wallet2}`;
-                  try { await sendTelegramMessage(botToken, wd.telegram_id, `✅ *Withdrawal Sent*\n\nAmount: ${_amt2} FWC\nNet: ${_net2} FWC\nWallet: \`${_wallet2}\`\n${_proofLine}\n\nCheck your wallet. Thank you for mining with FWC! ⛏️`); } catch (e) { console.error('Withdraw DM failed:', e.message); }
-                  try { await sendTelegramMessage(botToken, '@fwc_payouts', `✅ *Payout Completed*\n\n👤 ${_name2} (${_uname2})\n💰 Amount: ${_amt2} FWC\n💳 Wallet: \`${_wallet2}\`\n📅 Date: ${_date2}\n${_proofLine}\n\n#FWC #Payout`); } catch (e) { console.error('Payout group post failed:', e.message); }
+                  try { await sendTelegramMessage(botToken, wd.telegram_id, `✅ *Withdrawal Sent*\n\nAmount: ${_amt2} FWC\nNet: ${_net2} FWC\nWallet: \`${_wallet2}\`\nTx: \`${txHash}\`\n\nCheck your wallet. Thank you for mining with FWC! ⛏️`); } catch (e) { console.error('Withdraw DM failed:', e.message); }
+                  try { await sendTelegramMessage(botToken, '@fwc_payouts', `✅ *Payout Completed*\n\n👤 ${_name2} (${_uname2})\n💰 Amount: ${_amt2} FWC\n💳 Wallet: \`${_wallet2}\`\n📅 Date: ${_date2}\nTx: \`${txHash}\`\n\n#FWC #Payout`); } catch (e) { console.error('Payout group post failed:', e.message); }
                 } catch (e) { console.error('Payout notify per-user failed:', e.message); }
               }
             } catch (e) { console.error('Payout notifications failed:', e.message); }
