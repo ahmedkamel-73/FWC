@@ -777,9 +777,8 @@ export default {
           const trData = await trRes.json();
           const transfers = trData.jetton_transfers || trData.transfers || [];
           if (!transfers || transfers.length === 0) return json({ ok: false, error: 'tx_not_found', detail: 'No jetton transfer found for this hash' }, 400);
-          // Find transfer to burn address with enough amount. Jetton address must match CONFIG.jetton if provided.
-          // SAFE sender check: if TonCenter returns a source and it clearly differs from the user's wallet -> reject.
-          // If source is missing/unparseable -> allow (do not break old valid burns).
+          // Find transfer to burn address with enough amount. Jetton address MUST match CONFIG.jetton.
+          // STRICT sender check (FIX): source missing/unparseable -> REJECT, do not allow. Sender must equal user's registered wallet.
           const normAddr = (a) => {
             const s = (a || '').toString().trim();
             if (!s) return '';
@@ -796,20 +795,29 @@ export default {
           };
           let matched = null;
           let senderMismatchFound = false;
+          // Burn address normalized both ways (raw + friendly) so comparison can't fail on format
+          let burnRaw = ''; try { burnRaw = Address.parse(cfg.burn_address).toRawString(); } catch { burnRaw = (cfg.burn_address || '').toString().toLowerCase(); }
+          const burnLower = (cfg.burn_address || '').toString().toLowerCase();
           for (const t of transfers) {
             const dest = (t.destination?.address || t.destination || t.to || '').toString();
             const amt = parseFloat(t.amount || 0) / 1e9;
             const jettonMaster = (t.jetton_master?.address || t.jetton_master || '').toString();
-            if (dest.toLowerCase() === cfg.burn_address.toLowerCase() && amt + 0.001 >= cfg.price) {
-              if (!jettonMaster || jettonMaster.toLowerCase() === CONFIG.jetton.toLowerCase()) {
-                const srcRaw = getSourceRaw(t);
-                if (!srcRaw) { matched = { dest, amt }; break; }
-                // Compare raw, fallback to lowercased friendly if raw parse failed
-                const srcLower = getSource(t).toLowerCase();
-                const userLower = (userRow.wallet || '').toString().toLowerCase();
-                if (srcRaw === userWalletRaw || srcLower === userLower) { matched = { dest, amt }; break; }
-                senderMismatchFound = true;
+            // Dest must match burn address (raw or friendly)
+            let destRaw = ''; try { destRaw = Address.parse(dest).toRawString(); } catch { destRaw = dest.toLowerCase(); }
+            if ((destRaw === burnRaw || dest.toLowerCase() === burnLower) && amt + 0.001 >= cfg.price) {
+              // STRICT jetton: if CONFIG.jetton is set, master MUST equal it. Empty master -> reject.
+              if (CONFIG.jetton) {
+                let masterRaw = ''; try { masterRaw = Address.parse(jettonMaster).toRawString(); } catch { masterRaw = jettonMaster.toLowerCase(); }
+                let cfgJettonRaw = ''; try { cfgJettonRaw = Address.parse(CONFIG.jetton).toRawString(); } catch { cfgJettonRaw = CONFIG.jetton.toLowerCase(); }
+                if (!jettonMaster || (masterRaw !== cfgJettonRaw && jettonMaster.toLowerCase() !== CONFIG.jetton.toLowerCase())) { senderMismatchFound = true; continue; }
               }
+              const srcRaw = getSourceRaw(t);
+              // STRICT: missing/unparseable source -> REJECT, do not match
+              if (!srcRaw) { senderMismatchFound = true; continue; }
+              const srcLower = getSource(t).toLowerCase();
+              const userLower = (userRow.wallet || '').toString().toLowerCase();
+              if (srcRaw === userWalletRaw || srcLower === userLower) { matched = { dest, amt }; break; }
+              senderMismatchFound = true;
             }
           }
           if (!matched && senderMismatchFound) {
@@ -822,8 +830,7 @@ export default {
             const maxAmt = Math.max(...toBurn.map(t => parseFloat(t.amount || 0) / 1e9));
             return json({ ok: false, error: 'amount_too_low', detail: `Sent ${maxAmt}, need ${cfg.price}` }, 400);
           }
-          // Optional: verify sender matches user wallet (if TonCenter provides source)
-          // Do NOT block on sender mismatch alone - burn verification is destination+amount.
+          // Sender already strictly verified above: missing source or mismatch -> rejected before reaching here.
           await env.DB.prepare(`INSERT INTO founder_owners (telegram_id, price, tx_hash, created_at) VALUES (?, ?, ?, unixepoch())`).bind(tgUser.id, cfg.price, txHash).run();
           const newBurned = Math.round((cfg.burned + cfg.price) * 100000000) / 100000000;
           await env.DB.prepare(`INSERT OR REPLACE INTO config_overrides (key, value) VALUES ('founder_burned', ?)`).bind(String(newBurned)).run();
@@ -1088,6 +1095,30 @@ export default {
           if (wd.status !== 'pending') return json({ ok: false, error: 'not_pending' }, 400);
 
           if (wdMatch[2] === 'approve') {
+            // HOLD ENFORCEMENT (server-side, FIX): 2nd+ withdrawal requires on-chain Hold. No longer browser-only.
+            // Prior count EXCLUDES the current pending withdrawal itself, so 1st withdrawal is exempt.
+            const _wdUser = await env.DB.prepare(`SELECT wallet FROM users WHERE telegram_id = ?`).bind(wd.telegram_id).first();
+            const _prior = await env.DB.prepare(`SELECT COUNT(*) as c FROM withdrawals WHERE telegram_id = ? AND status != 'rejected' AND id != ?`).bind(wd.telegram_id, wdId).first();
+            const _priorCount = _prior?.c || 0;
+            if (_priorCount >= 1) {
+              const _cfgHold = await env.DB.prepare(`SELECT value FROM config_overrides WHERE key = 'withdraw_hold_amount'`).first();
+              const _holdAmount = _cfgHold?.value ? parseFloat(_cfgHold.value) : (CONFIG.withdraw_hold_amount || 1000);
+              if (!_wdUser?.wallet) return json({ ok: false, error: 'hold_no_wallet', detail: 'User has no wallet for Hold check' }, 400);
+              const _apiKey = env.TONCENTER_API_KEY || env.TON_API_KEY || '';
+              if (!_apiKey) return json({ ok: false, error: 'hold_unavailable', detail: 'TONCENTER_API_KEY missing - cannot verify Hold, approval blocked' }, 500);
+              if (!CONFIG.jetton) return json({ ok: false, error: 'hold_unavailable', detail: 'Jetton address not configured' }, 500);
+              let _ownerRaw = _wdUser.wallet;
+              try { const { Address } = await import('@ton/ton'); _ownerRaw = Address.parse(_wdUser.wallet).toRawString(); } catch {}
+              let _jettonBal = 0; let _holdErr = null;
+              try {
+                const _r = await fetch(`https://toncenter.com/api/v3/jetton/wallets?owner_address=${encodeURIComponent(_ownerRaw)}&jetton_address=${CONFIG.jetton}&limit=1`, { headers: { 'X-API-Key': _apiKey } });
+                const _d = await _r.json();
+                if (_d.jetton_wallets && _d.jetton_wallets.length > 0) _jettonBal = parseFloat(_d.jetton_wallets[0].balance) / 1e9;
+                else if (_d.error) _holdErr = _d.error;
+              } catch (e) { _holdErr = e.message; }
+              if (_holdErr) return json({ ok: false, error: 'hold_check_failed', detail: String(_holdErr), jettonBalance: _jettonBal, holdAmount: _holdAmount }, 500);
+              if (_jettonBal < _holdAmount) return json({ ok: false, error: 'hold_not_met', detail: `On-chain FWC: ${_jettonBal}, Hold required: ${_holdAmount}`, jettonBalance: _jettonBal, holdAmount: _holdAmount }, 400);
+            }
             await approveWithdrawal(env.DB, wdId);
           } else {
             const body = await request.json().catch(() => ({}));
