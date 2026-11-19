@@ -1146,7 +1146,7 @@ function renderAlerts(el) {
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${a.details}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">Users: ${a.telegram_ids}</div>
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})">✅ Resolve</button>
+              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})">✅ Resolve</button><button class="btn btn-sm" style="background:rgba(255,77,77,0.2);border:1px solid rgba(255,77,77,0.4);" onclick="clawbackAlert(${a.id}, '${a.telegram_ids}')">💸 مصادرة (Clawback)</button>
               <button class="btn btn-sm" onclick="dismissAlert(${a.id})">🚫 Dismiss</button>
             </div>
           </div>
@@ -1175,6 +1175,21 @@ async function dismissAlert(id) {
   }
 }
 
+async function clawbackAlert(id, telegramIds) {
+  const amountStr = prompt('مبلغ المصادرة لكل مستخدم في التنبيه؟\nالمستخدمين: ' + telegramIds + '\n\nلو رصيد حد أقل من المبلغ، هيتخصم رصيده كله بس (مش هينزل تحت صفر).', '1000');
+  if (amountStr === null) return;
+  const amount = parseFloat(amountStr);
+  if (!isFinite(amount) || amount <= 0) { alert('مبلغ غير صحيح'); return; }
+  const reason = prompt('سبب المصادرة (هيتسجل في السجل):', 'مصادرة مكافأة غش - تنبيه #' + id);
+  if (reason === null) return;
+  if (!confirm('تأكيد مصادرة ' + amount + ' من كل مستخدم في التنبيه #' + id + '؟\nالمستخدمين: ' + telegramIds + '\nالسبب: ' + (reason || ''))) return;
+  const res = await api('/api/admin/anticheat/' + id + '/clawback', 'POST', { amount, reason: reason || '' });
+  if (res.ok) {
+    const lines = (res.results || []).map(r => 'ID ' + r.telegram_id + ': خصم ' + r.deducted + ' (من ' + r.before + ' لـ ' + r.after + ')').join('\n');
+    alert('تمت المصادرة ✅\n' + lines);
+    await loadAlerts(); await loadStats(); renderContent();
+  } else { alert('خطأ: ' + (res.error || 'failed')); }
+}
 // ========== PAYOUTS ==========
 async function loadPayoutStats() {
   const res = await api('/api/admin/payouts/stats');
@@ -1288,7 +1303,7 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
+window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
 window.checkPassword = checkPassword;
 </script>
 <script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script>
