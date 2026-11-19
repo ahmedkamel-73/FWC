@@ -1149,22 +1149,8 @@ export default {
               if (_jettonBal < _holdAmount) return json({ ok: false, error: 'hold_not_met', detail: `On-chain FWC: ${_jettonBal}, Hold required: ${_holdAmount}`, jettonBalance: _jettonBal, holdAmount: _holdAmount }, 400);
             }
             await approveWithdrawal(env.DB, wdId);
-            // WITHDRAWAL NOTIFICATIONS (STEP 10, full transparency for credibility - owner's decision):
-            // 1) DM to user: approved + amounts. 2) Public proof post in @fwc_payouts: name + username + FULL wallet + amount + date (+ tx hash if present).
-            // Notifications never block approval: failures are logged only.
-            try {
-              const _u = await env.DB.prepare(`SELECT username, first_name, wallet FROM users WHERE telegram_id = ?`).bind(wd.telegram_id).first();
-              const _name = _u?.first_name || 'User';
-              const _uname = _u?.username ? '@' + _u.username : '—';
-              const _wallet = _u?.wallet || wd.wallet || '—';
-              const _amt = wd.amount; const _net = (wd.net_amount !== undefined && wd.net_amount !== null) ? wd.net_amount : wd.amount;
-              const _date = new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Cairo' });
-              const _txLine = wd.tx_hash ? `\nTx: \`${wd.tx_hash}\`` : '';
-              // 1) DM to user
-              try { await sendTelegramMessage(botToken, wd.telegram_id, `✅ *Withdrawal Approved*\n\nAmount: ${_amt} FWC\nNet: ${_net} FWC\nWallet: \`${_wallet}\`${_txLine}\n\nCheck your wallet. Thank you for mining with FWC! ⛏️`); } catch (e) { console.error('Withdraw DM failed:', e.message); }
-              // 2) Public proof in payouts group - FULL details (owner chose full transparency for credibility)
-              try { await sendTelegramMessage(botToken, '@fwc_payouts', `✅ *Payout Completed*\n\n👤 ${_name} (${_uname})\n💰 Amount: ${_amt} FWC\n💳 Wallet: \`${_wallet}\`\n📅 Date: ${_date}${_txLine}\n\n#FWC #Payout`); } catch (e) { console.error('Payout group post failed:', e.message); }
-            } catch (e) { console.error('Withdraw notifications failed:', e.message); }
+            // NOTE: No notification here on purpose. Money is NOT sent at Approve - it is sent at Execute Batch.
+            // Notifications (DM + @fwc_payouts post) fire in /api/admin/payouts/execute AFTER on-chain send, with real Tx Hash.
           } else {
             const body = await request.json().catch(() => ({}));
             await rejectWithdrawal(env.DB, wdId, body.reason || null);
@@ -1221,6 +1207,27 @@ export default {
 
           const txHash = result.txHash || ('batch_' + Date.now());
           await markBatchAsSent(env.DB, batchTx, txHash);
+          // WITHDRAWAL NOTIFICATIONS (STEP 10 FIX): fire HERE, after real on-chain send - NOT at Approve.
+          // Full transparency (owner's decision): DM to each user + public proof post in @fwc_payouts with name + username + FULL wallet + amount + date + REAL Tx Hash.
+          // If result.mock is true, do NOT post proof (nothing was actually sent) - log a warning instead.
+          if (result.mock) {
+            console.warn('Payout executed in MOCK mode - notifications skipped, no real on-chain send. txHash:', txHash);
+          } else {
+            try {
+              const _date2 = new Date().toLocaleDateString('en-GB', { timeZone: 'Africa/Cairo' });
+              for (const wd of pending) {
+                try {
+                  const _u2 = await env.DB.prepare(`SELECT username, first_name, wallet FROM users WHERE telegram_id = ?`).bind(wd.telegram_id).first();
+                  const _name2 = _u2?.first_name || 'User';
+                  const _uname2 = _u2?.username ? '@' + _u2.username : '—';
+                  const _wallet2 = _u2?.wallet || wd.wallet || '—';
+                  const _amt2 = wd.amount; const _net2 = (wd.net_amount !== undefined && wd.net_amount !== null) ? wd.net_amount : wd.amount;
+                  try { await sendTelegramMessage(botToken, wd.telegram_id, `✅ *Withdrawal Sent*\n\nAmount: ${_amt2} FWC\nNet: ${_net2} FWC\nWallet: \`${_wallet2}\`\nTx: \`${txHash}\`\n\nCheck your wallet. Thank you for mining with FWC! ⛏️`); } catch (e) { console.error('Withdraw DM failed:', e.message); }
+                  try { await sendTelegramMessage(botToken, '@fwc_payouts', `✅ *Payout Completed*\n\n👤 ${_name2} (${_uname2})\n💰 Amount: ${_amt2} FWC\n💳 Wallet: \`${_wallet2}\`\n📅 Date: ${_date2}\nTx: \`${txHash}\`\n\n#FWC #Payout`); } catch (e) { console.error('Payout group post failed:', e.message); }
+                } catch (e) { console.error('Payout notify per-user failed:', e.message); }
+              }
+            } catch (e) { console.error('Payout notifications failed:', e.message); }
+          }
 
           // Log fees for each withdrawal in batch
           try {
