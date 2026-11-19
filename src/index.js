@@ -659,6 +659,35 @@ export default {
           return json({ ok: true, reward: r.reward, streak: r.streak });
         }
 
+        // TASKS MEMBERSHIP VERIFICATION (server-side, STEP 9): Join tasks must be real members.
+        // Chats confirmed by owner: Channel @fwc_coin, Groups @fwc_coin1 + @fwc_payouts.
+        // Non-join tasks (checkin already handled above, ads, etc.) skip verification.
+        // Bot MUST be admin/member in all 3 chats, otherwise getChatMember fails and task is blocked with a clear error.
+        try {
+          const _tasks = await getDailyTasks(env.DB);
+          const _task = Array.isArray(_tasks) ? _tasks.find(t => String(t.id) === String(taskId)) : null;
+          if (_task) {
+            const _blob = JSON.stringify(_task).toLowerCase();
+            let _chat = null;
+            if (_blob.includes('fwc_coin1')) _chat = '@fwc_coin1';
+            else if (_blob.includes('fwc_payouts')) _chat = '@fwc_payouts';
+            else if (/(^|[^a-z0-9_])fwc_coin([^0-9a-z_]|$)/.test(_blob)) _chat = '@fwc_coin';
+            if (_chat) {
+              const _botTok = env.BOT_TOKEN || (typeof getSecrets === 'function' ? getSecrets(env).botToken : null);
+              if (!_botTok) return json({ ok: false, error: 'member_check_unavailable', detail: 'BOT_TOKEN missing - cannot verify membership' }, 500);
+              const _gm = await fetch(`https://api.telegram.org/bot${_botTok}/getChatMember?chat_id=${encodeURIComponent(_chat)}&user_id=${tgUser.id}`);
+              const _gmd = await _gm.json().catch(() => ({}));
+              if (!_gmd.ok) return json({ ok: false, error: 'member_check_unavailable', detail: `Bot cannot check ${_chat}: ${_gmd.description || 'Telegram API error'}. Make @fwcoinbot admin/member in the chat.` }, 500);
+              const _st = _gmd.result?.status;
+              if (_st === 'left' || _st === 'kicked') return json({ ok: false, error: 'not_member', detail: `Join ${_chat} first, then claim.` }, 400);
+              if (!['creator', 'administrator', 'member'].includes(_st)) return json({ ok: false, error: 'not_member', detail: `Join ${_chat} first, then claim.` }, 400);
+            }
+          }
+        } catch (e) {
+          // Verification itself failed (not a not_member case) -> block, do NOT silently allow.
+          if (e && (e._blocked)) throw e;
+          return json({ ok: false, error: 'member_check_failed', detail: String(e?.message || e) }, 500);
+        }
         const result = await doTask(env.DB, tgUser.id, taskId, date, env);
         if (!result.ok) return json({ ok: false, error: result.reason }, 400);
         return json({ ok: true, reward: result.reward, newBalance: result.newBalance });
