@@ -1156,7 +1156,7 @@ function renderAlerts(el) {
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">${a.details}</div>
             <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">Users: ${a.telegram_ids}</div>
             <div style="display:flex;gap:6px;">
-              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})">✅ Resolve</button><button class="btn btn-sm" style="background:rgba(255,77,77,0.2);border:1px solid rgba(255,77,77,0.4);" onclick="clawbackAlert(${a.id})">💸 مصادرة (Clawback)</button>
+              <button class="btn btn-sm btn-primary" onclick="resolveAlert(${a.id})">✅ Resolve</button><button class="btn btn-sm" style="background:rgba(255,77,77,0.2);border:1px solid rgba(255,77,77,0.4);" onclick="clawbackAlert(${a.id})">💸 مصادرة (Clawback)</button><button class="btn btn-sm" style="background:rgba(255,0,0,0.25);border:1px solid rgba(255,0,0,0.5);" onclick="banAlert(${a.id}, 'all')">🚫 حظر الكل</button><button class="btn btn-sm" style="background:rgba(255,165,0,0.2);border:1px solid rgba(255,165,0,0.5);" onclick="banAlert(${a.id}, 'except_one')">⚖️ حظر الكل ما عدا واحد</button>
               <button class="btn btn-sm" onclick="dismissAlert(${a.id})">🚫 Dismiss</button>
             </div>
           </div>
@@ -1223,6 +1223,28 @@ async function manualClawback() {
   }
   alert('تمت المصادرة اليدوية ✅\n' + lines.join('\n'));
   await loadAlerts(); await loadStats(); renderContent();
+}
+async function banAlert(id, mode) {
+  const alert = (STATE.alerts || []).find(x => String(x.id) === String(id));
+  const telegramIds = alert ? String(alert.telegram_ids || '') : '';
+  if (!telegramIds) { alert('التنبيه مش لاقي مستخدمين'); return; }
+  let keepId = null;
+  if (mode === 'except_one') {
+    const keepStr = prompt('مين اللي هتسيبه؟ اكتب الـ ID بتاعه:\nالمستخدمين: ' + telegramIds, '');
+    if (keepStr === null) return;
+    keepId = parseInt(keepStr.trim());
+    if (!isFinite(keepId)) { alert('ID غير صحيح'); return; }
+  }
+  const reason = prompt('سبب الحظر (هيتسجل):', 'حظر غش - تنبيه #' + id);
+  if (reason === null) return;
+  const targets = mode === 'except_one' ? 'كل المستخدمين ما عدا ' + keepId : 'كل المستخدمين';
+  if (!confirm('تأكيد؟\n' + targets + '\nالمستخدمين: ' + telegramIds + '\n\nاللي هيتحظر هيتطبق عليه:\n- حظر (Ban)\n- فك ربط المحفظة (Unlink wallet)\n- إلغاء السحوبات المعلقة (تصفير عداد السحب)')) return;
+  const res = await api('/api/admin/anticheat/' + id + '/ban', 'POST', { mode, keepId, reason: reason || '' });
+  if (res.ok) {
+    const lines = (res.results || []).map(r => 'ID ' + r.telegram_id + (r.note ? ': ' + r.note : ': حظر ✅ + فك محفظة ✅ + إلغاء ' + (r.pending_withdrawals_cancelled || 0) + ' سحب معلق')).join('\n');
+    alert('تم الحظر ✅\n' + lines + '\n\nالتنبيه لسه مفتوح - دوس Resolve لو خلصت.');
+    await loadAlerts(); await loadUsers(); await loadStats(); renderContent();
+  } else { alert('خطأ: ' + (res.error || 'failed')); }
 }
 // ========== PAYOUTS ==========
 async function loadPayoutStats() {
@@ -1337,7 +1359,7 @@ window.saveAdsConfig = saveAdsConfig;
 window.resolveAlert = resolveAlert;
 window.dismissAlert = dismissAlert;
 window.executePayout = executePayout;
-window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
+window.copyWallet = copyWallet;window.checkUserHold = checkUserHold;window.manualClawback = manualClawback;window.banAlert = banAlert;window.clawbackAlert = clawbackAlert;window.quickDeductBalance = quickDeductBalance;window.resetWithdrawals = resetWithdrawals;window.quickAddBalance = quickAddBalance;window.openBalanceModal = openBalanceModal;window.closeBalanceModal = closeBalanceModal;window.submitBalance = submitBalance;
 window.checkPassword = checkPassword;
 </script>
 <script>(function(){var FOCUS_TYPE="ecto:artifact-focus-request";var CLOSE_TYPE="ecto:artifact-close-request";function focusArtifactDocument(){var body=document.body;if(!body)return;try{window.focus();}catch(e){}if(!body.hasAttribute("tabindex"))body.setAttribute("tabindex","-1");try{body.focus({preventScroll:true});}catch(e){try{body.focus();}catch(e2){}}}window.addEventListener("message",function(event){if(event.source!==window.parent)return;var data=event.data;if(!data||typeof data!=="object"||data.type!==FOCUS_TYPE)return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",focusArtifactDocument,{once:true});return;}focusArtifactDocument();});window.addEventListener("keydown",function(event){if(event.key!=="Escape")return;window.setTimeout(function(){if(event.defaultPrevented)return;window.parent.postMessage({type:CLOSE_TYPE},"*");},0);});})();</script>
